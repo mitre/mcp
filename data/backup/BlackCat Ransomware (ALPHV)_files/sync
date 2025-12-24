@@ -1,0 +1,20 @@
+(async function () {
+
+
+var rangeObj = document.createRange(); var documentFragment = rangeObj.createContextualFragment ('<script async type="text/javascript">\n    function li_call() {\n        var l = document.createElement("img");\n        var cache_buster = Date.now();\n\n        var l_src = "https://live.rezync.com/sync?c=0aa2530f29e4f4a05b5d5d9bb35d60c2&p=93c1662463a616a7155169889dd99651&k=lionly&cache_buster="+cache_buster;\n        l.setAttribute("src", l_src);\n        l.setAttribute("height", "1px");\n        l.setAttribute("width", "1px");\n        l.setAttribute("style", "display: none;");\n        document.body.appendChild(l);\n    }\n\n    if ([\'complete\', \'interactive\'].indexOf(document.readyState) >= 0) {\n        li_call();\n    } else {\n        window.addEventListener("DOMContentLoaded", function(){\n            li_call();\n        });\n    }\n</script>'); document.body.appendChild(documentFragment);
+
+
+
+var s = document.createElement('script'); s.text = '(function() { var SITEID=\'varonis\';\n(function(b, t, r, a, i, n) {\n    b[\'bt\']=b[\'bt\'] || function() {\n        (b[\'_bt\']=b[\'_bt\']||[]).push(arguments);\n    },\n    i = t.createElement(r),\n    n = t.getElementsByTagName(r)[0];\n    i.async = 1;\n    i.src = a;\n    n.parentNode.insertBefore(i, n);\n})(\n    window,\n    document,\n    \'script\',\n 	\'https://cdn.boomtrain.com/p13n/\'+SITEID+\'/p13n.min.js\'\n);\nbt(\'initialize\', SITEID, {externalIds: {zync: \'c343ecbf-c629-4fba-bbb0-b319ddebbdcb:1747860684.0881164\'}}); })();'; document.body.appendChild(s);
+
+
+
+var rangeObj = document.createRange(); var documentFragment = rangeObj.createContextualFragment ('<!-- Code for Pixel:  Varonis Landing Page Pixel-->\n<!-- Begin DMP Conversion Action Tracking Code Version 9 -->\n<script type=\'text/javascript\'>\n(function() {\n	var w = window, d = document;\n	var s = d.createElement(\'script\');\n	s.setAttribute(\'async\', \'true\');\n	s.setAttribute(\'type\', \'text/javascript\');\n	s.setAttribute(\'src\', \'//c1.rfihub.net/js/tc.min.js\');\n	var f = d.getElementsByTagName(\'script\')[0];\n	f.parentNode.insertBefore(s, f);\n	if (typeof w[\'_rfi\'] !== \'function\') {\n		w[\'_rfi\']=function() {\n			w[\'_rfi\'].commands = w[\'_rfi\'].commands || [];\n			w[\'_rfi\'].commands.push(arguments);\n		};\n	}\n	_rfi(\'setArgs\', \'ver\', \'9\');\n	_rfi(\'setArgs\', \'rb\', \'54758\');\n	_rfi(\'setArgs\', \'ca\', \'20866306\');\n	_rfi(\'setArgs\', \'_o\', \'54758\');\n	_rfi(\'setArgs\', \'_t\', \'20866306\');\n	_rfi(\'track\');\n})();\n</script>\n<noscript>\n<iframe src=\'//20866306p.rfihub.com/ca.html?rb=54758&ca=20866306&_o=54758&_t=20866306&ra=undefined\' style=\'display:none;padding:0;margin:0\' width=\'0\' height=\'0\'>\n</iframe>\n</noscript>\n<!-- End DMP Conversion Action Tracking Code Version 9 -->'); document.body.appendChild(documentFragment);
+
+
+
+
+
+
+
+})();

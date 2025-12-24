@@ -1,0 +1,25 @@
+T1048.001 — Exfiltration Over Symmetric Encrypted Non-C2 Protocol
+T1048.003 — Exfiltration Over Unencrypted Non-C2 Protocol
+T1048.002 — Exfiltration Over Asymmetric Encrypted Non-C2 Protocol
+T1564.001 — Hidden Files and Directories
+T1041 — Exfiltration Over C2 Channel
+T1567.004 — Exfiltration Over Webhook
+T1567 — Exfiltration Over Web Service
+T1567.001 — Exfiltration to Code Repository
+T1158 — Hidden Files and Directories
+T1048 — Exfiltration Over Alternative Protocol
+T1059.003 — Windows Command Shell
+T1052.001 — Exfiltration over USB
+T1011.001 — Exfiltration Over Bluetooth
+T1567.002 — Exfiltration to Cloud Storage
+T1011 — Exfiltration Over Other Network Medium
+T1567.003 — Exfiltration to Text Storage Sites
+T1052 — Exfiltration Over Physical Medium
+T1020 — Automated Exfiltration
+T1552.001 — Credentials In Files
+T1216 — System Script Proxy Execution
+T1127 — Trusted Developer Utilities Proxy Execution
+T1560.003 — Archive via Custom Method
+T1218 — System Binary Proxy Execution
+T1081 — Credentials in Files
+T1055.011 — Extra Window Memory Injection

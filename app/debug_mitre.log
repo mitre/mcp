@@ -1,0 +1,2885 @@
+usage: blackcat_cti_pipeline_stage1.py [-h] [--base-dir BASE_DIR]
+                                       [--step {raw-to-clean,ir-only,mitre-only,relationships-only,scenario-only,all}]
+blackcat_cti_pipeline_stage1.py: error: unrecognized arguments: --all
+[+] Base dir: /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/data
+[ALL] Step 1: raw → clean
+[+] Async raw → clean extraction starting…
+    [HTML] Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.html → Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.txt
+    [SKIP] Unsupported type: 399-401d6466e23d2395.js
+    [SKIP] Unsupported type: 898-8343fee746aadddf.js
+    [SKIP] Unsupported type: otBannerSdk.js
+    [IMG] Copied Kroll.png
+    [SKIP] Unsupported type: 92977076-ce22c5f5394b11cd.js
+    [SKIP] Unsupported type: image
+    [SKIP] Unsupported type: 68c0a17d-a4b271f5e43bb828.js
+    [SKIP] Unsupported type: [[...path]]-4da1d3699332963c.js
+    [SKIP] Unsupported type: db.js
+    [IMG] Copied analyzing-exmatter-a-ransomware-data-exfiltration-tool-table2.jpg
+    [SKIP] Unsupported type: otSDKStub.js
+    [SKIP] Unsupported type: 1d6e49b90012fb18.css
+    [SKIP] Unsupported type: _buildManifest.js
+    [SKIP] Unsupported type: _app-a9814e2f4df8723b.js
+    [SKIP] Unsupported type: 0
+    [SKIP] Unsupported type: OtAutoBlock.js
+    [SKIP] Unsupported type: jquery-3.7.1.min.js
+    [SKIP] Unsupported type: 954-54c9b3ed51748095.js
+    [IMG] Copied analyzing-exmatter-a-ransomware-data-exfiltration-tool-table1.jpg
+    [SKIP] Unsupported type: KROLL_SVG_RGB.svg
+    [IMG] Copied 464526.gif
+    [SKIP] Unsupported type: powered_by_logo.svg
+    [SKIP] Empty HTML: sync.html
+    [SKIP] Unsupported type: ee9ce975-7fc3646d17e67c34.js
+    [SKIP] Unsupported type: framework-e952fed463eb8e34.js
+    [SKIP] Unsupported type: polyfills-42372ed130431b0a.js
+    [SKIP] Unsupported type: 5d416436-014d1cbd031ad87b.js
+    [SKIP] Unsupported type: 646e0218-e2228982e9d5cc7e.js
+    [SKIP] Unsupported type: embedded-player-sdk-v5.min.js
+    [SKIP] Unsupported type: 56180571.js
+    [SKIP] Unsupported type: _ssgManifest.js
+    [SKIP] Unsupported type: rum
+    [SKIP] Unsupported type: api.js
+    [SKIP] Empty HTML: saved_resource.html
+    [SKIP] Unsupported type: e21e5bbe-3d57eca89d858117.js
+    [SKIP] Unsupported type: b637e9a5-ebfee6b48b492480.js
+    [SKIP] Empty HTML: saved_resource(1).html
+    [SKIP] Unsupported type: main-b35d64fa7b14b737.js
+    [SKIP] Unsupported type: webpack-a7f1728dccad98c6.js
+[+] Async raw-to-clean complete.
+[ALL] Step 2: clean → IR (LLM extraction only)
+
+[*] IR-only: Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.txt
+[CTI-DETECT] len=9022 keyword_hits=8
+[LLM] Generating IR...
+You are a senior cyber threat intelligence analyst.
+
+        Extract ONLY the following structured CTI fields into ONE JSON object:
+
+        {
+        "threat_actors": [
+            {"name": "", "description": ""}
+        ],
+        "malware": [
+            {"name": "", "description": ""}
+        ],
+        "tools": [
+            {"name": "", "description": ""}
+        ],
+        "infrastructure": [
+            {"name": "", "description": ""}
+        ],
+        "attack_patterns": [],
+        "behaviors": [
+            {"description": ""}
+        ],
+        "relationships": [
+            {"source": "", "relationship": "", "target": ""}
+        ]
+        }
+
+        STRICT RULES:
+        - ALWAYS return valid JSON
+        - ALWAYS fill descriptions when possible
+        - NEVER invent entities
+        - NEVER echo CTI text
+        - NEVER add additional keys
+        - ALWAYS use lists (even if empty)
+        - Relationship verbs MUST be short actions like:
+        ["uses", "deploys", "exploits", "targets", "communicates-with", "associated-with"]
+
+        CTI REPORT:
+        """Analyzing Exmatter: A Ransomware Data Exfiltration Tool
+March 22, 2022
+Having conducted more than 3,200 incident response engagements in 2021, Kroll’s Threat Intelligence team now tracks more than 200 ransomware threat actor groups. Kroll’s global Incident Response teams are very familiar with actions traditionally associated with a network intrusion, from initial access to lateral movement to privilege escalation to data exfiltration—and in the case of financially motivated actors, ransomware deployment. In this blog post, we will examine one of those tools, Exmatter.
+In Q4 2021, Kroll analyzed multiple samples of a custom exfiltration tool called Exmatter. It’s the third exfiltration toolset utilized by ransomware operators observed in the wild, after the release of Ryuk Infostealer in January 2020 and StealBit, which is associated with the LockBit 2.0 operator. Both the Ryuk Infostealer and Stealbit are capable of programmatic identification of files of interest, followed by automatic exfiltration of data. Ransomware groups in particular are known to harness custom data exfiltration tools to accelerate the information theft. Although Exmatter was originally associated with the now-defunct BlackMatter Ransomware-as-a-Service (RaaS) operation, Kroll has since observed variants of this tool being used by other RaaS groups.
+The use of customized tools like Exmatter puts greater pressure on organizations to use effective endpoint detection and response capabilities along with cyber security best practices.
+Accelerating the Exfiltration Process
+Exmatter is designed to steal a range of user files, databases and compressed files (including email and zip archive files) from multiple directories and then upload them to a preconfigured server via Secure File Transfer Protocol (SFTP). This tool has been observed shortly before ransomware deployment on the victim's network. Interestingly, Kroll has identified attackers targeting specific file extensions indicative of web and application source code, shortcuts for Remote Desktop, and CAD/GIS files in their data theft efforts. This process of reducing data sources to the specific types of business-critical files is designed to speed up the exfiltration process by collecting the data that attackers believe will be of the greatest relevance and/or sensitivity during a ransom negotiation. Kroll assesses that it may increase pressure on an organization to make a ransom settlement when that organization is presented with a curated file tree of sensitive files. The expeditious nature of this custom file collection means the activity is more likely to complete successfully while also evading detection by traditional cyber security mechanisms.
+Kroll’s analysis identified that, upon enumerating the logical drives on a victim's computer, Exmatter iterates through all its folders but ignores certain directories, including directories inside "C:\ProgramData\" (see Table 1). Kroll assesses that these operating system directories generally contain files of low value when viewed from the perspective of compelling a ransomware payment. Upon identification of PDFs, Microsoft Office, OpenOffice and StarOffice files (including documents, spreadsheets and presentation files, along with other file extensions as described in Table 2), a queue is established to prioritize the most recently modified files ahead of older files. Kroll has also identified another limiting factor: after identifying file extensions of interest, Exmatter only exfiltrates files larger than 1,024 bytes.
+Anti-Forensic Cleanup & Capability Enhancements
+As soon as all the selected data has been exfiltrated from the victim’s endpoint, Exmatter leverages anti-forensic techniques, removing any traces of itself from the device by invoking PowerShell to overwrite the first 65,536 bytes of the malicious file and subsequently delete itself. Kroll’s incident responders have observed multiple variants of the tool adding updates to the inclusion and exclusion list and implementing the use of a WebDav client as a secondary method of exfiltrating data should the primary use of SFTP fail. This suggests that attackers are continuing to evolve their tools to overcome defender obstacles while stealing valuable data in the shortest possible time.
+More recently, Kroll’s incident response investigators have observed a new variant of the Exmatter tool being used for exfiltration prior to Conti ransomware deployment. This variant includes a date range filter for the targeted data, indicating it may still be in development even after the alleged shutdown of the BlackMatter actor group in November 2021.
+Exmatter Analysis in Action
+In an analysis of Exmatter, Kroll’s Malware Analysis and Reverse Engineering team confirmed the sample was a .NET Windows executable file that had been compiled with Themida, an anti-reverse engineering software protection utility. Through static and dynamic analysis, Kroll successfully extracted the unpacked executable embedded within the file.
+Kroll found that any file matching the conditions in Tables 1 and 2 would be sent via SFTP to a remote server over TCP port 22 using a hardcoded username and password within the file. The team identified additional embedded configuration data, including a failover WebDav option should SFTP fail, as well as a SOCKS5 proxy configuration with the localhost IP address.
+Kroll also identified that the malicious file would accept command-line arguments as well. If the string “nownd” or “-nownd” was passed to the file on execution, the file would attempt to hide its own window in order to avoid visual detection by any end user on the system.
+Recommendations for Detecting Reconnaissance and Lateral Movement
+During the early stages of a network intrusion, threat actors frequently utilize tools with legitimate purposes to surreptitiously engage in malicious activities. Tools such as ADFind and Advanced IP Scanner, for example, are widely used for network and Active Directory administration but can also be abused to aid in reconnaissance. When able to, attackers also use legitimately signed binaries, such as those belonging in the Windows Sysinternals suite, and leverage their capabilities to carry out malicious activities ranging from credential dumping (ProcDump) to widespread malware and ransomware deployment (PsExec).
+Due to their legitimate purposes, these tools often do not raise suspicion when used in enterprise networks and thus provide threat actors with the ability to bypass traditional security apparatuses, including antivirus software. Kroll has also observed threat actors tampering with Group Policy Objects (GPO) to weaken the technical security posture of an organization. Once the initial stages of an attack are successfully carried out using such tools and attackers have identified that they’ve not yet been detected, threat actors may then introduce custom and unique tooling to focus on and accomplish their actions on an objective, such as data exfiltration. Kroll recommends the following strategies for detecting reconnaissance and lateral movement:
+- Employ Next-Generation Antivirus (NGAV) and Endpoint Detection and Response (EDR) on all devices within your environment to enable early detection and response to these threats. Based upon available organizational staffing, outsourcing the monitoring of your EDR solution may be a prudent approach to risk management given the 24x7 nature of the current cyber risk environment.
+- Implement cyber security best practices, including MFA, patching and least privilege. A focus on reliable offline tested immutable backups is also important; you can find more here.
+- Map your cyber security posture to a framework. The CIS Top 18 is a great solution for many organizations.
+Gartner’s Market Guide for Digital Forensics and Incident Response Services highlights the growing need for malware analysis as part of effective incident response. If organizations are unable to undertake this type of analysis themselves, they can reach out to Kroll’s security and cyber risk experts at any time.
+Stay Ahead with Kroll
+Cyber and Data Resilience
+Kroll merges elite security and data risk expertise with frontline intelligence from thousands of incident responses and regulatory compliance, financial crime and due diligence engagements to make our clients more cyber- resilient.
+24x7 Incident Response
+Kroll is the largest global IR provider with experienced responders who can handle the entire security incident lifecycle.
+Malware Analysis and Reverse Engineering
+Kroll’s Malware Analysis and Reverse Engineering team draws from decades of private and public-sector experience, across all industries, to deliver actionable findings through in-depth technical analysis of benign and malicious code.
+Computer Forensics
+Kroll's computer forensics experts ensure that no digital evidence is overlooked and assist at any stage of an investigation or litigation, regardless of the number or location of data sources."""
+[IR][PARSED] actors=2  malware=4  tools=6  infra=0  patterns=4  behaviors=7  relationships=0
+   → Wrote IR JSON: /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/data/outputs_ir/Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.ir-only.json
+   → Wrote IR TXT : /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/data/outputs_ir/Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.ir-only.txt
+[ALL] Step 3: MITRE enrichment
+
+[*] MITRE-only: Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.ir-only.json
+[MITRE-SCORE] T1055.011 Extra Window Memory Injection → 17.35
+[MITRE-SCORE] T1053.005 Scheduled Task → 5.86
+[MITRE-SCORE] T1205.002 Socket Filters → 5.85
+[MITRE-SCORE] T1066 Indicator Removal from Tools → 11.81
+[MITRE-SCORE] T1560.001 Archive via Utility → 11.71
+[MITRE-SCORE] T1021.005 VNC → 5.93
+[MITRE-SCORE] T1047 Windows Management Instrumentation → 13.20
+[MITRE-SCORE] T1156 Malicious Shell Modification → 13.36
+[MITRE-SCORE] T1113 Screen Capture → 5.66
+[MITRE-SCORE] T1027.011 Fileless Storage → 5.71
+[MITRE-SCORE] T1067 Bootkit → 5.77
+[MITRE-SCORE] T1037 Boot or Logon Initialization Scripts → 11.92
+[MITRE-SCORE] T1557 Adversary-in-the-Middle → 15.61
+[MITRE-SCORE] T1033 System Owner/User Discovery → 11.72
+[MITRE-SCORE] T1583 Acquire Infrastructure → 5.60
+[MITRE-SCORE] T1218.011 Rundll32 → 5.67
+[MITRE-SCORE] T1583.007 Serverless → 5.80
+[MITRE-SCORE] T1143 Hidden Window → 17.25
+[MITRE-SCORE] T1132.001 Standard Encoding → 5.84
+[MITRE-SCORE] T1027.009 Embedded Payloads → 11.81
+[MITRE-SCORE] T1556.003 Pluggable Authentication Modules → 5.80
+[MITRE-SCORE] T1148 HISTCONTROL → 5.65
+[MITRE-SCORE] T1592 Gather Victim Host Information → 11.49
+[MITRE-SCORE] T1596.003 Digital Certificates → 11.50
+[MITRE-SCORE] T1056.001 Keylogging → 5.88
+[MITRE-SCORE] T1564.012 File/Path Exclusions → 11.72
+[MITRE-SCORE] T1222.002 Linux and Mac File and Directory Permissions Modification → 14.81
+[MITRE-SCORE] T1110.001 Password Guessing → 11.65
+[MITRE-SCORE] T1216.001 PubPrn → 5.71
+[MITRE-SCORE] T1597.002 Purchase Technical Data → 15.43
+[MITRE-SCORE] T1003 OS Credential Dumping → 11.75
+[MITRE-SCORE] T1129 Shared Modules → 5.90
+[MITRE-SCORE] T1561.002 Disk Structure Wipe → 5.78
+[MITRE-SCORE] T1498.001 Direct Network Flood → 13.18
+[MITRE-SCORE] T1492 Stored Data Manipulation → 15.77
+[MITRE-SCORE] T1574.007 Path Interception by PATH Environment Variable → 11.93
+[MITRE-SCORE] T1213.002 Sharepoint → 5.70
+[MITRE-SCORE] T1006 Direct Volume Access → 13.26
+[MITRE-SCORE] T1044 File System Permissions Weakness → 11.90
+[MITRE-SCORE] T1588.007 Artificial Intelligence → 11.50
+[MITRE-SCORE] T1564.008 Email Hiding Rules → 11.71
+[MITRE-SCORE] T1491.002 External Defacement → 5.59
+[MITRE-SCORE] T1027.013 Encrypted/Encoded File → 11.81
+[MITRE-SCORE] T1171 LLMNR/NBT-NS Poisoning and Relay → 11.83
+[MITRE-SCORE] T1590.005 IP Addresses → 11.50
+[MITRE-SCORE] T1499.001 OS Exhaustion Flood → 5.74
+[MITRE-SCORE] T1014 Rootkit → 5.73
+[MITRE-SCORE] T1546.013 PowerShell Profile → 11.79
+[MITRE-SCORE] T1059.007 JavaScript → 5.76
+[MITRE-SCORE] T1590.002 DNS → 5.52
+[MITRE-SCORE] T1123 Audio Capture → 5.68
+[MITRE-SCORE] T1543 Create or Modify System Process → 13.33
+[MITRE-SCORE] T1133 External Remote Services → 11.85
+[MITRE-SCORE] T1109 Component Firmware → 5.80
+[MITRE-SCORE] T1539 Steal Web Session Cookie → 11.83
+[MITRE-SCORE] T1568.002 Domain Generation Algorithms → 5.69
+[MITRE-SCORE] T1036.007 Double File Extension → 11.77
+[MITRE-SCORE] T1548.002 Bypass User Account Control → 11.87
+[MITRE-SCORE] T1099 Timestomp → 5.75
+[MITRE-SCORE] T1016.001 Internet Connection Discovery → 5.71
+[MITRE-SCORE] T1548.003 Sudo and Sudo Caching → 11.76
+[MITRE-SCORE] T1560.003 Archive via Custom Method → 17.39
+[MITRE-SCORE] T1584.008 Network Devices → 11.50
+[MITRE-SCORE] T1583.008 Malvertising → 5.66
+[MITRE-SCORE] T1069 Permission Groups Discovery → 11.60
+[MITRE-SCORE] T1114 Email Collection → 11.63
+[MITRE-SCORE] T1003.002 Security Account Manager → 11.65
+[MITRE-SCORE] T1596.002 WHOIS → 5.54
+[MITRE-SCORE] T1542.001 System Firmware → 11.80
+[MITRE-SCORE] T1594 Search Victim-Owned Websites → 5.40
+[MITRE-SCORE] T1069.003 Cloud Groups → 11.80
+[MITRE-SCORE] T1574.011 Services Registry Permissions Weakness → 11.81
+[MITRE-SCORE] T1596.001 DNS/Passive DNS → 5.60
+[MITRE-SCORE] T1499.003 Application Exhaustion Flood → 11.71
+[MITRE-SCORE] T1195.001 Compromise Software Dependencies and Development Tools → 11.80
+[MITRE-SCORE] T1588.004 Digital Certificates → 11.67
+[MITRE-SCORE] T1583.002 DNS Server → 11.78
+[MITRE-SCORE] T1561 Disk Wipe → 5.80
+[MITRE-SCORE] T1071.004 DNS → 5.94
+[MITRE-SCORE] T1555.002 Securityd Memory → 5.79
+[MITRE-SCORE] T1615 Group Policy Discovery → 11.73
+[MITRE-SCORE] T1542.003 Bootkit → 5.88
+[MITRE-SCORE] T1025 Data from Removable Media → 15.64
+[MITRE-SCORE] T1116 Code Signing → 5.71
+[MITRE-SCORE] T1218.013 Mavinject → 5.82
+[MITRE-SCORE] T1093 Process Hollowing → 11.75
+[MITRE-SCORE] T1074.001 Local Data Staging → 15.72
+[MITRE-SCORE] T1036.005 Match Legitimate Resource Name or Location → 11.76
+[MITRE-SCORE] T1172 Domain Fronting → 5.77
+[MITRE-SCORE] T1587.003 Digital Certificates → 11.57
+[MITRE-SCORE] T1565.001 Stored Data Manipulation → 15.75
+[MITRE-SCORE] T1110.002 Password Cracking → 11.79
+[MITRE-SCORE] T1178 SID-History Injection → 5.68
+[MITRE-SCORE] T1114.001 Local Email Collection → 11.77
+[MITRE-SCORE] T1547 Boot or Logon Autostart Execution → 11.92
+[MITRE-SCORE] T1003.004 LSA Secrets → 5.60
+[MITRE-SCORE] T1013 Port Monitors → 11.80
+[MITRE-SCORE] T1606.002 SAML Tokens → 5.75
+[MITRE-SCORE] T1192 Spearphishing Link → 5.76
+[MITRE-SCORE] T1036.008 Masquerade File Type → 11.83
+[MITRE-SCORE] T1489 Service Stop → 5.71
+[MITRE-SCORE] T1587.001 Malware → 11.68
+[MITRE-SCORE] T1121 Regsvcs/Regasm → 5.77
+[MITRE-SCORE] T1652 Device Driver Discovery → 11.49
+[MITRE-SCORE] T1206 Sudo Caching → 5.66
+[MITRE-SCORE] T1087.002 Domain Account → 5.40
+[MITRE-SCORE] T1547.014 Active Setup → 11.82
+[MITRE-SCORE] T1564 Hide Artifacts → 15.79
+[MITRE-SCORE] T1559.002 Dynamic Data Exchange → 15.86
+[MITRE-SCORE] T1204.002 Malicious File → 11.75
+[MITRE-SCORE] T1591.003 Identify Business Tempo → 5.27
+[MITRE-SCORE] T1063 Security Software Discovery → 11.58
+[MITRE-SCORE] T1071.005 Publish/Subscribe Protocols → 5.67
+[MITRE-SCORE] T1592.001 Hardware → 5.43
+[MITRE-SCORE] T1080 Taint Shared Content → 5.92
+[MITRE-SCORE] T1484.002 Trust Modification → 7.32
+[MITRE-SCORE] T1213.006 Databases → 11.58
+[MITRE-SCORE] T1573.001 Symmetric Cryptography → 5.76
+[MITRE-SCORE] T1087.001 Local Account → 5.54
+[MITRE-SCORE] T1586.001 Social Media Accounts → 5.59
+[MITRE-SCORE] T1176.001 Browser Extensions → 11.88
+[MITRE-SCORE] T1527 Application Access Token → 11.85
+[MITRE-SCORE] T1562.009 Safe Mode Boot → 5.82
+[MITRE-SCORE] T1180 Screensaver → 5.53
+[MITRE-SCORE] T1543.003 Windows Service → 13.22
+[MITRE-SCORE] T1568.001 Fast Flux DNS → 5.72
+[MITRE-SCORE] T1497.001 System Checks → 11.74
+[MITRE-SCORE] T1053.003 Cron → 5.67
+[MITRE-SCORE] T1069.002 Domain Groups → 11.59
+[MITRE-SCORE] T1588.006 Vulnerabilities → 5.68
+[MITRE-SCORE] T1566.002 Spearphishing Link → 5.86
+[MITRE-SCORE] T1070.002 Clear Linux or Mac System Logs → 11.10
+[MITRE-SCORE] T1499.004 Application or System Exploitation → 11.62
+[MITRE-SCORE] T1137 Office Application Startup → 11.69
+[MITRE-SCORE] T1218.004 InstallUtil → 5.77
+[MITRE-SCORE] T1598.003 Spearphishing Link → 5.68
+[MITRE-SCORE] T1021.004 SSH → 5.90
+[MITRE-SCORE] T1098.003 Additional Cloud Roles → 11.76
+[MITRE-SCORE] T1547.012 Print Processors → 5.76
+[MITRE-SCORE] T1089 Disabling Security Tools → 11.76
+[MITRE-SCORE] T1487 Disk Structure Wipe → 5.77
+[MITRE-SCORE] T1566.001 Spearphishing Attachment → 5.82
+[MITRE-SCORE] T1214 Credentials in Registry → 11.78
+[MITRE-SCORE] T1027.008 Stripped Payloads → 5.79
+[MITRE-SCORE] T1559.001 Component Object Model → 5.63
+[MITRE-SCORE] T1574.001 DLL → 5.93
+[MITRE-SCORE] T1119 Automated Collection → 11.71
+[MITRE-SCORE] T1115 Clipboard Data → 15.61
+[MITRE-SCORE] T1583.005 Botnet → 5.52
+[MITRE-SCORE] T1555.005 Password Managers → 11.77
+[MITRE-SCORE] T1103 AppInit DLLs → 5.71
+[MITRE-SCORE] T1608.004 Drive-by Target → 11.62
+[MITRE-SCORE] T1007 System Service Discovery → 11.68
+[MITRE-SCORE] T1040 Network Sniffing → 11.83
+[MITRE-SCORE] T1017 Application Deployment Software → 17.35
+[MITRE-SCORE] T1553.002 Code Signing → 5.70
+[MITRE-SCORE] T1530 Data from Cloud Storage → 15.72
+[MITRE-SCORE] T1565.003 Runtime Data Manipulation → 15.75
+[MITRE-SCORE] T1552.002 Credentials in Registry → 11.83
+[MITRE-SCORE] T1135 Network Share Discovery → 11.81
+[MITRE-SCORE] T1120 Peripheral Device Discovery → 11.57
+[MITRE-SCORE] T1036.009 Break Process Trees → 11.85
+[MITRE-SCORE] T1590.004 Network Topology → 11.40
+[MITRE-SCORE] T1587.002 Code Signing Certificates → 5.65
+[MITRE-SCORE] T1222.001 Windows File and Directory Permissions Modification → 16.36
+[MITRE-SCORE] T1137.006 Add-ins → 5.33
+[MITRE-SCORE] T1505.002 Transport Agent → 5.84
+[MITRE-SCORE] T1082 System Information Discovery → 11.74
+[MITRE-SCORE] T1071 Application Layer Protocol → 11.87
+[MITRE-SCORE] T1574.014 AppDomainManager → 5.90
+[MITRE-SCORE] T1074.002 Remote Data Staging → 15.78
+[MITRE-SCORE] T1053 Scheduled Task/Job → 5.86
+[MITRE-SCORE] T1218.007 Msiexec → 5.85
+[MITRE-SCORE] T1590.003 Network Trust Dependencies → 11.34
+[MITRE-SCORE] T1498.002 Reflection Amplification → 5.70
+[MITRE-SCORE] T1556.002 Password Filter DLL → 11.89
+[MITRE-SCORE] T1505.005 Terminal Services DLL → 11.83
+[MITRE-SCORE] T1176 Software Extensions → 11.83
+[MITRE-SCORE] T1499.002 Service Exhaustion Flood → 5.85
+[MITRE-SCORE] T1195.003 Compromise Hardware Supply Chain → 5.72
+[MITRE-SCORE] T1106 Native API → 5.76
+[MITRE-SCORE] T1558.005 Ccache Files → 17.31
+[MITRE-SCORE] T1070.007 Clear Network Connection History and Configurations → 11.81
+[MITRE-SCORE] T1558.004 AS-REP Roasting → 15.70
+[MITRE-SCORE] T1058 Service Registry Permissions Weakness → 5.81
+[MITRE-SCORE] T1584.003 Virtual Private Server → 11.64
+[MITRE-SCORE] T1059.010 AutoHotKey & AutoIT → 5.79
+[MITRE-SCORE] T1070.003 Clear Command History → 11.30
+[MITRE-SCORE] T1202 Indirect Command Execution → 11.22
+[MITRE-SCORE] T1024 Custom Cryptographic Protocol → 11.84
+[MITRE-SCORE] T1091 Replication Through Removable Media → 11.79
+[MITRE-SCORE] T1005 Data from Local System → 15.64
+[MITRE-SCORE] T1140 Deobfuscate/Decode Files or Information → 17.34
+[MITRE-SCORE] T1137.005 Outlook Rules → 5.84
+[MITRE-SCORE] T1562 Impair Defenses → 5.78
+[MITRE-SCORE] T1586.003 Cloud Accounts → 5.62
+[MITRE-SCORE] T1586.002 Email Accounts → 11.62
+[MITRE-SCORE] T1098.007 Additional Local or Domain Groups → 11.79
+[MITRE-SCORE] T1608.001 Upload Malware → 11.75
+[MITRE-SCORE] T1195 Supply Chain Compromise → 5.76
+[MITRE-SCORE] T1190 Exploit Public-Facing Application → 11.74
+[MITRE-SCORE] T1558 Steal or Forge Kerberos Tickets → 11.79
+[MITRE-SCORE] T1555 Credentials from Password Stores → 11.74
+[MITRE-SCORE] T1567 Exfiltration Over Web Service → 18.85
+[MITRE-SCORE] T1219 Remote Access Tools → 11.83
+[MITRE-SCORE] T1583.001 Domains → 5.64
+[MITRE-SCORE] T1560.002 Archive via Library → 11.74
+[MITRE-SCORE] T1055.003 Thread Execution Hijacking → 5.79
+[MITRE-SCORE] T1079 Multilayer Encryption → 5.92
+[MITRE-SCORE] T1036 Masquerading → 5.84
+[MITRE-SCORE] T1546.011 Application Shimming → 11.82
+[MITRE-SCORE] T1552 Unsecured Credentials → 5.54
+[MITRE-SCORE] T1547.010 Port Monitors → 11.79
+[MITRE-SCORE] T1070.008 Clear Mailbox Data → 15.70
+[MITRE-SCORE] T1659 Content Injection → 5.64
+[MITRE-SCORE] T1055 Process Injection → 11.85
+[MITRE-SCORE] T1567.004 Exfiltration Over Webhook → 18.88
+[MITRE-SCORE] T1139 Bash History → 5.75
+[MITRE-SCORE] T1205 Traffic Signaling → 5.78
+[MITRE-SCORE] T1503 Credentials from Web Browsers → 11.89
+[MITRE-SCORE] T1218 System Binary Proxy Execution → 17.38
+[MITRE-SCORE] T1153 Source → 11.70
+[MITRE-SCORE] T1038 DLL Search Order Hijacking → 11.95
+[MITRE-SCORE] T1050 New Service → 11.81
+[MITRE-SCORE] T1070.006 Timestomp → 5.71
+[MITRE-SCORE] T1620 Reflective Code Loading → 5.80
+[MITRE-SCORE] T1016.002 Wi-Fi Discovery → 5.52
+[MITRE-SCORE] T1480.002 Mutual Exclusion → 11.85
+[MITRE-SCORE] T1564.011 Ignore Process Interrupts → 13.35
+[MITRE-SCORE] T1611 Escape to Host → 15.84
+[MITRE-SCORE] T1518.002 Backup Software Discovery → 11.50
+[MITRE-SCORE] T1547.009 Shortcut Modification → 8.87
+[MITRE-SCORE] T1010 Application Window Discovery → 17.17
+[MITRE-SCORE] T1032 Standard Cryptographic Protocol → 11.96
+[MITRE-SCORE] T1087.003 Email Account → 11.73
+[MITRE-SCORE] T1062 Hypervisor → 5.68
+[MITRE-SCORE] T1497.003 Time Based Checks → 11.71
+[MITRE-SCORE] T1182 AppCert DLLs → 5.73
+[MITRE-SCORE] T1218.003 CMSTP → 5.67
+[MITRE-SCORE] T1563.001 SSH Hijacking → 5.93
+[MITRE-SCORE] T1562.002 Disable Windows Event Logging → 13.22
+[MITRE-SCORE] T1029 Scheduled Transfer → 11.56
+[MITRE-SCORE] T1021.002 SMB/Windows Admin Shares → 13.33
+[MITRE-SCORE] T1525 Implant Internal Image → 5.80
+[MITRE-SCORE] T1572 Protocol Tunneling → 11.85
+[MITRE-SCORE] T1218.002 Control Panel → 5.77
+[MITRE-SCORE] T1608.002 Upload Tool → 15.68
+[MITRE-SCORE] T1547.005 Security Support Provider → 11.85
+[MITRE-SCORE] T1004 Winlogon Helper DLL → 5.82
+[MITRE-SCORE] T1009 Binary Padding → 5.85
+[MITRE-SCORE] T1550 Use Alternate Authentication Material → 11.88
+[MITRE-SCORE] T1076 Remote Desktop Protocol → 11.84
+[MITRE-SCORE] T1597.001 Threat Intel Vendors → 11.45
+[MITRE-SCORE] T1011 Exfiltration Over Other Network Medium → 18.70
+[MITRE-SCORE] T1589 Gather Victim Identity Information → 11.37
+[MITRE-SCORE] T1131 Authentication Package → 5.93
+[MITRE-SCORE] T1181 Extra Window Memory Injection → 17.29
+[MITRE-SCORE] T1562.004 Disable or Modify System Firewall → 13.38
+[MITRE-SCORE] T1560 Archive Collected Data → 15.92
+[MITRE-SCORE] T1553.003 SIP and Trust Provider Hijacking → 11.84
+[MITRE-SCORE] T1483 Domain Generation Algorithms → 5.68
+[MITRE-SCORE] T1185 Browser Session Hijacking → 5.92
+[MITRE-SCORE] T1021 Remote Services → 11.85
+[MITRE-SCORE] T1071.003 Mail Protocols → 5.83
+[MITRE-SCORE] T1556.007 Hybrid Identity → 5.91
+[MITRE-SCORE] T1595.002 Vulnerability Scanning → 5.54
+[MITRE-SCORE] T1059.009 Cloud API → 5.73
+[MITRE-SCORE] T1596 Search Open Technical Databases → 11.34
+[MITRE-SCORE] T1218.015 Electron Applications → 5.75
+[MITRE-SCORE] T1207 Rogue Domain Controller → 5.76
+[MITRE-SCORE] T1553.006 Code Signing Policy Modification → 13.29
+[MITRE-SCORE] T1107 File Deletion → 11.76
+[MITRE-SCORE] T1145 Private Keys → 11.67
+[MITRE-SCORE] T1112 Modify Registry → 7.33
+[MITRE-SCORE] T1555.003 Credentials from Web Browsers → 11.90
+[MITRE-SCORE] T1574.008 Path Interception by Search Order Hijacking → 11.82
+[MITRE-SCORE] T1491 Defacement → 5.57
+[MITRE-SCORE] T1557.003 DHCP Spoofing → 5.84
+[MITRE-SCORE] T1563 Remote Service Session Hijacking → 11.82
+[MITRE-SCORE] T1027.001 Binary Padding → 5.84
+[MITRE-SCORE] T1505.003 Web Shell → 11.82
+[MITRE-SCORE] T1484.001 Group Policy Modification → 13.24
+[MITRE-SCORE] T1217 Browser Information Discovery → 11.65
+[MITRE-SCORE] T1552.004 Private Keys → 11.80
+[MITRE-SCORE] T1583.004 Server → 11.53
+[MITRE-SCORE] T1021.006 Windows Remote Management → 13.32
+[MITRE-SCORE] T1011.001 Exfiltration Over Bluetooth → 18.78
+[MITRE-SCORE] T1078.001 Default Accounts → 5.83
+[MITRE-SCORE] T1547.003 Time Providers → 5.78
+[MITRE-SCORE] T1183 Image File Execution Options Injection → 11.73
+[MITRE-SCORE] T1085 Rundll32 → 5.83
+[MITRE-SCORE] T1031 Modify Existing Service → 7.33
+[MITRE-SCORE] T1546.005 Trap → 5.77
+[MITRE-SCORE] T1574.006 Dynamic Linker Hijacking → 11.88
+[MITRE-SCORE] T1136.001 Local Account → 5.79
+[MITRE-SCORE] T1681 Search Threat Vendor Data → 15.61
+[MITRE-SCORE] T1674 Input Injection → 5.91
+[MITRE-SCORE] T1092 Communication Through Removable Media → 11.80
+[MITRE-SCORE] T1070.001 Clear Windows Event Logs → 13.25
+[MITRE-SCORE] T1585.002 Email Accounts → 11.44
+[MITRE-SCORE] T1557.001 LLMNR/NBT-NS Poisoning and SMB Relay → 11.88
+[MITRE-SCORE] T1222 File and Directory Permissions Modification → 14.82
+[MITRE-SCORE] T1003.001 LSASS Memory → 5.83
+[MITRE-SCORE] T1176.002 IDE Extensions → 11.79
+[MITRE-SCORE] T1179 Hooking → 5.77
+[MITRE-SCORE] T1595 Active Scanning → 11.50
+[MITRE-SCORE] T1027.016 Junk Code Insertion → 5.74
+[MITRE-SCORE] T1548 Abuse Elevation Control Mechanism → 5.75
+[MITRE-SCORE] T1134.002 Create Process with Token → 11.76
+[MITRE-SCORE] T1548.001 Setuid and Setgid → 11.75
+[MITRE-SCORE] T1547.004 Winlogon Helper DLL → 5.86
+[MITRE-SCORE] T1019 System Firmware → 11.75
+[MITRE-SCORE] T1021.003 Distributed Component Object Model → 5.83
+[MITRE-SCORE] T1042 Change Default File Association → 11.71
+[MITRE-SCORE] T1117 Regsvr32 → 5.87
+[MITRE-SCORE] T1110.003 Password Spraying → 11.62
+[MITRE-SCORE] T1090.002 External Proxy → 17.34
+[MITRE-SCORE] T1056.003 Web Portal Capture → 11.84
+[MITRE-SCORE] T1589.002 Email Addresses → 11.44
+[MITRE-SCORE] T1054 Indicator Blocking → 5.77
+[MITRE-SCORE] T1598.004 Spearphishing Voice → 5.61
+[MITRE-SCORE] T1108 Redundant Access → 11.72
+[MITRE-SCORE] T1193 Spearphishing Attachment → 5.83
+[MITRE-SCORE] T1003.005 Cached Domain Credentials → 5.71
+[MITRE-SCORE] T1098.004 SSH Authorized Keys → 5.95
+[MITRE-SCORE] T1673 Virtual Machine Discovery → 5.67
+[MITRE-SCORE] T1215 Kernel Modules and Extensions → 11.70
+[MITRE-SCORE] T1101 Security Support Provider → 11.82
+[MITRE-SCORE] T1590.006 Network Security Appliances → 11.44
+[MITRE-SCORE] T1546.012 Image File Execution Options Injection → 11.79
+[MITRE-SCORE] T1218.008 Odbcconf → 5.70
+[MITRE-SCORE] T1593.002 Search Engines → 5.44
+[MITRE-SCORE] T1177 LSASS Driver → 5.81
+[MITRE-SCORE] T1591.002 Business Relationships → 5.27
+[MITRE-SCORE] T1548.005 Temporary Elevated Cloud Access → 11.78
+[MITRE-SCORE] T1125 Video Capture → 5.67
+[MITRE-SCORE] T1045 Software Packing → 11.84
+[MITRE-SCORE] T1055.013 Process Doppelgänging → 11.86
+[MITRE-SCORE] T1016 System Network Configuration Discovery → 11.67
+[MITRE-SCORE] T1593.003 Code Repositories → 5.56
+[MITRE-SCORE] T1574.005 Executable Installer File Permissions Weakness → 11.90
+[MITRE-SCORE] T1546.008 Accessibility Features → 5.72
+[MITRE-SCORE] T1496.002 Bandwidth Hijacking → 5.66
+[MITRE-SCORE] T1504 PowerShell Profile → 11.88
+[MITRE-SCORE] T1198 SIP and Trust Provider Hijacking → 11.83
+[MITRE-SCORE] T1087 Account Discovery → 5.75
+[MITRE-SCORE] T1090 Proxy → 17.32
+[MITRE-SCORE] T1059 Command and Scripting Interpreter → 17.16
+[MITRE-SCORE] T1204.005 Malicious Library → 11.81
+[MITRE-SCORE] T1562.006 Indicator Blocking → 5.86
+[MITRE-SCORE] T1136.002 Domain Account → 5.78
+[MITRE-SCORE] T1564.014 Extended Attributes → 5.83
+[MITRE-SCORE] T1589.003 Employee Names → 5.28
+[MITRE-SCORE] T1482 Domain Trust Discovery → 5.66
+[MITRE-SCORE] T1558.001 Golden Ticket → 5.67
+[MITRE-SCORE] T1175 Component Object Model and Distributed COM → 11.78
+[MITRE-SCORE] T1020 Automated Exfiltration → 18.64
+[MITRE-SCORE] T1592.004 Client Configurations → 11.41
+[MITRE-SCORE] T1219.001 IDE Tunneling → 5.88
+[MITRE-SCORE] T1036.002 Right-to-Left Override → 15.70
+[MITRE-SCORE] T1588.001 Malware → 11.54
+[MITRE-SCORE] T1027.017 SVG Smuggling → 5.75
+[MITRE-SCORE] T1542.002 Component Firmware → 5.80
+[MITRE-SCORE] T1070 Indicator Removal → 5.70
+[MITRE-SCORE] T1048.001 Exfiltration Over Symmetric Encrypted Non-C2 Protocol → 18.93
+[MITRE-SCORE] T1137.001 Office Template Macros → 5.80
+[MITRE-SCORE] T1583.003 Virtual Private Server → 11.65
+[MITRE-SCORE] T1550.003 Pass the Ticket → 15.77
+[MITRE-SCORE] T1083 File and Directory Discovery → 13.10
+[MITRE-SCORE] T1568 Dynamic Resolution → 11.92
+[MITRE-SCORE] T1036.004 Masquerade Task or Service → 11.69
+[MITRE-SCORE] T1055.004 Asynchronous Procedure Call → 5.87
+[MITRE-SCORE] T1020.001 Traffic Duplication → 5.72
+[MITRE-SCORE] T1138 Application Shimming → 11.75
+[MITRE-SCORE] T1127.003 JamPlus → 5.91
+[MITRE-SCORE] T1546.009 AppCert DLLs → 5.61
+[MITRE-SCORE] T1191 CMSTP → 5.61
+[MITRE-SCORE] T1188 Multi-hop Proxy → 17.31
+[MITRE-SCORE] T1114.003 Email Forwarding Rule → 11.78
+[MITRE-SCORE] T1074 Data Staged → 15.78
+[MITRE-SCORE] T1649 Steal or Forge Authentication Certificates → 11.66
+[MITRE-SCORE] T1098.005 Device Registration → 11.76
+[MITRE-SCORE] T1049 System Network Connections Discovery → 11.68
+[MITRE-SCORE] T1584 Compromise Infrastructure → 5.58
+[MITRE-SCORE] T1553.005 Mark-of-the-Web Bypass → 15.80
+[MITRE-SCORE] T1542 Pre-OS Boot → 5.84
+[MITRE-SCORE] T1064 Scripting → 5.73
+[MITRE-SCORE] T1051 Shared Webroot → 5.93
+[MITRE-SCORE] T1055.002 Portable Executable Injection → 11.84
+[MITRE-SCORE] T1218.012 Verclsid → 5.79
+[MITRE-SCORE] T1586 Compromise Accounts → 5.58
+[MITRE-SCORE] T1584.005 Botnet → 5.62
+[MITRE-SCORE] T1552.003 Shell History → 5.81
+[MITRE-SCORE] T1562.010 Downgrade Attack → 11.82
+[MITRE-SCORE] T1497 Virtualization/Sandbox Evasion → 5.74
+[MITRE-SCORE] T1102 Web Service → 11.80
+[MITRE-SCORE] T1552.001 Credentials In Files → 17.43
+[MITRE-SCORE] T1568.003 DNS Calculation → 5.83
+[MITRE-SCORE] T1218.005 Mshta → 5.76
+[MITRE-SCORE] T1608 Stage Capabilities → 11.58
+[MITRE-SCORE] T1608.005 Link Target → 5.64
+[MITRE-SCORE] T1104 Multi-Stage Channels → 11.78
+[MITRE-SCORE] T1657 Financial Theft → 11.46
+[MITRE-SCORE] T1480 Execution Guardrails → 5.76
+[MITRE-SCORE] T1606.001 Web Cookies → 11.70
+[MITRE-SCORE] T1654 Log Enumeration → 5.76
+[MITRE-SCORE] T1134.001 Token Impersonation/Theft → 11.75
+[MITRE-SCORE] T1567.001 Exfiltration to Code Repository → 18.84
+[MITRE-SCORE] T1021.007 Cloud Services → 11.75
+[MITRE-SCORE] T1205.001 Port Knocking → 11.81
+[MITRE-SCORE] T1027.012 LNK Icon Smuggling → 5.94
+[MITRE-SCORE] T1583.006 Web Services → 11.53
+[MITRE-SCORE] T1528 Steal Application Access Token → 11.84
+[MITRE-SCORE] T1598.002 Spearphishing Attachment → 5.63
+[MITRE-SCORE] T1098.001 Additional Cloud Credentials → 11.81
+[MITRE-SCORE] T1204 User Execution → 11.71
+[MITRE-SCORE] T1491.001 Internal Defacement → 5.71
+[MITRE-SCORE] T1564.002 Hidden Users → 5.75
+[MITRE-SCORE] T1134.003 Make and Impersonate Token → 11.81
+[MITRE-SCORE] T1552.006 Group Policy Preferences → 11.81
+[MITRE-SCORE] T1196 Control Panel Items → 5.71
+[MITRE-SCORE] T1048.002 Exfiltration Over Asymmetric Encrypted Non-C2 Protocol → 18.89
+[MITRE-SCORE] T1087.004 Cloud Account → 5.66
+[MITRE-SCORE] T1057 Process Discovery → 11.64
+[MITRE-SCORE] T1562.003 Impair Command History Logging → 11.25
+[MITRE-SCORE] T1556.008 Network Provider DLL → 11.93
+[MITRE-SCORE] T1546.003 Windows Management Instrumentation Event Subscription → 13.35
+[MITRE-SCORE] T1596.004 CDNs → 5.56
+[MITRE-SCORE] T1497.002 User Activity Based Checks → 11.76
+[MITRE-SCORE] T1141 Input Prompt → 5.78
+[MITRE-SCORE] T1585.003 Cloud Accounts → 5.53
+[MITRE-SCORE] T1072 Software Deployment Tools → 17.32
+[MITRE-SCORE] T1041 Exfiltration Over C2 Channel → 18.88
+[MITRE-SCORE] T1134.004 Parent PID Spoofing → 5.77
+[MITRE-SCORE] T1591 Gather Victim Org Information → 11.25
+[MITRE-SCORE] T1060 Registry Run Keys / Startup Folder → 5.69
+[MITRE-SCORE] T1606 Forge Web Credentials → 11.73
+[MITRE-SCORE] T1621 Multi-Factor Authentication Request Generation → 5.75
+[MITRE-SCORE] T1554 Compromise Host Software Binary → 11.94
+[MITRE-SCORE] T1552.008 Chat Messages → 5.78
+[MITRE-SCORE] T1059.001 PowerShell → 11.78
+[MITRE-SCORE] T1023 Shortcut Modification → 8.84
+[MITRE-SCORE] T1546.001 Change Default File Association → 11.77
+[MITRE-SCORE] T1026 Multiband Communication → 5.81
+[MITRE-SCORE] T1071.002 File Transfer Protocols → 11.87
+[MITRE-SCORE] T1679 Selective Exclusion → 11.84
+[MITRE-SCORE] T1122 Component Object Model Hijacking → 5.86
+[MITRE-SCORE] T1015 Accessibility Features → 5.73
+[MITRE-SCORE] T1212 Exploitation for Credential Access → 15.90
+[MITRE-SCORE] T1102.003 One-Way Communication → 11.78
+[MITRE-SCORE] T1590 Gather Victim Network Information → 11.32
+[MITRE-SCORE] T1210 Exploitation of Remote Services → 11.81
+[MITRE-SCORE] T1502 Parent PID Spoofing → 5.74
+[MITRE-SCORE] T1534 Internal Spearphishing → 5.73
+[MITRE-SCORE] T1169 Sudo → 5.77
+[MITRE-SCORE] T1574.010 Services File Permissions Weakness → 11.93
+[MITRE-SCORE] T1547.001 Registry Run Keys / Startup Folder → 5.66
+[MITRE-SCORE] T1199 Trusted Relationship → 5.67
+[MITRE-SCORE] T1136.003 Cloud Account → 5.73
+[MITRE-SCORE] T1069.001 Local Groups → 11.63
+[MITRE-SCORE] T1593 Search Open Websites/Domains → 5.29
+[MITRE-SCORE] T1098 Account Manipulation → 5.77
+[MITRE-SCORE] T1170 Mshta → 5.77
+[MITRE-SCORE] T1048 Exfiltration Over Alternative Protocol → 18.82
+[MITRE-SCORE] T1547.006 Kernel Modules and Extensions → 11.80
+[MITRE-SCORE] T1678 Delay Execution → 5.77
+[MITRE-SCORE] T1056.002 GUI Input Capture → 5.84
+[MITRE-SCORE] T1097 Pass the Ticket → 15.69
+[MITRE-SCORE] T1588.002 Tool → 15.62
+[MITRE-SCORE] T1052.001 Exfiltration over USB → 18.80
+[MITRE-SCORE] T1574.013 KernelCallbackTable → 5.67
+[MITRE-SCORE] T1597 Search Closed Sources → 11.35
+[MITRE-SCORE] T1566 Phishing → 5.70
+[MITRE-SCORE] T1061 Graphical User Interface → 11.68
+[MITRE-SCORE] T1218.001 Compiled HTML File → 11.68
+[MITRE-SCORE] T1496.001 Compute Hijacking → 5.72
+[MITRE-SCORE] T1070.005 Network Share Connection Removal → 11.63
+[MITRE-SCORE] T1090.003 Multi-hop Proxy → 17.28
+[MITRE-SCORE] T1110 Brute Force → 5.76
+[MITRE-SCORE] T1059.004 Unix Shell → 5.83
+[MITRE-SCORE] T1137.003 Outlook Forms → 5.80
+[MITRE-SCORE] T1219.003 Remote Access Hardware → 11.79
+[MITRE-SCORE] T1562.001 Disable or Modify Tools → 13.33
+[MITRE-SCORE] T1565 Data Manipulation → 15.66
+[MITRE-SCORE] T1559 Inter-Process Communication → 11.73
+[MITRE-SCORE] T1001 Data Obfuscation → 15.77
+[MITRE-SCORE] T1039 Data from Network Shared Drive → 15.75
+[MITRE-SCORE] T1584.006 Web Services → 11.64
+[MITRE-SCORE] T1574 Hijack Execution Flow → 5.85
+[MITRE-SCORE] T1036.012 Browser Fingerprint → 5.79
+[MITRE-SCORE] T1059.011 Lua → 5.64
+[MITRE-SCORE] T1027.005 Indicator Removal from Tools → 11.83
+[MITRE-SCORE] T1204.003 Malicious Image → 11.79
+[MITRE-SCORE] T1078 Valid Accounts → 5.76
+[MITRE-SCORE] T1571 Non-Standard Port → 11.84
+[MITRE-SCORE] T1585.001 Social Media Accounts → 5.55
+[MITRE-SCORE] T1073 DLL Side-Loading → 5.82
+[MITRE-SCORE] T1055.012 Process Hollowing → 11.76
+[MITRE-SCORE] T1068 Exploitation for Privilege Escalation → 15.87
+[MITRE-SCORE] T1531 Account Access Removal → 11.65
+[MITRE-SCORE] T1110.004 Credential Stuffing → 11.57
+[MITRE-SCORE] T1208 Kerberoasting → 5.49
+[MITRE-SCORE] T1027 Obfuscated Files or Information → 17.31
+[MITRE-SCORE] T1556.006 Multi-Factor Authentication → 5.88
+[MITRE-SCORE] T1114.002 Remote Email Collection → 11.76
+[MITRE-SCORE] T1505.004 IIS Components → 5.86
+[MITRE-SCORE] T1036.001 Invalid Code Signature → 5.78
+[MITRE-SCORE] T1564.006 Run Virtual Instance → 5.84
+[MITRE-SCORE] T1154 Trap → 5.73
+[MITRE-SCORE] T1027.014 Polymorphic Code → 5.70
+[MITRE-SCORE] T1201 Password Policy Discovery → 11.59
+[MITRE-SCORE] T1546 Event Triggered Execution → 5.87
+[MITRE-SCORE] T1546.004 Unix Shell Configuration Modification → 13.32
+[MITRE-SCORE] T1187 Forced Authentication → 5.95
+[MITRE-SCORE] T1134.005 SID-History Injection → 5.68
+[MITRE-SCORE] T1486 Data Encrypted for Impact → 15.77
+[MITRE-SCORE] T1488 Disk Content Wipe → 5.78
+[MITRE-SCORE] T1553 Subvert Trust Controls → 5.80
+[MITRE-SCORE] T1592.003 Firmware → 5.38
+[MITRE-SCORE] T1573 Encrypted Channel → 5.96
+[MITRE-SCORE] T1174 Password Filter DLL → 11.85
+[MITRE-SCORE] T1547.002 Authentication Package → 5.96
+[MITRE-SCORE] T1218.010 Regsvr32 → 5.84
+[MITRE-SCORE] T1002 Data Compressed → 15.84
+[MITRE-SCORE] T1567.003 Exfiltration to Text Storage Sites → 18.68
+[MITRE-SCORE] T1081 Credentials in Files → 17.37
+[MITRE-SCORE] T1592.002 Software → 11.54
+[MITRE-SCORE] T1128 Netsh Helper DLL → 5.95
+[MITRE-SCORE] T1056 Input Capture → 5.71
+[MITRE-SCORE] T1566.004 Spearphishing Voice → 5.71
+[MITRE-SCORE] T1587.004 Exploits → 5.56
+[MITRE-SCORE] T1593.001 Social Media → 5.39
+[MITRE-SCORE] T1546.015 Component Object Model Hijacking → 5.92
+[MITRE-SCORE] T1589.001 Credentials → 5.54
+[MITRE-SCORE] T1195.002 Compromise Software Supply Chain → 11.76
+[MITRE-SCORE] T1036.003 Rename Legitimate Utilities → 11.86
+[MITRE-SCORE] T1102.002 Bidirectional Communication → 5.77
+[MITRE-SCORE] T1203 Exploitation for Client Execution → 15.77
+[MITRE-SCORE] T1595.003 Wordlist Scanning → 5.66
+[MITRE-SCORE] T1667 Email Bombing → 11.53
+[MITRE-SCORE] T1562.011 Spoof Security Alerting → 11.74
+[MITRE-SCORE] T1137.004 Outlook Home Page → 5.78
+[MITRE-SCORE] T1573.002 Asymmetric Cryptography → 5.88
+[MITRE-SCORE] T1567.002 Exfiltration to Cloud Storage → 18.77
+[MITRE-SCORE] T1570 Lateral Tool Transfer → 15.82
+[MITRE-SCORE] T1574.009 Path Interception by Unquoted Path → 11.82
+[MITRE-SCORE] T1608.003 Install Digital Certificate → 11.68
+[MITRE-SCORE] T1168 Local Job Scheduling → 5.70
+[MITRE-SCORE] T1166 Setuid and Setgid → 11.79
+[MITRE-SCORE] T1100 Web Shell → 11.83
+[MITRE-SCORE] T1186 Process Doppelgänging → 11.86
+[MITRE-SCORE] T1184 SSH Hijacking → 5.91
+[MITRE-SCORE] T1614.001 System Language Discovery → 11.71
+[MITRE-SCORE] T1095 Non-Application Layer Protocol → 11.85
+[MITRE-SCORE] T1075 Pass the Hash → 15.97
+[MITRE-SCORE] T1027.003 Steganography → 5.73
+[MITRE-SCORE] T1584.002 DNS Server → 11.81
+[MITRE-SCORE] T1671 Cloud Application Integration → 11.79
+[MITRE-SCORE] T1001.003 Protocol or Service Impersonation → 11.84
+[MITRE-SCORE] T1012 Query Registry → 5.79
+[MITRE-SCORE] T1030 Data Transfer Size Limits → 15.84
+[MITRE-SCORE] T1028 Windows Remote Management → 13.25
+[MITRE-SCORE] T1550.004 Web Session Cookie → 11.81
+[MITRE-SCORE] T1078.002 Domain Accounts → 5.72
+[MITRE-SCORE] T1218.009 Regsvcs/Regasm → 5.72
+[MITRE-SCORE] T1034 Path Interception → 5.79
+[MITRE-SCORE] T1546.018 Python Startup Hooks → 5.83
+[MITRE-SCORE] T1506 Web Session Cookie → 11.82
+[MITRE-SCORE] T1553.004 Install Root Certificate → 5.87
+[MITRE-SCORE] T1037.003 Network Logon Script → 11.92
+[MITRE-SCORE] T1499 Endpoint Denial of Service → 11.78
+[MITRE-SCORE] T1027.004 Compile After Delivery → 11.80
+[MITRE-SCORE] T1065 Uncommonly Used Port → 11.79
+[MITRE-SCORE] T1614 System Location Discovery → 11.83
+[MITRE-SCORE] T1564.007 VBA Stomping → 5.79
+[MITRE-SCORE] T1197 BITS Jobs → 5.66
+[MITRE-SCORE] T1127.001 MSBuild → 5.97
+[MITRE-SCORE] T1656 Impersonation → 5.55
+[MITRE-SCORE] T1088 Bypass User Account Control → 11.88
+[MITRE-SCORE] T1494 Runtime Data Manipulation → 15.75
+[MITRE-SCORE] T1090.004 Domain Fronting → 5.77
+[MITRE-SCORE] T1557.002 ARP Cache Poisoning → 5.84
+[MITRE-SCORE] T1562.008 Disable or Modify Cloud Logs → 13.39
+[MITRE-SCORE] T1518.001 Security Software Discovery → 11.68
+[MITRE-SCORE] T1564.003 Hidden Window → 17.27
+[MITRE-SCORE] T1493 Transmitted Data Manipulation → 15.75
+[MITRE-SCORE] T1127.002 ClickOnce → 5.91
+[MITRE-SCORE] T1059.006 Python → 5.78
+[MITRE-SCORE] T1070.010 Relocate Malware → 11.66
+[MITRE-SCORE] T1591.004 Identify Roles → 5.31
+[MITRE-SCORE] T1132 Data Encoding → 15.77
+[MITRE-SCORE] T1546.010 AppInit DLLs → 5.81
+[MITRE-SCORE] T1598 Phishing for Information → 15.68
+[MITRE-SCORE] T1496 Resource Hijacking → 5.67
+[MITRE-SCORE] T1585 Establish Accounts → 5.56
+[MITRE-SCORE] T1588 Obtain Capabilities → 11.54
+[MITRE-SCORE] T1546.002 Screensaver → 5.60
+[MITRE-SCORE] T1556.009 Conditional Access Policies → 11.77
+[MITRE-SCORE] T1500 Compile After Delivery → 11.80
+[MITRE-SCORE] T1565.002 Transmitted Data Manipulation → 15.74
+[MITRE-SCORE] T1569 System Services → 11.69
+[MITRE-SCORE] T1059.003 Windows Command Shell → 18.80
+[MITRE-SCORE] T1223 Compiled HTML File → 11.69
+[MITRE-SCORE] T1650 Acquire Access → 11.63
+[MITRE-SCORE] T1558.002 Silver Ticket → 5.51
+[MITRE-SCORE] T1213 Data from Information Repositories → 15.68
+[MITRE-SCORE] T1070.009 Clear Persistence → 5.67
+[MITRE-SCORE] T1146 Clear Command History → 11.28
+/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/cti_relationships.py:332: RuntimeWarning: coroutine 'canonicalize_verb_async' was never awaited
+  return verb.lower().strip()
+RuntimeWarning: Enable tracemalloc to get the object allocation traceback
+[MITRE-SCORE] T1555.004 Windows Credential Manager → 13.37
+[MITRE-SCORE] T1036.010 Masquerade Account Name → 5.57
+[MITRE-SCORE] T1194 Spearphishing via Service → 11.68
+[MITRE-SCORE] T1200 Hardware Additions → 5.65
+[MITRE-SCORE] T1219.002 Remote Desktop Software → 11.76
+[MITRE-SCORE] T1505 Server Software Component → 11.81
+[MITRE-SCORE] T1485 Data Destruction → 15.81
+[MITRE-SCORE] T1132.002 Non-Standard Encoding → 5.78
+[MITRE-SCORE] T1556.001 Domain Controller Authentication → 5.93
+[MITRE-SCORE] T1537 Transfer Data to Cloud Account → 15.84
+[MITRE-SCORE] T1027.006 HTML Smuggling → 5.88
+[MITRE-SCORE] T1556.005 Reversible Encryption → 5.73
+[MITRE-SCORE] T1027.010 Command Obfuscation → 11.10
+[MITRE-SCORE] T1130 Install Root Certificate → 5.84
+[MITRE-SCORE] T1022 Data Encrypted → 15.91
+[MITRE-SCORE] T1070.004 File Deletion → 11.69
+[MITRE-SCORE] T1189 Drive-by Compromise → 11.78
+[MITRE-SCORE] T1498 Network Denial of Service → 11.77
+[MITRE-SCORE] T1546.016 Installer Packages → 5.87
+[MITRE-SCORE] T1595.001 Scanning IP Blocks → 11.55
+[MITRE-SCORE] T1158 Hidden Files and Directories → 18.84
+[MITRE-SCORE] T1221 Template Injection → 5.89
+[MITRE-SCORE] T1037.004 RC Scripts → 5.89
+[MITRE-SCORE] T1134 Access Token Manipulation → 11.85
+[MITRE-SCORE] T1209 Time Providers → 5.67
+[MITRE-SCORE] T1111 Multi-Factor Authentication Interception → 5.78
+[MITRE-SCORE] T1027.002 Software Packing → 11.83
+[MITRE-SCORE] T1584.007 Serverless → 5.81
+[MITRE-SCORE] T1071.001 Web Protocols → 11.80
+[MITRE-SCORE] T1059.005 Visual Basic → 11.74
+[MITRE-SCORE] T1564.005 Hidden File System → 11.90
+[MITRE-SCORE] T1668 Exclusive Control → 5.61
+[MITRE-SCORE] T1563.002 RDP Hijacking → 5.88
+[MITRE-SCORE] T1136 Create Account → 5.73
+[MITRE-SCORE] T1584.004 Server → 11.55
+[MITRE-SCORE] T1672 Email Spoofing → 11.69
+[MITRE-SCORE] T1526 Cloud Service Discovery → 5.67
+[MITRE-SCORE] T1204.004 Malicious Copy and Paste → 11.88
+[MITRE-SCORE] T1151 Space after Filename → 11.81
+[MITRE-SCORE] T1018 Remote System Discovery → 11.62
+[MITRE-SCORE] T1046 Network Service Discovery → 11.80
+[MITRE-SCORE] T1590.001 Domain Properties → 5.39
+[MITRE-SCORE] T1518 Software Discovery → 11.74
+[MITRE-SCORE] T1538 Cloud Service Dashboard → 5.83
+[MITRE-SCORE] T1055.005 Thread Local Storage → 5.97
+[MITRE-SCORE] T1622 Debugger Evasion → 5.82
+[MITRE-SCORE] T1036.006 Space after Filename → 11.78
+[MITRE-SCORE] T1608.006 SEO Poisoning → 5.57
+[MITRE-SCORE] T1550.002 Pass the Hash → 15.93
+[MITRE-SCORE] T1052 Exfiltration Over Physical Medium → 18.67
+[MITRE-SCORE] T1574.002 DLL Side-Loading → 5.85
+[MITRE-SCORE] T1105 Ingress Tool Transfer → 15.73
+[MITRE-SCORE] T1216.002 SyncAppvPublishingServer → 5.47
+[MITRE-SCORE] T1098.002 Additional Email Delegate Permissions → 11.71
+[MITRE-SCORE] T1588.003 Code Signing Certificates → 5.70
+[MITRE-SCORE] T1126 Network Share Connection Removal → 11.63
+[MITRE-SCORE] T1648 Serverless Execution → 5.86
+[MITRE-SCORE] T1084 Windows Management Instrumentation Event Subscription → 13.28
+[MITRE-SCORE] T1653 Power Settings → 5.83
+[MITRE-SCORE] T1027.007 Dynamic API Resolution → 11.89
+[MITRE-SCORE] T1021.001 Remote Desktop Protocol → 11.85
+[MITRE-SCORE] T1037.001 Logon Script (Windows) → 13.45
+[MITRE-SCORE] T1055.015 ListPlanting → 5.74
+[MITRE-SCORE] T1665 Hide Infrastructure → 15.76
+[MITRE-SCORE] T1484 Domain or Tenant Policy Modification → 13.28
+[MITRE-SCORE] T1220 XSL Script Processing → 5.78
+[MITRE-SCORE] T1596.005 Scan Databases → 11.48
+[MITRE-SCORE] T1564.001 Hidden Files and Directories → 18.89
+[MITRE-SCORE] T1591.001 Determine Physical Locations → 5.31
+[MITRE-SCORE] T1137.002 Office Test → 5.83
+[MITRE-SCORE] T1587 Develop Capabilities → 11.57
+[MITRE-SCORE] T1173 Dynamic Data Exchange → 15.79
+[MITRE-SCORE] T1003.003 NTDS → 5.76
+[MITRE-SCORE] T1001.002 Steganography → 5.83
+[MITRE-SCORE] T1204.001 Malicious Link → 11.69
+[MITRE-SCORE] T1550.001 Application Access Token → 11.86
+[MITRE-SCORE] T1547.008 LSASS Driver → 5.86
+[MITRE-SCORE] T1569.002 Service Execution → 5.78
+[MITRE-SCORE] T1078.004 Cloud Accounts → 5.72
+[MITRE-SCORE] T1480.001 Environmental Keying → 5.80
+[MITRE-SCORE] T1008 Fallback Channels → 5.84
+[MITRE-SCORE] T1680 Local Storage Discovery → 5.67
+[MITRE-SCORE] T1564.004 NTFS File Attributes → 11.70
+[MITRE-SCORE] T1558.003 Kerberoasting → 5.56
+[MITRE-SCORE] T1096 NTFS File Attributes → 11.63
+[MITRE-SCORE] T1003.006 DCSync → 5.68
+[MITRE-SCORE] T1124 System Time Discovery → 11.68
+[MITRE-SCORE] T1053.002 At → 11.54
+[MITRE-SCORE] T1035 Service Execution → 5.76
+[MITRE-SCORE] T1055.001 Dynamic-link Library Injection → 11.90
+[MITRE-SCORE] T1086 PowerShell → 11.84
+[MITRE-SCORE] T1588.005 Exploits → 5.55
+[MITRE-SCORE] T1556 Modify Authentication Process → 13.40
+[MITRE-SCORE] T1056.004 Credential API Hooking → 11.82
+[MITRE-SCORE] T1495 Firmware Corruption → 5.74
+[MITRE-SCORE] T1490 Inhibit System Recovery → 11.73
+[MITRE-SCORE] T1546.007 Netsh Helper DLL → 5.92
+[MITRE-SCORE] T1566.003 Spearphishing via Service → 11.68
+[MITRE-SCORE] T1090.001 Internal Proxy → 17.32
+[MITRE-SCORE] T1216 System Script Proxy Execution → 17.41
+[MITRE-SCORE] T1094 Custom Command and Control Protocol → 17.24
+[MITRE-SCORE] T1102.001 Dead Drop Resolver → 5.80
+[MITRE-SCORE] T1118 InstallUtil → 5.77
+[MITRE-SCORE] T1001.001 Junk Data → 15.83
+[MITRE-SCORE] T1598.001 Spearphishing Service → 5.56
+[MITRE-SCORE] T1043 Commonly Used Port → 11.59
+[MITRE-SCORE] T1584.001 Domains → 5.78
+[MITRE-SCORE] T1505.001 SQL Stored Procedures → 5.95
+[MITRE-SCORE] T1561.001 Disk Content Wipe → 5.78
+[MITRE-SCORE] T1213.005 Messaging Applications → 5.61
+[MITRE-SCORE] T1048.003 Exfiltration Over Unencrypted Non-C2 Protocol → 18.90
+[MITRE-SCORE] T1027.015 Compression → 5.79
+[MITRE-SCORE] T1078.003 Local Accounts → 5.71
+[MITRE-SCORE] T1669 Wi-Fi Networks → 11.57
+[MITRE-SCORE] T1211 Exploitation for Defense Evasion → 15.86
+[MITRE-SCORE] T1127 Trusted Developer Utilities Proxy Execution → 17.40
+[MITRE-SCORE] T1529 System Shutdown/Reboot → 11.69
+[MITRE-SCORE] T1218.014 MMC → 5.80
+[MITRE-SCORE] T1564.010 Process Argument Spoofing → 13.30
+[MITRE-SCORE] T1077 Windows Admin Shares → 13.14
+[MITRE-SCORE] T1574.012 COR_PROFILER → 5.79
+[MITRE] explicit=0 inferred=25 final=25
+   → Wrote MITRE JSON: /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/data/outputs_ir/Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.mitre-only.json
+   → Wrote MITRE TXT : /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/data/outputs_ir/Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.mitre-only.txt
+[ALL] Step 4: relationship extraction
+
+[*] Relationships-only: Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.ir-only.json
+[REL-SEM] starting semantic_relationships()
+[REL-SEM] entities: actors=2 malware=4 tools=6 infra=0
+[REL-SEM] processing verb: Analyzing → mapped to analyze
+[REL-SEM] processing verb: conducted → mapped to conduct
+[REL-SEM] processing verb: tracks → mapped to track
+[REL-SEM] processing verb: associated → mapped to associate
+[REL-SEM] processing verb: privilege → mapped to privilege
+[REL-SEM] processing verb: examine → mapped to analyze
+[REL-SEM] processing verb: analyzed → mapped to analyze
+[REL-SEM] processing verb: called → mapped to call
+[REL-SEM] processing verb: ’s → mapped to ’
+[REL-SEM] processing verb: utilized → mapped to utilize
+[REL-SEM] processing verb: observed → mapped to observe
+[REL-SEM] processing verb: associated → mapped to associate
+[REL-SEM] processing verb: followed → mapped to follow
+[REL-SEM] processing verb: known → mapped to believe
+[REL-SEM] processing verb: harness → mapped to harness
+[REL-SEM] processing verb: accelerate → mapped to accelerate
+[REL-SEM] processing verb: associated → mapped to associate
+[REL-SEM] processing verb: observed → mapped to observe
+[REL-SEM] processing verb: used → mapped to use
+[REL-SEM] processing verb: customized → mapped to customize
+[REL-SEM] processing verb: puts → mapped to put
+[REL-SEM] processing verb: use → mapped to use
+[REL-SEM] processing verb: Accelerating → mapped to accelerate
+[REL-SEM] processing verb: designed → mapped to design
+[REL-SEM] processing verb: steal → mapped to steal
+[REL-SEM] processing verb: including → mapped to include
+[REL-SEM] processing verb: upload → mapped to upload
+[REL-SEM] processing verb: observed → mapped to observe
+[REL-SEM] processing verb: identified → mapped to identify
+[REL-SEM] processing verb: targeting → mapped to target
+[REL-SEM] processing verb: reducing → mapped to reduce
+[REL-SEM] processing verb: designed → mapped to design
+[REL-SEM] processing verb: speed → mapped to speed
+[REL-SEM] processing verb: collecting → mapped to collect
+[REL-SEM] processing verb: believe → mapped to believe
+[REL-SEM] processing verb: assesses → mapped to analyze
+[REL-SEM] processing verb: increase → mapped to increase
+[REL-SEM] processing verb: make → mapped to give
+[REL-SEM] processing verb: presented → mapped to present
+[REL-SEM] processing verb: curated → mapped to curate
+[REL-SEM] processing verb: means → mapped to mean
+[REL-SEM] processing verb: complete → mapped to complete
+[REL-SEM] processing verb: evading → mapped to evade
+[REL-SEM] processing verb: identified → mapped to identify
+[REL-SEM] processing verb: enumerating → mapped to enumerate
+[REL-SEM] processing verb: iterates → mapped to iterate
+[REL-SEM] processing verb: ignores → mapped to ignore
+[REL-SEM] processing verb: including → mapped to include
+[REL-SEM] processing verb: see → mapped to see
+[REL-SEM] processing verb: assesses → mapped to analyze
+[REL-SEM] processing verb: contain → mapped to contain
+[REL-SEM] processing verb: viewed → mapped to view
+[REL-SEM] processing verb: including → mapped to include
+[REL-SEM] processing verb: described → mapped to describe
+[REL-SEM] processing verb: established → mapped to establish
+[REL-SEM] processing verb: prioritize → mapped to prioritize
+[REL-SEM] processing verb: modified → mapped to modify
+[REL-SEM] processing verb: identified → mapped to identify
+[REL-SEM] processing verb: limiting → mapped to limit
+[REL-SEM] processing verb: identifying → mapped to identify
+[REL-SEM] processing verb: exfiltrates → mapped to exfiltrate
+[REL-SEM] processing verb: files → mapped to file
+[REL-SEM] processing verb: selected → mapped to select
+[REL-SEM] processing verb: exfiltrated → mapped to exfiltrate
+[REL-SEM] processing verb: leverages → mapped to leverage
+[REL-SEM] processing verb: removing → mapped to remove
+[REL-SEM] processing verb: invoking → mapped to invoke
+[REL-SEM] processing verb: overwrite → mapped to overwrite
+[REL-SEM] processing verb: delete → mapped to delete
+[REL-SEM] processing verb: observed → mapped to observe
+[REL-SEM] processing verb: adding → mapped to add
+[REL-SEM] processing verb: implementing → mapped to implement
+[REL-SEM] processing verb: suggests → mapped to suggest
+[REL-SEM] processing verb: continuing → mapped to continue
+[REL-SEM] processing verb: evolve → mapped to evolve
+[REL-SEM] processing verb: overcome → mapped to overcome
+[REL-SEM] processing verb: stealing → mapped to steal
+[REL-SEM] processing verb: observed → mapped to observe
+[REL-SEM] processing verb: used → mapped to use
+[REL-SEM] processing verb: includes → mapped to include
+[REL-SEM] processing verb: targeted → mapped to target
+[REL-SEM] processing verb: indicating → mapped to indicate
+[REL-SEM] processing verb: alleged → mapped to allege
+[REL-SEM] processing verb: confirmed → mapped to confirm
+[REL-SEM] processing verb: compiled → mapped to compile
+[REL-SEM] processing verb: extracted → mapped to extract
+[REL-SEM] processing verb: unpacked → mapped to unpack
+[REL-SEM] processing verb: embedded → mapped to embed
+[REL-SEM] processing verb: found → mapped to find
+[REL-SEM] processing verb: matching → mapped to match
+[REL-SEM] processing verb: sent → mapped to send
+[REL-SEM] processing verb: using → mapped to use
+[REL-SEM] processing verb: identified → mapped to identify
+[REL-SEM] processing verb: embedded → mapped to embed
+[REL-SEM] processing verb: including → mapped to include
+[REL-SEM] processing verb: SFTP → mapped to sftp
+[REL-SEM] processing verb: fail → mapped to fail
+[REL-SEM] processing verb: identified → mapped to identify
+[REL-SEM] processing verb: accept → mapped to accept
+[REL-SEM] processing verb: passed → mapped to pass
+[REL-SEM] processing verb: attempt → mapped to attempt
+[REL-SEM] processing verb: hide → mapped to hide
+[REL-SEM] processing verb: avoid → mapped to avoid
+[REL-SEM] processing verb: utilize → mapped to utilize
+[REL-SEM] processing verb: engage → mapped to engage
+[REL-SEM] processing verb: used → mapped to use
+[REL-SEM] processing verb: abused → mapped to abuse
+[REL-SEM] processing verb: aid → mapped to aid
+[REL-SEM] processing verb: use → mapped to use
+[REL-SEM] processing verb: signed → mapped to sign
+[REL-SEM] processing verb: belonging → mapped to belong
+[REL-SEM] processing verb: leverage → mapped to leverage
+[REL-SEM] processing verb: carry → mapped to carry
+[REL-SEM] processing verb: ranging → mapped to range
+[REL-SEM] processing verb: raise → mapped to raise
+[REL-SEM] processing verb: used → mapped to use
+[REL-SEM] processing verb: provide → mapped to provide
+[REL-SEM] processing verb: bypass → mapped to bypass
+[REL-SEM] processing verb: including → mapped to include
+[REL-SEM] processing verb: observed → mapped to observe
+[REL-SEM] processing verb: tampering → mapped to tamper
+[REL-SEM] processing verb: weaken → mapped to weaken
+[REL-SEM] processing verb: carried → mapped to carry
+[REL-SEM] processing verb: using → mapped to use
+[REL-SEM] processing verb: identified → mapped to identify
+[REL-SEM] processing verb: detected → mapped to detect
+[REL-SEM] processing verb: introduce → mapped to introduce
+[REL-SEM] processing verb: focus → mapped to focus
+[REL-SEM] processing verb: accomplish → mapped to accomplish
+[REL-SEM] processing verb: recommends → mapped to recommend
+[REL-SEM] processing verb: following → mapped to follow
+[REL-SEM] processing verb: detecting → mapped to detect
+[REL-SEM] processing verb: enable → mapped to enable
+[REL-SEM] processing verb: Based → mapped to base
+[REL-SEM] processing verb: outsourcing → mapped to outsource
+[REL-SEM] processing verb: risk → mapped to risk
+[REL-SEM] processing verb: given → mapped to give
+[REL-SEM] processing verb: Implement → mapped to implement
+[REL-SEM] processing verb: including → mapped to include
+[REL-SEM] processing verb: patching → mapped to patch
+[REL-SEM] processing verb: tested → mapped to test
+[REL-SEM] processing verb: find → mapped to find
+[REL-SEM] processing verb: highlights → mapped to highlight
+[REL-SEM] processing verb: growing → mapped to grow
+[REL-SEM] processing verb: undertake → mapped to undertake
+[REL-SEM] processing verb: reach → mapped to reach
+[REL-SEM] processing verb: Stay → mapped to stay
+[REL-SEM] processing verb: merges → mapped to merge
+[REL-SEM] processing verb: make → mapped to give
+[REL-SEM] processing verb: handle → mapped to handle
+[REL-SEM] processing verb: draws → mapped to draw
+[REL-SEM] processing verb: deliver → mapped to deliver
+[REL-SEM] processing verb: ensure → mapped to ensure
+[REL-SEM] processing verb: overlooked → mapped to overlook
+[REL-SEM] processing verb: assist → mapped to assist
+[REL-SEM] produced 0 relationships
+[REL-PAT] produced 2 relationships
+[REL-PAT] sample: [{'source': 'Exmatter', 'relationship': 'communicates-with', 'target': 'BlackMatter'}, {'source': 'Exmatter', 'relationship': 'associated-with', 'target': 'BlackMatter'}]
+[REL4] LLM relationship extractor failed: Invalid format specifier ' "...", "relationship": "...", "target": "..."' for object of type 'str'
+   → Wrote REL JSON: /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/data/outputs_ir/Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.relationships-only.json
+   → Wrote REL TXT : /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/data/outputs_ir/Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.relationships-only.txt
+[+] Using base dir: /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/data
+[DEBUG] Total MITRE objects loaded: 24772
+[DEBUG] Loaded malware: HDoor
+[DEBUG] Loaded malware: TrickBot
+[DEBUG] Loaded malware: cd00r
+[DEBUG] Loaded malware: PowerDuke
+[DEBUG] Loaded malware: EKANS
+[DEBUG] Loaded malware: BLINDINGCAN
+[DEBUG] Loaded malware: Ninja
+[DEBUG] Loaded malware: Pikabot
+[DEBUG] Loaded malware: Wiarp
+[DEBUG] Loaded malware: RCSession
+[DEBUG] Loaded malware: Spark
+[DEBUG] Loaded malware: QuietSieve
+[DEBUG] Loaded malware: SynAck
+[DEBUG] Loaded malware: Bumblebee
+[DEBUG] Loaded malware: MURKYTOP
+[DEBUG] Loaded malware: AcidRain
+[DEBUG] Loaded malware: GRIFFON
+[DEBUG] Loaded malware: Exaramel for Windows
+[DEBUG] Loaded malware: Amadey
+[DEBUG] Loaded malware: JumbledPath
+[DEBUG] Loaded malware: RDFSNIFFER
+[DEBUG] Loaded malware: NICECURL
+[DEBUG] Loaded malware: Proxysvc
+[DEBUG] Loaded malware: Orz
+[DEBUG] Loaded malware: Torisma
+[DEBUG] Loaded malware: NOKKI
+[DEBUG] Loaded malware: yty
+[DEBUG] Loaded malware: Backdoor.Oldrea
+[DEBUG] Loaded malware: DOGCALL
+[DEBUG] Loaded malware: Stuxnet
+[DEBUG] Loaded malware: Downdelph
+[DEBUG] Loaded malware: RotaJakiro
+[DEBUG] Loaded malware: AvosLocker
+[DEBUG] Loaded malware: SEASHARPEE
+[DEBUG] Loaded malware: Get2
+[DEBUG] Loaded malware: POWRUNER
+[DEBUG] Loaded malware: KOPILUWAK
+[DEBUG] Loaded malware: RobbinHood
+[DEBUG] Loaded malware: MEDUSA
+[DEBUG] Loaded malware: VersaMem
+[DEBUG] Loaded malware: Power Loader
+[DEBUG] Loaded malware: TDTESS
+[DEBUG] Loaded malware: Chinoxy
+[DEBUG] Loaded malware: SharpStage
+[DEBUG] Loaded malware: PAKLOG
+[DEBUG] Loaded malware: COATHANGER
+[DEBUG] Loaded malware: Sardonic
+[DEBUG] Loaded malware: Smoke Loader
+[DEBUG] Loaded malware: HALFBAKED
+[DEBUG] Loaded malware: WindTail
+[DEBUG] Loaded malware: Misdat
+[DEBUG] Loaded malware: reGeorg
+[DEBUG] Loaded malware: FLIPSIDE
+[DEBUG] Loaded malware: Linux Rabbit
+[DEBUG] Loaded malware: adbupd
+[DEBUG] Loaded malware: Emissary
+[DEBUG] Loaded malware: Exaramel for Linux
+[DEBUG] Loaded malware: KEYMARBLE
+[DEBUG] Loaded malware: BUBBLEWRAP
+[DEBUG] Loaded malware: HAWKBALL
+[DEBUG] Loaded malware: TAMECAT
+[DEBUG] Loaded malware: PS1
+[DEBUG] Loaded malware: Ursnif
+[DEBUG] Loaded malware: CASTLETAP
+[DEBUG] Loaded malware: ThreatNeedle
+[DEBUG] Loaded malware: RansomHub
+[DEBUG] Loaded malware: ZLib
+[DEBUG] Loaded malware: RedLeaves
+[DEBUG] Loaded malware: Miner-C
+[DEBUG] Loaded malware: POWERSOURCE
+[DEBUG] Loaded malware: LITTLELAMB.WOOLTEA
+[DEBUG] Loaded malware: Felismus
+[DEBUG] Loaded malware: Zeus Panda
+[DEBUG] Loaded malware: GeminiDuke
+[DEBUG] Loaded malware: Havoc
+[DEBUG] Loaded malware: CARROTBAT
+[DEBUG] Loaded malware: Matryoshka
+[DEBUG] Loaded malware: FrameworkPOS
+[DEBUG] Loaded malware: GravityRAT
+[DEBUG] Loaded malware: WEBC2
+[DEBUG] Loaded malware: Prestige
+[DEBUG] Loaded malware: InvisibleFerret
+[DEBUG] Loaded malware: Bankshot
+[DEBUG] Loaded malware: SharpDisco
+[DEBUG] Loaded malware: StrongPity
+[DEBUG] Loaded malware: HAPPYWORK
+[DEBUG] Loaded malware: xCaon
+[DEBUG] Loaded malware: PLAINTEE
+[DEBUG] Loaded malware: Pony
+[DEBUG] Loaded malware: WinMM
+[DEBUG] Loaded malware: Nebulae
+[DEBUG] Loaded malware: Janicab
+[DEBUG] Loaded malware: AuditCred
+[DEBUG] Loaded malware: Lurid
+[DEBUG] Loaded malware: TONESHELL
+[DEBUG] Loaded malware: UPSTYLE
+[DEBUG] Loaded malware: Kasidet
+[DEBUG] Loaded malware: Hannotog
+[DEBUG] Loaded malware: OceanSalt
+[DEBUG] Loaded malware: Playcrypt
+[DEBUG] Loaded malware: Brave Prince
+[DEBUG] Loaded malware: Medusa Ransomware
+[DEBUG] Loaded malware: RainyDay
+[DEBUG] Loaded malware: Ecipekac
+[DEBUG] Loaded malware: AppleSeed
+[DEBUG] Loaded malware: BUSHWALK
+[DEBUG] Loaded malware: macOS.OSAMiner
+[DEBUG] Loaded malware: LOWBALL
+[DEBUG] Loaded malware: NETWIRE
+[DEBUG] Loaded malware: TinyTurla
+[DEBUG] Loaded malware: PyDCrypt
+[DEBUG] Loaded malware: J-magic
+[DEBUG] Loaded malware: PowerExchange
+[DEBUG] Loaded malware: BOOKWORM
+[DEBUG] Loaded malware: HyperStack
+[DEBUG] Loaded malware: iKitten
+[DEBUG] Loaded malware: HAMMERTOSS
+[DEBUG] Loaded malware: OLDBAIT
+[DEBUG] Loaded malware: Bad Rabbit
+[DEBUG] Loaded malware: CosmicDuke
+[DEBUG] Loaded malware: EvilGrab
+[DEBUG] Loaded malware: EnvyScout
+[DEBUG] Loaded malware: SslMM
+[DEBUG] Loaded malware: STATICPLUGIN
+[DEBUG] Loaded malware: IMAPLoader
+[DEBUG] Loaded malware: GreyEnergy
+[DEBUG] Loaded malware: Darkmoon
+[DEBUG] Loaded malware: Gomir
+[DEBUG] Loaded malware: Aria-body
+[DEBUG] Loaded malware: Emotet
+[DEBUG] Loaded malware: SNUGRIDE
+[DEBUG] Loaded malware: Olympic Destroyer
+[DEBUG] Loaded malware: BOLDMOVE
+[DEBUG] Loaded malware: Crimson
+[DEBUG] Loaded malware: Tomiris
+[DEBUG] Loaded malware: TEARDROP
+[DEBUG] Loaded malware: DUSTTRAP
+[DEBUG] Loaded malware: Turian
+[DEBUG] Loaded malware: THINCRUST
+[DEBUG] Loaded malware: BADHATCH
+[DEBUG] Loaded malware: Machete
+[DEBUG] Loaded malware: PowerLess
+[DEBUG] Loaded malware: Action RAT
+[DEBUG] Loaded malware: Avenger
+[DEBUG] Loaded malware: DUSTPAN
+[DEBUG] Loaded malware: Prikormka
+[DEBUG] Loaded malware: PUBLOAD
+[DEBUG] Loaded malware: Gootloader
+[DEBUG] Loaded malware: PingPull
+[DEBUG] Loaded malware: WellMess
+[DEBUG] Loaded malware: Dacls
+[DEBUG] Loaded malware: DropBook
+[DEBUG] Loaded malware: Woody RAT
+[DEBUG] Loaded malware: Mafalda
+[DEBUG] Loaded malware: KARAE
+[DEBUG] Loaded malware: Squirrelwaffle
+[DEBUG] Loaded malware: ELMER
+[DEBUG] Loaded malware: CANONSTAGER
+[DEBUG] Loaded malware: PolyglotDuke
+[DEBUG] Loaded malware: HexEval Loader
+[DEBUG] Loaded malware: Umbreon
+[DEBUG] Loaded malware: AuTo Stealer
+[DEBUG] Loaded malware: ShrinkLocker
+[DEBUG] Loaded malware: Hildegard
+[DEBUG] Loaded malware: Agent.btz
+[DEBUG] Loaded malware: SLOWDRIFT
+[DEBUG] Loaded malware: SHUTTERSPEED
+[DEBUG] Loaded malware: SombRAT
+[DEBUG] Loaded malware: ODAgent
+[DEBUG] Loaded malware: BlackByte 2.0 Ransomware
+[DEBUG] Loaded malware: FlawedGrace
+[DEBUG] Loaded malware: FLASHFLOOD
+[DEBUG] Loaded malware: FlawedAmmyy
+[DEBUG] Loaded malware: Snip3
+[DEBUG] Loaded malware: FYAnti
+[DEBUG] Loaded malware: Rifdoor
+[DEBUG] Loaded malware: SUGARUSH
+[DEBUG] Loaded malware: LoFiSe
+[DEBUG] Loaded malware: HOPLIGHT
+[DEBUG] Loaded malware: Cuckoo Stealer
+[DEBUG] Loaded malware: GuLoader
+[DEBUG] Loaded malware: MobileOrder
+[DEBUG] Loaded malware: WastedLocker
+[DEBUG] Loaded malware: RegDuke
+[DEBUG] Loaded malware: ProLock
+[DEBUG] Loaded malware: Moneybird
+[DEBUG] Loaded malware: InvisiMole
+[DEBUG] Loaded malware: CLAIMLOADER
+[DEBUG] Loaded malware: P.A.S. Webshell
+[DEBUG] Loaded malware: QUIETEXIT
+[DEBUG] Loaded malware: Naid
+[DEBUG] Loaded malware: Apostle
+[DEBUG] Loaded malware: Volgmer
+[DEBUG] Loaded malware: WINERACK
+[DEBUG] Loaded malware: WhisperGate
+[DEBUG] Loaded malware: FruitFly
+[DEBUG] Loaded malware: ZeroT
+[DEBUG] Loaded malware: Keydnap
+[DEBUG] Loaded malware: AcidPour
+[DEBUG] Loaded malware: RDAT
+[DEBUG] Loaded malware: Hacking Team UEFI Rootkit
+[DEBUG] Loaded malware: Skidmap
+[DEBUG] Loaded malware: Okrum
+[DEBUG] Loaded malware: TRANSLATEXT
+[DEBUG] Loaded malware: Regin
+[DEBUG] Loaded malware: Bonadan
+[DEBUG] Loaded malware: Line Dancer
+[DEBUG] Loaded malware: SamSam
+[DEBUG] Loaded malware: Neoichor
+[DEBUG] Loaded malware: Conti
+[DEBUG] Loaded malware: Raspberry Robin
+[DEBUG] Loaded malware: Mispadu
+[DEBUG] Loaded malware: RemoteCMD
+[DEBUG] Loaded malware: Megazord
+[DEBUG] Loaded malware: Diavol
+[DEBUG] Loaded malware: REPTILE
+[DEBUG] Loaded malware: Raindrop
+[DEBUG] Loaded malware: Doki
+[DEBUG] Loaded malware: TEXTMATE
+[DEBUG] Loaded malware: Siloscape
+[DEBUG] Loaded malware: BlackCat
+[DEBUG] Loaded malware: Fysbis
+[DEBUG] Loaded malware: IcedID
+[DEBUG] Loaded malware: VERMIN
+[DEBUG] Loaded malware: UBoatRAT
+[DEBUG] Loaded malware: Nightdoor
+[DEBUG] Loaded malware: MarkiRAT
+[DEBUG] Loaded malware: PowerShower
+[DEBUG] Loaded malware: Kazuar
+[DEBUG] Loaded malware: NavRAT
+[DEBUG] Loaded malware: DarkComet
+[DEBUG] Loaded malware: NETEAGLE
+[DEBUG] Loaded malware: POORAIM
+[DEBUG] Loaded malware: HUI Loader
+[DEBUG] Loaded malware: CHIMNEYSWEEP
+[DEBUG] Loaded malware: Ragnar Locker
+[DEBUG] Loaded malware: FatDuke
+[DEBUG] Loaded malware: Lucifer
+[DEBUG] Loaded malware: BlackEnergy
+[DEBUG] Loaded malware: zwShell
+[DEBUG] Loaded malware: Zeroaccess
+[DEBUG] Loaded malware: GLASSTOKEN
+[DEBUG] Loaded malware: DCSrv
+[DEBUG] Loaded malware: DRATzarus
+[DEBUG] Loaded malware: BOOSTWRITE
+[DEBUG] Loaded malware: Rising Sun
+[DEBUG] Loaded malware: ASPXSpy
+[DEBUG] Loaded malware: NotPetya
+[DEBUG] Loaded malware: ShimRat
+[DEBUG] Loaded malware: Chrommme
+[DEBUG] Loaded malware: BADFLICK
+[DEBUG] Loaded malware: ObliqueRAT
+[DEBUG] Loaded malware: SHOTPUT
+[DEBUG] Loaded malware: Avaddon
+[DEBUG] Loaded malware: Conficker
+[DEBUG] Loaded malware: SocGholish
+[DEBUG] Loaded malware: Flagpro
+[DEBUG] Loaded malware: Hi-Zor
+[DEBUG] Loaded malware: SpicyOmelette
+[DEBUG] Loaded malware: XAgentOSX
+[DEBUG] Loaded malware: Green Lambert
+[DEBUG] Loaded malware: China Chopper
+[DEBUG] Loaded malware: SnappyTCP
+[DEBUG] Loaded malware: CALENDAR
+[DEBUG] Loaded malware: LockerGoga
+[DEBUG] Loaded malware: LightSpy
+[DEBUG] Loaded malware: Chaos
+[DEBUG] Loaded malware: ISMInjector
+[DEBUG] Loaded malware: PUNCHBUGGY
+[DEBUG] Loaded malware: GoldMax
+[DEBUG] Loaded malware: HELLOKITTY
+[DEBUG] Loaded malware: CostaBricks
+[DEBUG] Loaded malware: Cheerscrypt
+[DEBUG] Loaded malware: LIGHTWIRE
+[DEBUG] Loaded malware: KeyBoy
+[DEBUG] Loaded malware: POSHSPY
+[DEBUG] Loaded malware: MiniDuke
+[DEBUG] Loaded malware: HyperBro
+[DEBUG] Loaded malware: Anchor
+[DEBUG] Loaded malware: Line Runner
+[DEBUG] Loaded malware: Pteranodon
+[DEBUG] Loaded malware: DarkTortilla
+[DEBUG] Loaded malware: BeaverTail
+[DEBUG] Loaded malware: ROKRAT
+[DEBUG] Loaded malware: CORESHELL
+[DEBUG] Loaded malware: RunningRAT
+[DEBUG] Loaded malware: VPNFilter
+[DEBUG] Loaded malware: SplatDropper
+[DEBUG] Loaded malware: Babuk
+[DEBUG] Loaded malware: Exbyte
+[DEBUG] Loaded malware: DarkWatchman
+[DEBUG] Loaded malware: Dyre
+[DEBUG] Loaded malware: BlackMould
+[DEBUG] Loaded malware: Javali
+[DEBUG] Loaded malware: PACEMAKER
+[DEBUG] Loaded malware: LunarLoader
+[DEBUG] Loaded malware: BBSRAT
+[DEBUG] Loaded malware: PlugX
+[DEBUG] Loaded malware: Reaver
+[DEBUG] Loaded malware: Bisonal
+[DEBUG] Loaded malware: MultiLayer Wiper
+[DEBUG] Loaded malware: S-Type
+[DEBUG] Loaded malware: Lumma Stealer
+[DEBUG] Loaded malware: SeaDuke
+[DEBUG] Loaded malware: BS2005
+[DEBUG] Loaded malware: DustySky
+[DEBUG] Loaded malware: Duqu
+[DEBUG] Loaded malware: Truvasys
+[DEBUG] Loaded malware: Remsec
+[DEBUG] Loaded malware: Industroyer2
+[DEBUG] Loaded malware: Sykipot
+[DEBUG] Loaded malware: Explosive
+[DEBUG] Loaded malware: Xbash
+[DEBUG] Loaded malware: Rover
+[DEBUG] Loaded malware: Epic
+[DEBUG] Loaded malware: LightNeuron
+[DEBUG] Loaded malware: Peppy
+[DEBUG] Loaded malware: KEYPLUG
+[DEBUG] Loaded malware: Cuba
+[DEBUG] Loaded malware: DEATHRANSOM
+[DEBUG] Loaded malware: Clambling
+[DEBUG] Loaded malware: Akira
+[DEBUG] Loaded malware: DarkGate
+[DEBUG] Loaded malware: Mongall
+[DEBUG] Loaded malware: NanHaiShu
+[DEBUG] Loaded malware: LockBit 3.0
+[DEBUG] Loaded malware: SVCReady
+[DEBUG] Loaded malware: ThiefQuest
+[DEBUG] Loaded malware: FoggyWeb
+[DEBUG] Loaded malware: NGLite
+[DEBUG] Loaded malware: Carbanak
+[DEBUG] Loaded malware: XTunnel
+[DEBUG] Loaded malware: Hydraq
+[DEBUG] Loaded malware: SHARPSTATS
+[DEBUG] Loaded malware: Ferocious
+[DEBUG] Loaded malware: HOMEFRY
+[DEBUG] Loaded malware: CreepyDrive
+[DEBUG] Loaded malware: Caterpillar WebShell
+[DEBUG] Loaded malware: Netwalker
+[DEBUG] Loaded malware: Elise
+[DEBUG] Loaded malware: USBferry
+[DEBUG] Loaded malware: WannaCry
+[DEBUG] Loaded malware: Gazer
+[DEBUG] Loaded malware: TSCookie
+[DEBUG] Loaded malware: Latrodectus
+[DEBUG] Loaded malware: Saint Bot
+[DEBUG] Loaded malware: Pay2Key
+[DEBUG] Loaded malware: Chaes
+[DEBUG] Loaded malware: Briba
+[DEBUG] Loaded malware: CharmPower
+[DEBUG] Loaded malware: TYPEFRAME
+[DEBUG] Loaded malware: 3PARA RAT
+[DEBUG] Loaded malware: Bundlore
+[DEBUG] Loaded malware: P8RAT
+[DEBUG] Loaded malware: VIRTUALPIE
+[DEBUG] Loaded malware: EVILNUM
+[DEBUG] Loaded malware: KOMPROGO
+[DEBUG] Loaded malware: SMOKEDHAM
+[DEBUG] Loaded malware: Mori
+[DEBUG] Loaded malware: QUADAGENT
+[DEBUG] Loaded malware: Sagerunex
+[DEBUG] Loaded malware: TAINTEDSCRIBE
+[DEBUG] Loaded malware: Sys10
+[DEBUG] Loaded malware: pngdowner
+[DEBUG] Loaded malware: Royal
+[DEBUG] Loaded malware: BendyBear
+[DEBUG] Loaded malware: Uroburos
+[DEBUG] Loaded malware: Metamorfo
+[DEBUG] Loaded malware: Spica
+[DEBUG] Loaded malware: Embargo
+[DEBUG] Loaded malware: Trojan.Karagany
+[DEBUG] Loaded malware: Bandook
+[DEBUG] Loaded malware: PipeMon
+[DEBUG] Loaded malware: SYNful Knock
+[DEBUG] Loaded malware: MagicRAT
+[DEBUG] Loaded malware: TINYTYPHON
+[DEBUG] Loaded malware: KONNI
+[DEBUG] Loaded malware: T9000
+[DEBUG] Loaded malware: Winnti for Linux
+[DEBUG] Loaded malware: RAPIDPULSE
+[DEBUG] Loaded malware: gh0st RAT
+[DEBUG] Loaded malware: Shamoon
+[DEBUG] Loaded malware: Skeleton Key
+[DEBUG] Loaded malware: DnsSystem
+[DEBUG] Loaded malware: MoleNet
+[DEBUG] Loaded malware: CORALDECK
+[DEBUG] Loaded malware: JHUHUGIT
+[DEBUG] Loaded malware: SPACESHIP
+[DEBUG] Loaded malware: BLUELIGHT
+[DEBUG] Loaded malware: KGH_SPY
+[DEBUG] Loaded malware: down_new
+[DEBUG] Loaded malware: Ixeshe
+[DEBUG] Loaded malware: Micropsia
+[DEBUG] Loaded malware: Kerrdown
+[DEBUG] Loaded malware: RARSTONE
+[DEBUG] Loaded malware: RedLine Stealer
+[DEBUG] Loaded malware: VBShower
+[DEBUG] Loaded malware: BPFDoor
+[DEBUG] Loaded malware: Black Basta
+[DEBUG] Loaded malware: ZeroCleare
+[DEBUG] Loaded malware: Catchamas
+[DEBUG] Loaded malware: StoneDrill
+[DEBUG] Loaded malware: OopsIE
+[DEBUG] Loaded malware: 4H RAT
+[DEBUG] Loaded malware: RogueRobin
+[DEBUG] Loaded malware: Attor
+[DEBUG] Loaded malware: DealersChoice
+[DEBUG] Loaded malware: SQLRat
+[DEBUG] Loaded malware: LitePower
+[DEBUG] Loaded malware: MegaCortex
+[DEBUG] Loaded malware: StreamEx
+[DEBUG] Loaded malware: Ngrok
+[DEBUG] Loaded malware: BoxCaon
+[DEBUG] Loaded malware: NightClub
+[DEBUG] Loaded malware: Crutch
+[DEBUG] Loaded malware: Akira _v2
+[DEBUG] Loaded malware: SDBbot
+[DEBUG] Loaded malware: Mosquito
+[DEBUG] Loaded malware: RTM
+[DEBUG] Loaded malware: QUIETCANARY
+[DEBUG] Loaded malware: TRITON
+[DEBUG] Loaded malware: Derusbi
+[DEBUG] Loaded malware: BlackByte Ransomware
+[DEBUG] Loaded malware: SodaMaster
+[DEBUG] Loaded malware: Hikit
+[DEBUG] Loaded malware: StrelaStealer
+[DEBUG] Loaded malware: Grandoreiro
+[DEBUG] Loaded malware: WellMail
+[DEBUG] Loaded malware: LiteDuke
+[DEBUG] Loaded malware: Starloader
+[DEBUG] Loaded malware: Sakula
+[DEBUG] Loaded malware: VaporRage
+[DEBUG] Loaded malware: RawPOS
+[DEBUG] Loaded malware: Sibot
+[DEBUG] Loaded malware: ZxxZ
+[DEBUG] Loaded malware: Tarrask
+[DEBUG] Loaded malware: GoBear
+[DEBUG] Loaded malware: WINDSHIELD
+[DEBUG] Loaded malware: Drovorub
+[DEBUG] Loaded malware: Shark
+[DEBUG] Loaded malware: Bazar
+[DEBUG] Loaded malware: PULSECHECK
+[DEBUG] Loaded malware: Kobalos
+[DEBUG] Loaded malware: BadPatch
+[DEBUG] Loaded malware: MESSAGETAP
+[DEBUG] Loaded malware: RATANKBA
+[DEBUG] Loaded malware: SUGARDUMP
+[DEBUG] Loaded malware: XLoader
+[DEBUG] Loaded malware: SOUNDBITE
+[DEBUG] Loaded malware: BADCALL
+[DEBUG] Loaded malware: hcdLoader
+[DEBUG] Loaded malware: Nidiran
+[DEBUG] Loaded malware: MoonWind
+[DEBUG] Loaded malware: CorKLOG
+[DEBUG] Loaded malware: Ryuk
+[DEBUG] Loaded malware: Cryptoistic
+[DEBUG] Loaded malware: HermeticWiper
+[DEBUG] Loaded malware: ABK
+[DEBUG] Loaded malware: Pysa
+[DEBUG] Loaded malware: Wiper
+[DEBUG] Loaded malware: Final1stspy
+[DEBUG] Loaded malware: MgBot
+[DEBUG] Loaded malware: ccf32
+[DEBUG] Loaded malware: Kapeka
+[DEBUG] Loaded malware: LockBit 2.0
+[DEBUG] Loaded malware: OilCheck
+[DEBUG] Loaded malware: Zebrocy
+[DEBUG] Loaded malware: Pandora
+[DEBUG] Loaded malware: FinFisher
+[DEBUG] Loaded malware: SpeakUp
+[DEBUG] Loaded malware: LunarMail
+[DEBUG] Loaded malware: WARPWIRE
+[DEBUG] Loaded malware: CrossRAT
+[DEBUG] Loaded malware: OwaAuth
+[DEBUG] Loaded malware: Cadelspy
+[DEBUG] Loaded malware: Cobalt Strike
+[DEBUG] Loaded malware: SampleCheck5000
+[DEBUG] Loaded malware: SUNBURST
+[DEBUG] Loaded malware: EvilBunny
+[DEBUG] Loaded malware: Wingbird
+[DEBUG] Loaded malware: Cobian RAT
+[DEBUG] Loaded malware: HotCroissant
+[DEBUG] Loaded malware: ServHelper
+[DEBUG] Loaded malware: JCry
+[DEBUG] Loaded malware: Unknown Logger
+[DEBUG] Loaded malware: REvil
+[DEBUG] Loaded malware: RIPTIDE
+[DEBUG] Loaded malware: Valak
+[DEBUG] Loaded malware: Samurai
+[DEBUG] Loaded malware: PinchDuke
+[DEBUG] Loaded malware: Milan
+[DEBUG] Loaded malware: USBStealer
+[DEBUG] Loaded malware: OSX_OCEANLOTUS.D
+[DEBUG] Loaded malware: OilBooster
+[DEBUG] Loaded malware: CCBkdr
+[DEBUG] Loaded malware: OnionDuke
+[DEBUG] Loaded malware: Taidoor
+[DEBUG] Loaded malware: SHIPSHAPE
+[DEBUG] Loaded malware: Cherry Picker
+[DEBUG] Loaded malware: SUPERNOVA
+[DEBUG] Loaded malware: P2P ZeuS
+[DEBUG] Loaded malware: Kivars
+[DEBUG] Loaded malware: CaddyWiper
+[DEBUG] Loaded malware: Cyclops Blink
+[DEBUG] Loaded malware: PoisonIvy
+[DEBUG] Loaded malware: Seasalt
+[DEBUG] Loaded malware: NativeZone
+[DEBUG] Loaded malware: NanoCore
+[DEBUG] Loaded malware: TajMahal
+[DEBUG] Loaded malware: PLEAD
+[DEBUG] Loaded malware: Raccoon Stealer
+[DEBUG] Loaded malware: IPsec Helper
+[DEBUG] Loaded malware: Daserf
+[DEBUG] Loaded malware: GoldFinder
+[DEBUG] Loaded malware: Carbon
+[DEBUG] Loaded malware: LoJax
+[DEBUG] Loaded malware: Cardinal RAT
+[DEBUG] Loaded malware: DanBot
+[DEBUG] Loaded malware: BISCUIT
+[DEBUG] Loaded malware: Calisto
+[DEBUG] Loaded malware: Solar
+[DEBUG] Loaded malware: Pisloader
+[DEBUG] Loaded malware: GoldenSpy
+[DEBUG] Loaded malware: Gold Dragon
+[DEBUG] Loaded malware: RGDoor
+[DEBUG] Loaded malware: Ramsay
+[DEBUG] Loaded malware: Neo-reGeorg
+[DEBUG] Loaded malware: FakeM
+[DEBUG] Loaded malware: Carberp
+[DEBUG] Loaded malware: FRAMESTING
+[DEBUG] Loaded malware: HARDRAIN
+[DEBUG] Loaded malware: NKAbuse
+[DEBUG] Loaded malware: Pillowmint
+[DEBUG] Loaded malware: TrailBlazer
+[DEBUG] Loaded malware: Revenge RAT
+[DEBUG] Loaded malware: MacMa
+[DEBUG] Loaded malware: FunnyDream
+[DEBUG] Loaded malware: ROADSWEEP
+[DEBUG] Loaded malware: SUNSPOT
+[DEBUG] Loaded malware: MOPSLED
+[DEBUG] Loaded malware: More_eggs
+[DEBUG] Loaded malware: SysUpdate
+[DEBUG] Loaded malware: TinyZBot
+[DEBUG] Loaded malware: OutSteel
+[DEBUG] Loaded malware: BackConfig
+[DEBUG] Loaded malware: PowGoop
+[DEBUG] Loaded malware: Kwampirs
+[DEBUG] Loaded malware: Nerex
+[DEBUG] Loaded malware: BoomBox
+[DEBUG] Loaded malware: DEADEYE
+[DEBUG] Loaded malware: PUNCHTRACK
+[DEBUG] Loaded malware: Proton
+[DEBUG] Loaded malware: Trojan.Mebromi
+[DEBUG] Loaded malware: Mango
+[DEBUG] Loaded malware: InnaputRAT
+[DEBUG] Loaded malware: WIREFIRE
+[DEBUG] Loaded malware: Kessel
+[DEBUG] Loaded malware: GrimAgent
+[DEBUG] Loaded malware: LookBack
+[DEBUG] Loaded malware: STEADYPULSE
+[DEBUG] Loaded malware: Clop
+[DEBUG] Loaded malware: NetTraveler
+[DEBUG] Loaded malware: YAHOYAH
+[DEBUG] Loaded malware: Lokibot
+[DEBUG] Loaded malware: CallMe
+[DEBUG] Loaded malware: ROCKBOOT
+[DEBUG] Loaded malware: CloudDuke
+[DEBUG] Loaded malware: Egregor
+[DEBUG] Loaded malware: PoetRAT
+[DEBUG] Loaded malware: CHOPSTICK
+[DEBUG] Loaded malware: StealBit
+[DEBUG] Loaded malware: FELIXROOT
+[DEBUG] Loaded malware: ZxShell
+[DEBUG] Loaded malware: RIFLESPINE
+[DEBUG] Loaded malware: SLIGHTPULSE
+[DEBUG] Loaded malware: NDiskMonitor
+[DEBUG] Loaded malware: CoinTicker
+[DEBUG] Loaded malware: DDKONG
+[DEBUG] Loaded malware: Penquin
+[DEBUG] Loaded malware: BabyShark
+[DEBUG] Loaded malware: Cannon
+[DEBUG] Loaded malware: CreepySnail
+[DEBUG] Loaded malware: build_downer
+[DEBUG] Loaded malware: Melcoz
+[DEBUG] Loaded malware: Winnti for Windows
+[DEBUG] Loaded malware: PowerPunch
+[DEBUG] Loaded malware: BONDUPDATER
+[DEBUG] Loaded malware: Troll Stealer
+[DEBUG] Loaded malware: BLACKCOFFEE
+[DEBUG] Loaded malware: BFG Agonizer
+[DEBUG] Loaded malware: Ebury
+[DEBUG] Loaded malware: Kinsing
+[DEBUG] Loaded malware: PITSTOP
+[DEBUG] Loaded malware: Meteor
+[DEBUG] Loaded malware: njRAT
+[DEBUG] Loaded malware: ZIPLINE
+[DEBUG] Loaded malware: Maze
+[DEBUG] Loaded malware: BOOTRASH
+[DEBUG] Loaded malware: HIUPAN
+[DEBUG] Loaded malware: ComRAT
+[DEBUG] Loaded malware: TURNEDUP
+[DEBUG] Loaded malware: ChChes
+[DEBUG] Loaded malware: PowerStallion
+[DEBUG] Loaded malware: ANDROMEDA
+[DEBUG] Loaded malware: Manjusaka
+[DEBUG] Loaded malware: IceApple
+[DEBUG] Loaded malware: JPIN
+[DEBUG] Loaded malware: VIRTUALPITA
+[DEBUG] Loaded malware: metaMain
+[DEBUG] Loaded malware: SideTwist
+[DEBUG] Loaded malware: KOCTOPUS
+[DEBUG] Loaded malware: MechaFlounder
+[DEBUG] Loaded malware: Psylo
+[DEBUG] Loaded malware: Heyoka Backdoor
+[DEBUG] Loaded malware: HTTPBrowser
+[DEBUG] Loaded malware: Mis-Type
+[DEBUG] Loaded malware: LunarWeb
+[DEBUG] Loaded malware: XCSSET
+[DEBUG] Loaded malware: Disco
+[DEBUG] Loaded malware: Dipsind
+[DEBUG] Loaded malware: Octopus
+[DEBUG] Loaded malware: KillDisk
+[DEBUG] Loaded malware: Qilin
+[DEBUG] Loaded malware: AppleJeus
+[DEBUG] Loaded malware: SoreFang
+[DEBUG] Loaded malware: STARWHALE
+[DEBUG] Loaded malware: MirageFox
+[DEBUG] Loaded malware: Industroyer
+[DEBUG] Loaded malware: DownPaper
+[DEBUG] Loaded malware: Socksbot
+[DEBUG] Loaded malware: Pcexter
+[DEBUG] Loaded malware: HIDEDRV
+[DEBUG] Loaded malware: CozyCar
+[DEBUG] Loaded malware: Kevin
+[DEBUG] Loaded malware: Agent Tesla
+[DEBUG] Loaded malware: Pasam
+[DEBUG] Loaded malware: httpclient
+[DEBUG] Loaded malware: POWERSTATS
+[DEBUG] Loaded malware: POWERTON
+[DEBUG] Loaded malware: StarProxy
+[DEBUG] Loaded malware: ECCENTRICBANDWAGON
+[DEBUG] Loaded malware: BADNEWS
+[DEBUG] Loaded malware: Linfo
+[DEBUG] Loaded malware: Goopy
+[DEBUG] Loaded malware: ShadowPad
+[DEBUG] Loaded malware: Remexi
+[DEBUG] Loaded malware: Astaroth
+[DEBUG] Loaded malware: QakBot
+[DEBUG] Loaded malware: SYSCON
+[DEBUG] Loaded malware: CookieMiner
+[DEBUG] Loaded malware: Hancitor
+[DEBUG] Loaded malware: Gelsemium
+[DEBUG] Loaded malware: jRAT
+[DEBUG] Loaded malware: Helminth
+[DEBUG] Loaded malware: Dridex
+[DEBUG] Loaded malware: BBK
+[DEBUG] Loaded malware: Komplex
+[DEBUG] Loaded malware: OSX/Shlayer
+[DEBUG] Loaded malware: Denis
+[DEBUG] Loaded malware: INC Ransomware
+[DEBUG] Loaded malware: DEADWOOD
+[DEBUG] Loaded malware: GLOOXMAIL
+[DEBUG] Loaded malware: Dok
+[DEBUG] Loaded malware: SplatCloak
+[DEBUG] Loaded malware: Waterbear
+[DEBUG] Loaded malware: FIVEHANDS
+[DEBUG] Loaded malware: Comnie
+[DEBUG] Loaded malware: Vasport
+[DEBUG] Loaded malware: AutoIt backdoor
+[DEBUG] Loaded malware: JSS Loader
+[DEBUG] Loaded malware: PHOREAL
+[DEBUG] Loaded malware: OSInfo
+[DEBUG] Loaded malware: MacSpy
+[DEBUG] Loaded malware: Lizar
+[DEBUG] Loaded malware: Dtrack
+[DEBUG] Loaded malware: H1N1
+[DEBUG] Loaded malware: SLOWPULSE
+[DEBUG] Loaded malware: Seth-Locker
+[DEBUG] Loaded malware: LoudMiner
+[DEBUG] Loaded malware: Azorult
+[DEBUG] Loaded malware: BitPaymer
+[DEBUG] Loaded malware: BACKSPACE
+[DEBUG] Loaded malware: Zox
+[DEBUG] Loaded malware: UPPERCUT
+[DEBUG] Loaded malware: ADVSTORESHELL
+[DEBUG] Loaded malware: StrifeWater
+[DEBUG] Loaded malware: Mivast
+[DEBUG] Loaded malware: HiddenWasp
+[DEBUG] Loaded malware: WarzoneRAT
+[DEBUG] Loaded malware: Net Crawler
+[DEBUG] Loaded malware: SLOTHFULMEDIA
+[DEBUG] Loaded malware: FALLCHILL
+[DEBUG] Loaded malware: XORIndex Loader
+[DEBUG] Loaded malware: Small Sieve
+[DEBUG] Loaded malware: Flame
+[DEBUG] Loaded malware: HermeticWizard
+[DEBUG] Loaded tool: Net
+[DEBUG] Loaded tool: RemoteUtilities
+[DEBUG] Loaded tool: Covenant
+[DEBUG] Loaded tool: NPPSPY
+[DEBUG] Loaded tool: BloodHound
+[DEBUG] Loaded tool: certutil
+[DEBUG] Loaded tool: at
+[DEBUG] Loaded tool: UACMe
+[DEBUG] Loaded tool: ShimRatReporter
+[DEBUG] Loaded tool: Sliver
+[DEBUG] Loaded tool: SILENTTRINITY
+[DEBUG] Loaded tool: PowerSploit
+[DEBUG] Loaded tool: Pacu
+[DEBUG] Loaded tool: Windows Credential Editor
+[DEBUG] Loaded tool: Impacket
+[DEBUG] Loaded tool: ipconfig
+[DEBUG] Loaded tool: AADInternals
+[DEBUG] Loaded tool: Tasklist
+[DEBUG] Loaded tool: ngrok
+[DEBUG] Loaded tool: Lslsass
+[DEBUG] Loaded tool: Arp
+[DEBUG] Loaded tool: spwebmember
+[DEBUG] Loaded tool: Empire
+[DEBUG] Loaded tool: ifconfig
+[DEBUG] Loaded tool: FRP
+[DEBUG] Loaded tool: dsquery
+[DEBUG] Loaded tool: PcShare
+[DEBUG] Loaded tool: RawDisk
+[DEBUG] Loaded tool: netstat
+[DEBUG] Loaded tool: PoshC2
+[DEBUG] Loaded tool: Fgdump
+[DEBUG] Loaded tool: xCmd
+[DEBUG] Loaded tool: CSPY Downloader
+[DEBUG] Loaded tool: Rclone
+[DEBUG] Loaded tool: MimiPenguin
+[DEBUG] Loaded tool: netsh
+[DEBUG] Loaded tool: CARROTBALL
+[DEBUG] Loaded tool: BITSAdmin
+[DEBUG] Loaded tool: meek
+[DEBUG] Loaded tool: AsyncRAT
+[DEBUG] Loaded tool: ROADTools
+[DEBUG] Loaded tool: Brute Ratel C4
+[DEBUG] Loaded tool: Peirates
+[DEBUG] Loaded tool: Remcos
+[DEBUG] Loaded tool: Systeminfo
+[DEBUG] Loaded tool: Out1
+[DEBUG] Loaded tool: ConnectWise
+[DEBUG] Loaded tool: attrib
+[DEBUG] Loaded tool: Imminent Monitor
+[DEBUG] Loaded tool: Ruler
+[DEBUG] Loaded tool: Forfiles
+[DEBUG] Loaded tool: Winexe
+[DEBUG] Loaded tool: MCMD
+[DEBUG] Loaded tool: Nltest
+[DEBUG] Loaded tool: MailSniper
+[DEBUG] Loaded tool: sqlmap
+[DEBUG] Loaded tool: pwdump
+[DEBUG] Loaded tool: Responder
+[DEBUG] Loaded tool: Pass-The-Hash Toolkit
+[DEBUG] Loaded tool: Donut
+[DEBUG] Loaded tool: Mimikatz
+[DEBUG] Loaded tool: gsecdump
+[DEBUG] Loaded tool: IronNetInjector
+[DEBUG] Loaded tool: nbtstat
+[DEBUG] Loaded tool: Invoke-PSImage
+[DEBUG] Loaded tool: NBTscan
+[DEBUG] Loaded tool: LaZagne
+[DEBUG] Loaded tool: Ping
+[DEBUG] Loaded tool: cmd
+[DEBUG] Loaded tool: route
+[DEBUG] Loaded tool: esentutl
+[DEBUG] Loaded tool: CrackMapExec
+[DEBUG] Loaded tool: Koadic
+[DEBUG] Loaded tool: schtasks
+[DEBUG] Loaded tool: Cachedump
+[DEBUG] Loaded tool: Expand
+[DEBUG] Loaded tool: Pupy
+[DEBUG] Loaded tool: Reg
+[DEBUG] Loaded tool: ftp
+[DEBUG] Loaded tool: Mythic
+[DEBUG] Loaded tool: HTRAN
+[DEBUG] Loaded tool: SDelete
+[DEBUG] Loaded tool: QuasarRAT
+[DEBUG] Loaded tool: cipher.exe
+[DEBUG] Loaded tool: Rubeus
+[DEBUG] Loaded tool: Tor
+[DEBUG] Loaded tool: AdFind
+[DEBUG] Loaded tool: Wevtutil
+[DEBUG] Loaded tool: Havij
+[DEBUG] Loaded tool: Quick Assist
+[DEBUG] Loaded tool: PsExec
+[DEBUG] Loaded attack-pattern: Extra Window Memory Injection
+[DEBUG] Loaded attack-pattern: Scheduled Task
+[DEBUG] Loaded attack-pattern: Socket Filters
+[DEBUG] Loaded attack-pattern: Indicator Removal from Tools
+[DEBUG] Loaded attack-pattern: Archive via Utility
+[DEBUG] Loaded attack-pattern: VNC
+[DEBUG] Loaded attack-pattern: Windows Management Instrumentation
+[DEBUG] Loaded attack-pattern: Malicious Shell Modification
+[DEBUG] Loaded attack-pattern: Screen Capture
+[DEBUG] Loaded attack-pattern: Fileless Storage
+[DEBUG] Loaded attack-pattern: Bootkit
+[DEBUG] Loaded attack-pattern: Boot or Logon Initialization Scripts
+[DEBUG] Loaded attack-pattern: Adversary-in-the-Middle
+[DEBUG] Loaded attack-pattern: System Owner/User Discovery
+[DEBUG] Loaded attack-pattern: Acquire Infrastructure
+[DEBUG] Loaded attack-pattern: Rundll32
+[DEBUG] Loaded attack-pattern: Container and Resource Discovery
+[DEBUG] Loaded attack-pattern: Serverless
+[DEBUG] Loaded attack-pattern: Hidden Window
+[DEBUG] Loaded attack-pattern: LC_LOAD_DYLIB Addition
+[DEBUG] Loaded attack-pattern: Standard Encoding
+[DEBUG] Loaded attack-pattern: Embedded Payloads
+[DEBUG] Loaded attack-pattern: Plist Modification
+[DEBUG] Loaded attack-pattern: Pluggable Authentication Modules
+[DEBUG] Loaded attack-pattern: Revert Cloud Instance
+[DEBUG] Loaded attack-pattern: HISTCONTROL
+[DEBUG] Loaded attack-pattern: Gather Victim Host Information
+[DEBUG] Loaded attack-pattern: Digital Certificates
+[DEBUG] Loaded attack-pattern: Keylogging
+[DEBUG] Loaded attack-pattern: File/Path Exclusions
+[DEBUG] Loaded attack-pattern: Linux and Mac File and Directory Permissions Modification
+[DEBUG] Loaded attack-pattern: Password Guessing
+[DEBUG] Loaded attack-pattern: PubPrn
+[DEBUG] Loaded attack-pattern: Purchase Technical Data
+[DEBUG] Loaded attack-pattern: OS Credential Dumping
+[DEBUG] Loaded attack-pattern: Shared Modules
+[DEBUG] Loaded attack-pattern: Data from Configuration Repository
+[DEBUG] Loaded attack-pattern: Disk Structure Wipe
+[DEBUG] Loaded attack-pattern: Direct Network Flood
+[DEBUG] Loaded attack-pattern: Stored Data Manipulation
+[DEBUG] Loaded attack-pattern: Path Interception by PATH Environment Variable
+[DEBUG] Loaded attack-pattern: Sharepoint
+[DEBUG] Loaded attack-pattern: Direct Volume Access
+[DEBUG] Loaded attack-pattern: File System Permissions Weakness
+[DEBUG] Loaded attack-pattern: Artificial Intelligence
+[DEBUG] Loaded attack-pattern: Modify Cloud Resource Hierarchy
+[DEBUG] Loaded attack-pattern: Email Hiding Rules
+[DEBUG] Loaded attack-pattern: External Defacement
+[DEBUG] Loaded attack-pattern: Encrypted/Encoded File
+[DEBUG] Loaded attack-pattern: LLMNR/NBT-NS Poisoning and Relay
+[DEBUG] Loaded attack-pattern: IP Addresses
+[DEBUG] Loaded attack-pattern: OS Exhaustion Flood
+[DEBUG] Loaded attack-pattern: Rootkit
+[DEBUG] Loaded attack-pattern: PowerShell Profile
+[DEBUG] Loaded attack-pattern: JavaScript
+[DEBUG] Loaded attack-pattern: DNS
+[DEBUG] Loaded attack-pattern: Systemd Service
+[DEBUG] Loaded attack-pattern: Lifecycle-Triggered Deletion
+[DEBUG] Loaded attack-pattern: Elevated Execution with Prompt
+[DEBUG] Loaded attack-pattern: Audio Capture
+[DEBUG] Loaded attack-pattern: Create or Modify System Process
+[DEBUG] Loaded attack-pattern: External Remote Services
+[DEBUG] Loaded attack-pattern: Component Firmware
+[DEBUG] Loaded attack-pattern: LC_LOAD_DYLIB Addition
+[DEBUG] Loaded attack-pattern: Steal Web Session Cookie
+[DEBUG] Loaded attack-pattern: Container Orchestration Job
+[DEBUG] Loaded attack-pattern: Domain Generation Algorithms
+[DEBUG] Loaded attack-pattern: Double File Extension
+[DEBUG] Loaded attack-pattern: Bypass User Account Control
+[DEBUG] Loaded attack-pattern: Timestomp
+[DEBUG] Loaded attack-pattern: SMS Pumping
+[DEBUG] Loaded attack-pattern: Internet Connection Discovery
+[DEBUG] Loaded attack-pattern: Sudo and Sudo Caching
+[DEBUG] Loaded attack-pattern: Archive via Custom Method
+[DEBUG] Loaded attack-pattern: Modify Cloud Compute Infrastructure
+[DEBUG] Loaded attack-pattern: Network Devices
+[DEBUG] Loaded attack-pattern: Malvertising
+[DEBUG] Loaded attack-pattern: Permission Groups Discovery
+[DEBUG] Loaded attack-pattern: Email Collection
+[DEBUG] Loaded attack-pattern: Security Account Manager
+[DEBUG] Loaded attack-pattern: WHOIS
+[DEBUG] Loaded attack-pattern: System Firmware
+[DEBUG] Loaded attack-pattern: Search Victim-Owned Websites
+[DEBUG] Loaded attack-pattern: Cloud Groups
+[DEBUG] Loaded attack-pattern: Services Registry Permissions Weakness
+[DEBUG] Loaded attack-pattern: DNS/Passive DNS
+[DEBUG] Loaded attack-pattern: Application Exhaustion Flood
+[DEBUG] Loaded attack-pattern: Rc.common
+[DEBUG] Loaded attack-pattern: Compromise Software Dependencies and Development Tools
+[DEBUG] Loaded attack-pattern: Digital Certificates
+[DEBUG] Loaded attack-pattern: DNS Server
+[DEBUG] Loaded attack-pattern: Disk Wipe
+[DEBUG] Loaded attack-pattern: DNS
+[DEBUG] Loaded attack-pattern: Cloud Instance Metadata API
+[DEBUG] Loaded attack-pattern: Securityd Memory
+[DEBUG] Loaded attack-pattern: Group Policy Discovery
+[DEBUG] Loaded attack-pattern: Bootkit
+[DEBUG] Loaded attack-pattern: Data from Removable Media
+[DEBUG] Loaded attack-pattern: Code Signing
+[DEBUG] Loaded attack-pattern: Mavinject
+[DEBUG] Loaded attack-pattern: Cloud Instance Metadata API
+[DEBUG] Loaded attack-pattern: Process Hollowing
+[DEBUG] Loaded attack-pattern: Local Data Staging
+[DEBUG] Loaded attack-pattern: Match Legitimate Resource Name or Location
+[DEBUG] Loaded attack-pattern: Domain Fronting
+[DEBUG] Loaded attack-pattern: Digital Certificates
+[DEBUG] Loaded attack-pattern: Stored Data Manipulation
+[DEBUG] Loaded attack-pattern: Password Cracking
+[DEBUG] Loaded attack-pattern: SID-History Injection
+[DEBUG] Loaded attack-pattern: Local Email Collection
+[DEBUG] Loaded attack-pattern: Keychain
+[DEBUG] Loaded attack-pattern: Boot or Logon Autostart Execution
+[DEBUG] Loaded attack-pattern: LSA Secrets
+[DEBUG] Loaded attack-pattern: Port Monitors
+[DEBUG] Loaded attack-pattern: Weaken Encryption
+[DEBUG] Loaded attack-pattern: SAML Tokens
+[DEBUG] Loaded attack-pattern: Spearphishing Link
+[DEBUG] Loaded attack-pattern: Masquerade File Type
+[DEBUG] Loaded attack-pattern: Service Stop
+[DEBUG] Loaded attack-pattern: Malware
+[DEBUG] Loaded attack-pattern: Regsvcs/Regasm
+[DEBUG] Loaded attack-pattern: Device Driver Discovery
+[DEBUG] Loaded attack-pattern: Sudo Caching
+[DEBUG] Loaded attack-pattern: Domain Account
+[DEBUG] Loaded attack-pattern: Active Setup
+[DEBUG] Loaded attack-pattern: Hide Artifacts
+[DEBUG] Loaded attack-pattern: Dynamic Data Exchange
+[DEBUG] Loaded attack-pattern: Malicious File
+[DEBUG] Loaded attack-pattern: Identify Business Tempo
+[DEBUG] Loaded attack-pattern: Security Software Discovery
+[DEBUG] Loaded attack-pattern: Publish/Subscribe Protocols
+[DEBUG] Loaded attack-pattern: Hardware
+[DEBUG] Loaded attack-pattern: Taint Shared Content
+[DEBUG] Loaded attack-pattern: Trust Modification
+[DEBUG] Loaded attack-pattern: Databases
+[DEBUG] Loaded attack-pattern: Symmetric Cryptography
+[DEBUG] Loaded attack-pattern: Local Account
+[DEBUG] Loaded attack-pattern: Securityd Memory
+[DEBUG] Loaded attack-pattern: Social Media Accounts
+[DEBUG] Loaded attack-pattern: Browser Extensions
+[DEBUG] Loaded attack-pattern: Application Access Token
+[DEBUG] Loaded attack-pattern: Safe Mode Boot
+[DEBUG] Loaded attack-pattern: Screensaver
+[DEBUG] Loaded attack-pattern: TFTP Boot
+[DEBUG] Loaded attack-pattern: Windows Service
+[DEBUG] Loaded attack-pattern: Fast Flux DNS
+[DEBUG] Loaded attack-pattern: System Checks
+[DEBUG] Loaded attack-pattern: Cron
+[DEBUG] Loaded attack-pattern: Domain Groups
+[DEBUG] Loaded attack-pattern: Vulnerabilities
+[DEBUG] Loaded attack-pattern: Spearphishing Link
+[DEBUG] Loaded attack-pattern: Startup Items
+[DEBUG] Loaded attack-pattern: Clear Linux or Mac System Logs
+[DEBUG] Loaded attack-pattern: Application or System Exploitation
+[DEBUG] Loaded attack-pattern: Office Application Startup
+[DEBUG] Loaded attack-pattern: InstallUtil
+[DEBUG] Loaded attack-pattern: Spearphishing Link
+[DEBUG] Loaded attack-pattern: SSH
+[DEBUG] Loaded attack-pattern: Additional Cloud Roles
+[DEBUG] Loaded attack-pattern: Print Processors
+[DEBUG] Loaded attack-pattern: Disabling Security Tools
+[DEBUG] Loaded attack-pattern: Disk Structure Wipe
+[DEBUG] Loaded attack-pattern: Spearphishing Attachment
+[DEBUG] Loaded attack-pattern: Credentials in Registry
+[DEBUG] Loaded attack-pattern: Stripped Payloads
+[DEBUG] Loaded attack-pattern: Component Object Model
+[DEBUG] Loaded attack-pattern: DLL
+[DEBUG] Loaded attack-pattern: Automated Collection
+[DEBUG] Loaded attack-pattern: Clipboard Data
+[DEBUG] Loaded attack-pattern: Proc Filesystem
+[DEBUG] Loaded attack-pattern: Botnet
+[DEBUG] Loaded attack-pattern: Password Managers
+[DEBUG] Loaded attack-pattern: AppInit DLLs
+[DEBUG] Loaded attack-pattern: Gatekeeper Bypass
+[DEBUG] Loaded attack-pattern: ESXi Administration Command
+[DEBUG] Loaded attack-pattern: Drive-by Target
+[DEBUG] Loaded attack-pattern: System Service Discovery
+[DEBUG] Loaded attack-pattern: Network Sniffing
+[DEBUG] Loaded attack-pattern: Application Deployment Software
+[DEBUG] Loaded attack-pattern: Code Signing
+[DEBUG] Loaded attack-pattern: Data from Cloud Storage
+[DEBUG] Loaded attack-pattern: Runtime Data Manipulation
+[DEBUG] Loaded attack-pattern: Credentials in Registry
+[DEBUG] Loaded attack-pattern: Network Share Discovery
+[DEBUG] Loaded attack-pattern: Peripheral Device Discovery
+[DEBUG] Loaded attack-pattern: Break Process Trees
+[DEBUG] Loaded attack-pattern: Network Topology
+[DEBUG] Loaded attack-pattern: Code Signing Certificates
+[DEBUG] Loaded attack-pattern: Windows File and Directory Permissions Modification
+[DEBUG] Loaded attack-pattern: Add-ins
+[DEBUG] Loaded attack-pattern: Transport Agent
+[DEBUG] Loaded attack-pattern: System Information Discovery
+[DEBUG] Loaded attack-pattern: Application Layer Protocol
+[DEBUG] Loaded attack-pattern: AppDomainManager
+[DEBUG] Loaded attack-pattern: Remote Data Staging
+[DEBUG] Loaded attack-pattern: Additional Container Cluster Roles
+[DEBUG] Loaded attack-pattern: Scheduled Task/Job
+[DEBUG] Loaded attack-pattern: Msiexec
+[DEBUG] Loaded attack-pattern: Login Item
+[DEBUG] Loaded attack-pattern: Network Trust Dependencies
+[DEBUG] Loaded attack-pattern: Reflection Amplification
+[DEBUG] Loaded attack-pattern: Password Filter DLL
+[DEBUG] Loaded attack-pattern: Terminal Services DLL
+[DEBUG] Loaded attack-pattern: AppleScript
+[DEBUG] Loaded attack-pattern: Software Extensions
+[DEBUG] Loaded attack-pattern: Service Exhaustion Flood
+[DEBUG] Loaded attack-pattern: Compromise Hardware Supply Chain
+[DEBUG] Loaded attack-pattern: Native API
+[DEBUG] Loaded attack-pattern: Ccache Files
+[DEBUG] Loaded attack-pattern: Clear Network Connection History and Configurations
+[DEBUG] Loaded attack-pattern: AS-REP Roasting
+[DEBUG] Loaded attack-pattern: Service Registry Permissions Weakness
+[DEBUG] Loaded attack-pattern: Virtual Private Server
+[DEBUG] Loaded attack-pattern: AutoHotKey & AutoIT
+[DEBUG] Loaded attack-pattern: Reduce Key Space
+[DEBUG] Loaded attack-pattern: Clear Command History
+[DEBUG] Loaded attack-pattern: Indirect Command Execution
+[DEBUG] Loaded attack-pattern: Custom Cryptographic Protocol
+[DEBUG] Loaded attack-pattern: Revert Cloud Instance
+[DEBUG] Loaded attack-pattern: Replication Through Removable Media
+[DEBUG] Loaded attack-pattern: Data from Local System
+[DEBUG] Loaded attack-pattern: Deobfuscate/Decode Files or Information
+[DEBUG] Loaded attack-pattern: Outlook Rules
+[DEBUG] Loaded attack-pattern: Impair Defenses
+[DEBUG] Loaded attack-pattern: Cloud Accounts
+[DEBUG] Loaded attack-pattern: Email Accounts
+[DEBUG] Loaded attack-pattern: Additional Local or Domain Groups
+[DEBUG] Loaded attack-pattern: Upload Malware
+[DEBUG] Loaded attack-pattern: Supply Chain Compromise
+[DEBUG] Loaded attack-pattern: Exploit Public-Facing Application
+[DEBUG] Loaded attack-pattern: Steal or Forge Kerberos Tickets
+[DEBUG] Loaded attack-pattern: Credentials from Password Stores
+[DEBUG] Loaded attack-pattern: Exfiltration Over Web Service
+[DEBUG] Loaded attack-pattern: Remote Access Tools
+[DEBUG] Loaded attack-pattern: Domains
+[DEBUG] Loaded attack-pattern: Archive via Library
+[DEBUG] Loaded attack-pattern: Thread Execution Hijacking
+[DEBUG] Loaded attack-pattern: Multilayer Encryption
+[DEBUG] Loaded attack-pattern: Masquerading
+[DEBUG] Loaded attack-pattern: Application Shimming
+[DEBUG] Loaded attack-pattern: Unsecured Credentials
+[DEBUG] Loaded attack-pattern: Port Monitors
+[DEBUG] Loaded attack-pattern: Clear Mailbox Data
+[DEBUG] Loaded attack-pattern: Login Hook
+[DEBUG] Loaded attack-pattern: Content Injection
+[DEBUG] Loaded attack-pattern: Process Injection
+[DEBUG] Loaded attack-pattern: Exfiltration Over Webhook
+[DEBUG] Loaded attack-pattern: Bash History
+[DEBUG] Loaded attack-pattern: Traffic Signaling
+[DEBUG] Loaded attack-pattern: Direct Cloud VM Connections
+[DEBUG] Loaded attack-pattern: Credentials from Web Browsers
+[DEBUG] Loaded attack-pattern: System Binary Proxy Execution
+[DEBUG] Loaded attack-pattern: Source
+[DEBUG] Loaded attack-pattern: DLL Search Order Hijacking
+[DEBUG] Loaded attack-pattern: New Service
+[DEBUG] Loaded attack-pattern: Timestomp
+[DEBUG] Loaded attack-pattern: Evil Twin
+[DEBUG] Loaded attack-pattern: Reflective Code Loading
+[DEBUG] Loaded attack-pattern: Wi-Fi Discovery
+[DEBUG] Loaded attack-pattern: Mutual Exclusion
+[DEBUG] Loaded attack-pattern: Ignore Process Interrupts
+[DEBUG] Loaded attack-pattern: Escape to Host
+[DEBUG] Loaded attack-pattern: Backup Software Discovery
+[DEBUG] Loaded attack-pattern: Shortcut Modification
+[DEBUG] Loaded attack-pattern: Application Window Discovery
+[DEBUG] Loaded attack-pattern: Systemctl
+[DEBUG] Loaded attack-pattern: Standard Cryptographic Protocol
+[DEBUG] Loaded attack-pattern: Email Account
+[DEBUG] Loaded attack-pattern: Hypervisor
+[DEBUG] Loaded attack-pattern: Time Based Checks
+[DEBUG] Loaded attack-pattern: AppCert DLLs
+[DEBUG] Loaded attack-pattern: CMSTP
+[DEBUG] Loaded attack-pattern: SSH Hijacking
+[DEBUG] Loaded attack-pattern: Disable Windows Event Logging
+[DEBUG] Loaded attack-pattern: Scheduled Transfer
+[DEBUG] Loaded attack-pattern: SMB/Windows Admin Shares
+[DEBUG] Loaded attack-pattern: Implant Internal Image
+[DEBUG] Loaded attack-pattern: Protocol Tunneling
+[DEBUG] Loaded attack-pattern: Control Panel
+[DEBUG] Loaded attack-pattern: Network Address Translation Traversal
+[DEBUG] Loaded attack-pattern: Upload Tool
+[DEBUG] Loaded attack-pattern: Security Support Provider
+[DEBUG] Loaded attack-pattern: Overwrite Process Arguments
+[DEBUG] Loaded attack-pattern: Winlogon Helper DLL
+[DEBUG] Loaded attack-pattern: Binary Padding
+[DEBUG] Loaded attack-pattern: Use Alternate Authentication Material
+[DEBUG] Loaded attack-pattern: Remote Desktop Protocol
+[DEBUG] Loaded attack-pattern: Threat Intel Vendors
+[DEBUG] Loaded attack-pattern: Exfiltration Over Other Network Medium
+[DEBUG] Loaded attack-pattern: Network Device Configuration Dump
+[DEBUG] Loaded attack-pattern: Gather Victim Identity Information
+[DEBUG] Loaded attack-pattern: Authentication Package
+[DEBUG] Loaded attack-pattern: Extra Window Memory Injection
+[DEBUG] Loaded attack-pattern: Disable or Modify System Firewall
+[DEBUG] Loaded attack-pattern: Archive Collected Data
+[DEBUG] Loaded attack-pattern: Launchctl
+[DEBUG] Loaded attack-pattern: SIP and Trust Provider Hijacking
+[DEBUG] Loaded attack-pattern: Domain Generation Algorithms
+[DEBUG] Loaded attack-pattern: Browser Session Hijacking
+[DEBUG] Loaded attack-pattern: Remote Services
+[DEBUG] Loaded attack-pattern: Mail Protocols
+[DEBUG] Loaded attack-pattern: Hybrid Identity
+[DEBUG] Loaded attack-pattern: Vulnerability Scanning
+[DEBUG] Loaded attack-pattern: Cloud API
+[DEBUG] Loaded attack-pattern: Search Open Technical Databases
+[DEBUG] Loaded attack-pattern: Electron Applications
+[DEBUG] Loaded attack-pattern: Disable or Modify Linux Audit System
+[DEBUG] Loaded attack-pattern: Rogue Domain Controller
+[DEBUG] Loaded attack-pattern: Code Signing Policy Modification
+[DEBUG] Loaded attack-pattern: Deploy Container
+[DEBUG] Loaded attack-pattern: File Deletion
+[DEBUG] Loaded attack-pattern: Private Keys
+[DEBUG] Loaded attack-pattern: Modify Registry
+[DEBUG] Loaded attack-pattern: Launch Daemon
+[DEBUG] Loaded attack-pattern: Cloud Infrastructure Discovery
+[DEBUG] Loaded attack-pattern: Credentials from Web Browsers
+[DEBUG] Loaded attack-pattern: Path Interception by Search Order Hijacking
+[DEBUG] Loaded attack-pattern: Defacement
+[DEBUG] Loaded attack-pattern: Unused/Unsupported Cloud Regions
+[DEBUG] Loaded attack-pattern: DHCP Spoofing
+[DEBUG] Loaded attack-pattern: AppleScript
+[DEBUG] Loaded attack-pattern: Remote Service Session Hijacking
+[DEBUG] Loaded attack-pattern: Bind Mounts
+[DEBUG] Loaded attack-pattern: Binary Padding
+[DEBUG] Loaded attack-pattern: Web Shell
+[DEBUG] Loaded attack-pattern: Group Policy Modification
+[DEBUG] Loaded attack-pattern: Browser Information Discovery
+[DEBUG] Loaded attack-pattern: Private Keys
+[DEBUG] Loaded attack-pattern: Server
+[DEBUG] Loaded attack-pattern: Windows Remote Management
+[DEBUG] Loaded attack-pattern: Exfiltration Over Bluetooth
+[DEBUG] Loaded attack-pattern: Default Accounts
+[DEBUG] Loaded attack-pattern: Time Providers
+[DEBUG] Loaded attack-pattern: Image File Execution Options Injection
+[DEBUG] Loaded attack-pattern: Rundll32
+[DEBUG] Loaded attack-pattern: Modify Existing Service
+[DEBUG] Loaded attack-pattern: Trap
+[DEBUG] Loaded attack-pattern: Dynamic Linker Hijacking
+[DEBUG] Loaded attack-pattern: Local Account
+[DEBUG] Loaded attack-pattern: Search Threat Vendor Data
+[DEBUG] Loaded attack-pattern: Input Injection
+[DEBUG] Loaded attack-pattern: Communication Through Removable Media
+[DEBUG] Loaded attack-pattern: Clear Windows Event Logs
+[DEBUG] Loaded attack-pattern: Email Accounts
+[DEBUG] Loaded attack-pattern: LLMNR/NBT-NS Poisoning and SMB Relay
+[DEBUG] Loaded attack-pattern: File and Directory Permissions Modification
+[DEBUG] Loaded attack-pattern: LSASS Memory
+[DEBUG] Loaded attack-pattern: At (Linux)
+[DEBUG] Loaded attack-pattern: IDE Extensions
+[DEBUG] Loaded attack-pattern: Hooking
+[DEBUG] Loaded attack-pattern: Active Scanning
+[DEBUG] Loaded attack-pattern: Junk Code Insertion
+[DEBUG] Loaded attack-pattern: Plist Modification
+[DEBUG] Loaded attack-pattern: Abuse Elevation Control Mechanism
+[DEBUG] Loaded attack-pattern: Create Process with Token
+[DEBUG] Loaded attack-pattern: Setuid and Setgid
+[DEBUG] Loaded attack-pattern: Winlogon Helper DLL
+[DEBUG] Loaded attack-pattern: System Firmware
+[DEBUG] Loaded attack-pattern: Distributed Component Object Model
+[DEBUG] Loaded attack-pattern: Change Default File Association
+[DEBUG] Loaded attack-pattern: Regsvr32
+[DEBUG] Loaded attack-pattern: Password Spraying
+[DEBUG] Loaded attack-pattern: External Proxy
+[DEBUG] Loaded attack-pattern: Web Portal Capture
+[DEBUG] Loaded attack-pattern: Email Addresses
+[DEBUG] Loaded attack-pattern: Re-opened Applications
+[DEBUG] Loaded attack-pattern: Indicator Blocking
+[DEBUG] Loaded attack-pattern: Spearphishing Voice
+[DEBUG] Loaded attack-pattern: Redundant Access
+[DEBUG] Loaded attack-pattern: Spearphishing Attachment
+[DEBUG] Loaded attack-pattern: Cached Domain Credentials
+[DEBUG] Loaded attack-pattern: SSH Authorized Keys
+[DEBUG] Loaded attack-pattern: Virtual Machine Discovery
+[DEBUG] Loaded attack-pattern: Kernel Modules and Extensions
+[DEBUG] Loaded attack-pattern: Security Support Provider
+[DEBUG] Loaded attack-pattern: Network Security Appliances
+[DEBUG] Loaded attack-pattern: Image File Execution Options Injection
+[DEBUG] Loaded attack-pattern: Odbcconf
+[DEBUG] Loaded attack-pattern: Search Engines
+[DEBUG] Loaded attack-pattern: LSASS Driver
+[DEBUG] Loaded attack-pattern: Business Relationships
+[DEBUG] Loaded attack-pattern: Temporary Elevated Cloud Access
+[DEBUG] Loaded attack-pattern: Video Capture
+[DEBUG] Loaded attack-pattern: Gatekeeper Bypass
+[DEBUG] Loaded attack-pattern: Software Packing
+[DEBUG] Loaded attack-pattern: Process Doppelgänging
+[DEBUG] Loaded attack-pattern: System Network Configuration Discovery
+[DEBUG] Loaded attack-pattern: Delete Cloud Instance
+[DEBUG] Loaded attack-pattern: Code Repositories
+[DEBUG] Loaded attack-pattern: Executable Installer File Permissions Weakness
+[DEBUG] Loaded attack-pattern: Accessibility Features
+[DEBUG] Loaded attack-pattern: Bandwidth Hijacking
+[DEBUG] Loaded attack-pattern: PowerShell Profile
+[DEBUG] Loaded attack-pattern: SIP and Trust Provider Hijacking
+[DEBUG] Loaded attack-pattern: Account Discovery
+[DEBUG] Loaded attack-pattern: Proxy
+[DEBUG] Loaded attack-pattern: Command and Scripting Interpreter
+[DEBUG] Loaded attack-pattern: Malicious Library
+[DEBUG] Loaded attack-pattern: Indicator Blocking
+[DEBUG] Loaded attack-pattern: Domain Account
+[DEBUG] Loaded attack-pattern: Extended Attributes
+[DEBUG] Loaded attack-pattern: Employee Names
+[DEBUG] Loaded attack-pattern: Poisoned Pipeline Execution
+[DEBUG] Loaded attack-pattern: Domain Trust Discovery
+[DEBUG] Loaded attack-pattern: Golden Ticket
+[DEBUG] Loaded attack-pattern: Component Object Model and Distributed COM
+[DEBUG] Loaded attack-pattern: Automated Exfiltration
+[DEBUG] Loaded attack-pattern: Client Configurations
+[DEBUG] Loaded attack-pattern: Disable or Modify Cloud Firewall
+[DEBUG] Loaded attack-pattern: IDE Tunneling
+[DEBUG] Loaded attack-pattern: Right-to-Left Override
+[DEBUG] Loaded attack-pattern: Malware
+[DEBUG] Loaded attack-pattern: SVG Smuggling
+[DEBUG] Loaded attack-pattern: Component Firmware
+[DEBUG] Loaded attack-pattern: Indicator Removal
+[DEBUG] Loaded attack-pattern: Exfiltration Over Symmetric Encrypted Non-C2 Protocol
+[DEBUG] Loaded attack-pattern: Office Template Macros
+[DEBUG] Loaded attack-pattern: Virtual Private Server
+[DEBUG] Loaded attack-pattern: Confluence
+[DEBUG] Loaded attack-pattern: Pass the Ticket
+[DEBUG] Loaded attack-pattern: Container Administration Command
+[DEBUG] Loaded attack-pattern: File and Directory Discovery
+[DEBUG] Loaded attack-pattern: Dynamic Resolution
+[DEBUG] Loaded attack-pattern: Masquerade Task or Service
+[DEBUG] Loaded attack-pattern: Asynchronous Procedure Call
+[DEBUG] Loaded attack-pattern: Traffic Duplication
+[DEBUG] Loaded attack-pattern: Application Shimming
+[DEBUG] Loaded attack-pattern: Plist File Modification
+[DEBUG] Loaded attack-pattern: JamPlus
+[DEBUG] Loaded attack-pattern: AppCert DLLs
+[DEBUG] Loaded attack-pattern: CMSTP
+[DEBUG] Loaded attack-pattern: Multi-hop Proxy
+[DEBUG] Loaded attack-pattern: Email Forwarding Rule
+[DEBUG] Loaded attack-pattern: Data Staged
+[DEBUG] Loaded attack-pattern: Steal or Forge Authentication Certificates
+[DEBUG] Loaded attack-pattern: Device Registration
+[DEBUG] Loaded attack-pattern: System Network Connections Discovery
+[DEBUG] Loaded attack-pattern: Compromise Infrastructure
+[DEBUG] Loaded attack-pattern: Mark-of-the-Web Bypass
+[DEBUG] Loaded attack-pattern: Disable Crypto Hardware
+[DEBUG] Loaded attack-pattern: Pre-OS Boot
+[DEBUG] Loaded attack-pattern: Scripting
+[DEBUG] Loaded attack-pattern: Build Image on Host
+[DEBUG] Loaded attack-pattern: Shared Webroot
+[DEBUG] Loaded attack-pattern: Portable Executable Injection
+[DEBUG] Loaded attack-pattern: Verclsid
+[DEBUG] Loaded attack-pattern: Compromise Accounts
+[DEBUG] Loaded attack-pattern: Launchctl
+[DEBUG] Loaded attack-pattern: Botnet
+[DEBUG] Loaded attack-pattern: Network Device CLI
+[DEBUG] Loaded attack-pattern: Shell History
+[DEBUG] Loaded attack-pattern: Downgrade Attack
+[DEBUG] Loaded attack-pattern: XPC Services
+[DEBUG] Loaded attack-pattern: Virtualization/Sandbox Evasion
+[DEBUG] Loaded attack-pattern: Web Service
+[DEBUG] Loaded attack-pattern: Credentials In Files
+[DEBUG] Loaded attack-pattern: DNS Calculation
+[DEBUG] Loaded attack-pattern: Mshta
+[DEBUG] Loaded attack-pattern: Login Items
+[DEBUG] Loaded attack-pattern: Stage Capabilities
+[DEBUG] Loaded attack-pattern: Link Target
+[DEBUG] Loaded attack-pattern: Multi-Stage Channels
+[DEBUG] Loaded attack-pattern: Financial Theft
+[DEBUG] Loaded attack-pattern: Execution Guardrails
+[DEBUG] Loaded attack-pattern: Cloud Storage Object Discovery
+[DEBUG] Loaded attack-pattern: Web Cookies
+[DEBUG] Loaded attack-pattern: Log Enumeration
+[DEBUG] Loaded attack-pattern: Token Impersonation/Theft
+[DEBUG] Loaded attack-pattern: Exfiltration to Code Repository
+[DEBUG] Loaded attack-pattern: Cloud Services
+[DEBUG] Loaded attack-pattern: Port Knocking
+[DEBUG] Loaded attack-pattern: LNK Icon Smuggling
+[DEBUG] Loaded attack-pattern: Web Services
+[DEBUG] Loaded attack-pattern: Steal Application Access Token
+[DEBUG] Loaded attack-pattern: Spearphishing Attachment
+[DEBUG] Loaded attack-pattern: Additional Cloud Credentials
+[DEBUG] Loaded attack-pattern: User Execution
+[DEBUG] Loaded attack-pattern: Internal Defacement
+[DEBUG] Loaded attack-pattern: Hidden Users
+[DEBUG] Loaded attack-pattern: Make and Impersonate Token
+[DEBUG] Loaded attack-pattern: Group Policy Preferences
+[DEBUG] Loaded attack-pattern: Control Panel Items
+[DEBUG] Loaded attack-pattern: Exfiltration Over Asymmetric Encrypted Non-C2 Protocol
+[DEBUG] Loaded attack-pattern: Cloud Account
+[DEBUG] Loaded attack-pattern: Process Discovery
+[DEBUG] Loaded attack-pattern: Impair Command History Logging
+[DEBUG] Loaded attack-pattern: Launchd
+[DEBUG] Loaded attack-pattern: Network Provider DLL
+[DEBUG] Loaded attack-pattern: Windows Management Instrumentation Event Subscription
+[DEBUG] Loaded attack-pattern: CDNs
+[DEBUG] Loaded attack-pattern: User Activity Based Checks
+[DEBUG] Loaded attack-pattern: Input Prompt
+[DEBUG] Loaded attack-pattern: Cloud Service Hijacking
+[DEBUG] Loaded attack-pattern: Cloud Accounts
+[DEBUG] Loaded attack-pattern: Software Deployment Tools
+[DEBUG] Loaded attack-pattern: Exfiltration Over C2 Channel
+[DEBUG] Loaded attack-pattern: Parent PID Spoofing
+[DEBUG] Loaded attack-pattern: Gather Victim Org Information
+[DEBUG] Loaded attack-pattern: Registry Run Keys / Startup Folder
+[DEBUG] Loaded attack-pattern: Forge Web Credentials
+[DEBUG] Loaded attack-pattern: Multi-Factor Authentication Request Generation
+[DEBUG] Loaded attack-pattern: Compromise Host Software Binary
+[DEBUG] Loaded attack-pattern: Chat Messages
+[DEBUG] Loaded attack-pattern: PowerShell
+[DEBUG] Loaded attack-pattern: Shortcut Modification
+[DEBUG] Loaded attack-pattern: Change Default File Association
+[DEBUG] Loaded attack-pattern: VDSO Hijacking
+[DEBUG] Loaded attack-pattern: Multiband Communication
+[DEBUG] Loaded attack-pattern: File Transfer Protocols
+[DEBUG] Loaded attack-pattern: Selective Exclusion
+[DEBUG] Loaded attack-pattern: Component Object Model Hijacking
+[DEBUG] Loaded attack-pattern: Accessibility Features
+[DEBUG] Loaded attack-pattern: Exploitation for Credential Access
+[DEBUG] Loaded attack-pattern: Emond
+[DEBUG] Loaded attack-pattern: One-Way Communication
+[DEBUG] Loaded attack-pattern: Gather Victim Network Information
+[DEBUG] Loaded attack-pattern: Exploitation of Remote Services
+[DEBUG] Loaded attack-pattern: Parent PID Spoofing
+[DEBUG] Loaded attack-pattern: Keychain
+[DEBUG] Loaded attack-pattern: Internal Spearphishing
+[DEBUG] Loaded attack-pattern: Sudo
+[DEBUG] Loaded attack-pattern: Services File Permissions Weakness
+[DEBUG] Loaded attack-pattern: Registry Run Keys / Startup Folder
+[DEBUG] Loaded attack-pattern: Trusted Relationship
+[DEBUG] Loaded attack-pattern: Cloud Account
+[DEBUG] Loaded attack-pattern: Local Groups
+[DEBUG] Loaded attack-pattern: LC_MAIN Hijacking
+[DEBUG] Loaded attack-pattern: Search Open Websites/Domains
+[DEBUG] Loaded attack-pattern: Disable or Modify Network Device Firewall
+[DEBUG] Loaded attack-pattern: Account Manipulation
+[DEBUG] Loaded attack-pattern: Mshta
+[DEBUG] Loaded attack-pattern: Exfiltration Over Alternative Protocol
+[DEBUG] Loaded attack-pattern: Kernel Modules and Extensions
+[DEBUG] Loaded attack-pattern: Delay Execution
+[DEBUG] Loaded attack-pattern: GUI Input Capture
+[DEBUG] Loaded attack-pattern: Pass the Ticket
+[DEBUG] Loaded attack-pattern: Tool
+[DEBUG] Loaded attack-pattern: Exfiltration over USB
+[DEBUG] Loaded attack-pattern: KernelCallbackTable
+[DEBUG] Loaded attack-pattern: Search Closed Sources
+[DEBUG] Loaded attack-pattern: Systemd Timers
+[DEBUG] Loaded attack-pattern: Phishing
+[DEBUG] Loaded attack-pattern: Graphical User Interface
+[DEBUG] Loaded attack-pattern: ROMMONkit
+[DEBUG] Loaded attack-pattern: Compiled HTML File
+[DEBUG] Loaded attack-pattern: Compute Hijacking
+[DEBUG] Loaded attack-pattern: Network Share Connection Removal
+[DEBUG] Loaded attack-pattern: Multi-hop Proxy
+[DEBUG] Loaded attack-pattern: Brute Force
+[DEBUG] Loaded attack-pattern: Unix Shell
+[DEBUG] Loaded attack-pattern: Outlook Forms
+[DEBUG] Loaded attack-pattern: Remote Access Hardware
+[DEBUG] Loaded attack-pattern: Dylib Hijacking
+[DEBUG] Loaded attack-pattern: Disable or Modify Tools
+[DEBUG] Loaded attack-pattern: Data Manipulation
+[DEBUG] Loaded attack-pattern: Inter-Process Communication
+[DEBUG] Loaded attack-pattern: Data Obfuscation
+[DEBUG] Loaded attack-pattern: Data from Network Shared Drive
+[DEBUG] Loaded attack-pattern: Web Services
+[DEBUG] Loaded attack-pattern: Modify System Image
+[DEBUG] Loaded attack-pattern: Hijack Execution Flow
+[DEBUG] Loaded attack-pattern: Browser Fingerprint
+[DEBUG] Loaded attack-pattern: Lua
+[DEBUG] Loaded attack-pattern: Indicator Removal from Tools
+[DEBUG] Loaded attack-pattern: Malicious Image
+[DEBUG] Loaded attack-pattern: Container Service
+[DEBUG] Loaded attack-pattern: Valid Accounts
+[DEBUG] Loaded attack-pattern: Non-Standard Port
+[DEBUG] Loaded attack-pattern: Social Media Accounts
+[DEBUG] Loaded attack-pattern: DLL Side-Loading
+[DEBUG] Loaded attack-pattern: Process Hollowing
+[DEBUG] Loaded attack-pattern: Exploitation for Privilege Escalation
+[DEBUG] Loaded attack-pattern: Resource Forking
+[DEBUG] Loaded attack-pattern: Account Access Removal
+[DEBUG] Loaded attack-pattern: Credential Stuffing
+[DEBUG] Loaded attack-pattern: Kerberoasting
+[DEBUG] Loaded attack-pattern: Obfuscated Files or Information
+[DEBUG] Loaded attack-pattern: Multi-Factor Authentication
+[DEBUG] Loaded attack-pattern: Remote Email Collection
+[DEBUG] Loaded attack-pattern: IIS Components
+[DEBUG] Loaded attack-pattern: Invalid Code Signature
+[DEBUG] Loaded attack-pattern: Run Virtual Instance
+[DEBUG] Loaded attack-pattern: Trap
+[DEBUG] Loaded attack-pattern: Polymorphic Code
+[DEBUG] Loaded attack-pattern: Password Policy Discovery
+[DEBUG] Loaded attack-pattern: Event Triggered Execution
+[DEBUG] Loaded attack-pattern: Unix Shell Configuration Modification
+[DEBUG] Loaded attack-pattern: Forced Authentication
+[DEBUG] Loaded attack-pattern: SID-History Injection
+[DEBUG] Loaded attack-pattern: Network Boundary Bridging
+[DEBUG] Loaded attack-pattern: Data Encrypted for Impact
+[DEBUG] Loaded attack-pattern: Disk Content Wipe
+[DEBUG] Loaded attack-pattern: Subvert Trust Controls
+[DEBUG] Loaded attack-pattern: Elevated Execution with Prompt
+[DEBUG] Loaded attack-pattern: Firmware
+[DEBUG] Loaded attack-pattern: Encrypted Channel
+[DEBUG] Loaded attack-pattern: Password Filter DLL
+[DEBUG] Loaded attack-pattern: Authentication Package
+[DEBUG] Loaded attack-pattern: Regsvr32
+[DEBUG] Loaded attack-pattern: Data Compressed
+[DEBUG] Loaded attack-pattern: Exfiltration to Text Storage Sites
+[DEBUG] Loaded attack-pattern: Credentials in Files
+[DEBUG] Loaded attack-pattern: Software
+[DEBUG] Loaded attack-pattern: Netsh Helper DLL
+[DEBUG] Loaded attack-pattern: Input Capture
+[DEBUG] Loaded attack-pattern: Spearphishing Voice
+[DEBUG] Loaded attack-pattern: Exploits
+[DEBUG] Loaded attack-pattern: Social Media
+[DEBUG] Loaded attack-pattern: Customer Relationship Management Software
+[DEBUG] Loaded attack-pattern: Component Object Model Hijacking
+[DEBUG] Loaded attack-pattern: Credentials
+[DEBUG] Loaded attack-pattern: Compromise Software Supply Chain
+[DEBUG] Loaded attack-pattern: Rename Legitimate Utilities
+[DEBUG] Loaded attack-pattern: Bidirectional Communication
+[DEBUG] Loaded attack-pattern: Exploitation for Client Execution
+[DEBUG] Loaded attack-pattern: Wordlist Scanning
+[DEBUG] Loaded attack-pattern: Email Bombing
+[DEBUG] Loaded attack-pattern: Spoof Security Alerting
+[DEBUG] Loaded attack-pattern: Outlook Home Page
+[DEBUG] Loaded attack-pattern: Asymmetric Cryptography
+[DEBUG] Loaded attack-pattern: Exfiltration to Cloud Storage
+[DEBUG] Loaded attack-pattern: Lateral Tool Transfer
+[DEBUG] Loaded attack-pattern: Path Interception by Unquoted Path
+[DEBUG] Loaded attack-pattern: Install Digital Certificate
+[DEBUG] Loaded attack-pattern: Local Job Scheduling
+[DEBUG] Loaded attack-pattern: Setuid and Setgid
+[DEBUG] Loaded attack-pattern: Startup Items
+[DEBUG] Loaded attack-pattern: Web Shell
+[DEBUG] Loaded attack-pattern: Process Doppelgänging
+[DEBUG] Loaded attack-pattern: SSH Hijacking
+[DEBUG] Loaded attack-pattern: System Language Discovery
+[DEBUG] Loaded attack-pattern: Non-Application Layer Protocol
+[DEBUG] Loaded attack-pattern: Pass the Hash
+[DEBUG] Loaded attack-pattern: Container CLI/API
+[DEBUG] Loaded attack-pattern: Steganography
+[DEBUG] Loaded attack-pattern: DNS Server
+[DEBUG] Loaded attack-pattern: Cloud Application Integration
+[DEBUG] Loaded attack-pattern: Protocol or Service Impersonation
+[DEBUG] Loaded attack-pattern: Query Registry
+[DEBUG] Loaded attack-pattern: Data Transfer Size Limits
+[DEBUG] Loaded attack-pattern: Windows Remote Management
+[DEBUG] Loaded attack-pattern: Web Session Cookie
+[DEBUG] Loaded attack-pattern: Domain Accounts
+[DEBUG] Loaded attack-pattern: Regsvcs/Regasm
+[DEBUG] Loaded attack-pattern: Path Interception
+[DEBUG] Loaded attack-pattern: Python Startup Hooks
+[DEBUG] Loaded attack-pattern: Web Session Cookie
+[DEBUG] Loaded attack-pattern: Install Root Certificate
+[DEBUG] Loaded attack-pattern: Network Logon Script
+[DEBUG] Loaded attack-pattern: Endpoint Denial of Service
+[DEBUG] Loaded attack-pattern: Compile After Delivery
+[DEBUG] Loaded attack-pattern: Uncommonly Used Port
+[DEBUG] Loaded attack-pattern: System Location Discovery
+[DEBUG] Loaded attack-pattern: VBA Stomping
+[DEBUG] Loaded attack-pattern: BITS Jobs
+[DEBUG] Loaded attack-pattern: MSBuild
+[DEBUG] Loaded attack-pattern: Impersonation
+[DEBUG] Loaded attack-pattern: Modify Cloud Compute Configurations
+[DEBUG] Loaded attack-pattern: Bypass User Account Control
+[DEBUG] Loaded attack-pattern: Runtime Data Manipulation
+[DEBUG] Loaded attack-pattern: Domain Fronting
+[DEBUG] Loaded attack-pattern: ARP Cache Poisoning
+[DEBUG] Loaded attack-pattern: Disable or Modify Cloud Logs
+[DEBUG] Loaded attack-pattern: Security Software Discovery
+[DEBUG] Loaded attack-pattern: Hidden Window
+[DEBUG] Loaded attack-pattern: Transmitted Data Manipulation
+[DEBUG] Loaded attack-pattern: ClickOnce
+[DEBUG] Loaded attack-pattern: Python
+[DEBUG] Loaded attack-pattern: Relocate Malware
+[DEBUG] Loaded attack-pattern: Identify Roles
+[DEBUG] Loaded attack-pattern: Data Encoding
+[DEBUG] Loaded attack-pattern: AppInit DLLs
+[DEBUG] Loaded attack-pattern: Phishing for Information
+[DEBUG] Loaded attack-pattern: Resource Hijacking
+[DEBUG] Loaded attack-pattern: Establish Accounts
+[DEBUG] Loaded attack-pattern: Obtain Capabilities
+[DEBUG] Loaded attack-pattern: Screensaver
+[DEBUG] Loaded attack-pattern: Hidden Users
+[DEBUG] Loaded attack-pattern: Conditional Access Policies
+[DEBUG] Loaded attack-pattern: Create Cloud Instance
+[DEBUG] Loaded attack-pattern: Compile After Delivery
+[DEBUG] Loaded attack-pattern: Cloud Secrets Management Stores
+[DEBUG] Loaded attack-pattern: Code Repositories
+[DEBUG] Loaded attack-pattern: Transmitted Data Manipulation
+[DEBUG] Loaded attack-pattern: /etc/passwd and /etc/shadow
+[DEBUG] Loaded attack-pattern: Launch Agent
+[DEBUG] Loaded attack-pattern: System Services
+[DEBUG] Loaded attack-pattern: Windows Command Shell
+[DEBUG] Loaded attack-pattern: Proc Memory
+[DEBUG] Loaded attack-pattern: Compiled HTML File
+[DEBUG] Loaded attack-pattern: Acquire Access
+[DEBUG] Loaded attack-pattern: Patch System Image
+[DEBUG] Loaded attack-pattern: Silver Ticket
+[DEBUG] Loaded attack-pattern: Data from Information Repositories
+[DEBUG] Loaded attack-pattern: Clear Persistence
+[DEBUG] Loaded attack-pattern: Hypervisor CLI
+[DEBUG] Loaded attack-pattern: Clear Command History
+[DEBUG] Loaded attack-pattern: Windows Credential Manager
+[DEBUG] Loaded attack-pattern: Masquerade Account Name
+[DEBUG] Loaded attack-pattern: Emond
+[DEBUG] Loaded attack-pattern: Spearphishing via Service
+[DEBUG] Loaded attack-pattern: Hardware Additions
+[DEBUG] Loaded attack-pattern: Remote Desktop Software
+[DEBUG] Loaded attack-pattern: Server Software Component
+[DEBUG] Loaded attack-pattern: Data Destruction
+[DEBUG] Loaded attack-pattern: Non-Standard Encoding
+[DEBUG] Loaded attack-pattern: Domain Controller Authentication
+[DEBUG] Loaded attack-pattern: Transfer Data to Cloud Account
+[DEBUG] Loaded attack-pattern: HTML Smuggling
+[DEBUG] Loaded attack-pattern: Reversible Encryption
+[DEBUG] Loaded attack-pattern: Command Obfuscation
+[DEBUG] Loaded attack-pattern: Install Root Certificate
+[DEBUG] Loaded attack-pattern: Data Encrypted
+[DEBUG] Loaded attack-pattern: File Deletion
+[DEBUG] Loaded attack-pattern: Drive-by Compromise
+[DEBUG] Loaded attack-pattern: Network Denial of Service
+[DEBUG] Loaded attack-pattern: Cloud Administration Command
+[DEBUG] Loaded attack-pattern: Installer Packages
+[DEBUG] Loaded attack-pattern: Scanning IP Blocks
+[DEBUG] Loaded attack-pattern: Hidden Files and Directories
+[DEBUG] Loaded attack-pattern: Template Injection
+[DEBUG] Loaded attack-pattern: RC Scripts
+[DEBUG] Loaded attack-pattern: Access Token Manipulation
+[DEBUG] Loaded attack-pattern: Time Providers
+[DEBUG] Loaded attack-pattern: Multi-Factor Authentication Interception
+[DEBUG] Loaded attack-pattern: Launch Agent
+[DEBUG] Loaded attack-pattern: Software Packing
+[DEBUG] Loaded attack-pattern: Serverless
+[DEBUG] Loaded attack-pattern: Web Protocols
+[DEBUG] Loaded attack-pattern: Visual Basic
+[DEBUG] Loaded attack-pattern: Hidden File System
+[DEBUG] Loaded attack-pattern: Systemd Service
+[DEBUG] Loaded attack-pattern: Exclusive Control
+[DEBUG] Loaded attack-pattern: RDP Hijacking
+[DEBUG] Loaded attack-pattern: Create Account
+[DEBUG] Loaded attack-pattern: XDG Autostart Entries
+[DEBUG] Loaded attack-pattern: Server
+[DEBUG] Loaded attack-pattern: Email Spoofing
+[DEBUG] Loaded attack-pattern: Cloud Service Discovery
+[DEBUG] Loaded attack-pattern: Malicious Copy and Paste
+[DEBUG] Loaded attack-pattern: Space after Filename
+[DEBUG] Loaded attack-pattern: Remote System Discovery
+[DEBUG] Loaded attack-pattern: Network Service Discovery
+[DEBUG] Loaded attack-pattern: Domain Properties
+[DEBUG] Loaded attack-pattern: Software Discovery
+[DEBUG] Loaded attack-pattern: Cloud Service Dashboard
+[DEBUG] Loaded attack-pattern: Thread Local Storage
+[DEBUG] Loaded attack-pattern: Debugger Evasion
+[DEBUG] Loaded attack-pattern: Space after Filename
+[DEBUG] Loaded attack-pattern: Re-opened Applications
+[DEBUG] Loaded attack-pattern: SEO Poisoning
+[DEBUG] Loaded attack-pattern: Pass the Hash
+[DEBUG] Loaded attack-pattern: Exfiltration Over Physical Medium
+[DEBUG] Loaded attack-pattern: DLL Side-Loading
+[DEBUG] Loaded attack-pattern: Ingress Tool Transfer
+[DEBUG] Loaded attack-pattern: SyncAppvPublishingServer
+[DEBUG] Loaded attack-pattern: Additional Email Delegate Permissions
+[DEBUG] Loaded attack-pattern: Code Signing Certificates
+[DEBUG] Loaded attack-pattern: Network Share Connection Removal
+[DEBUG] Loaded attack-pattern: Serverless Execution
+[DEBUG] Loaded attack-pattern: TCC Manipulation
+[DEBUG] Loaded attack-pattern: Windows Management Instrumentation Event Subscription
+[DEBUG] Loaded attack-pattern: Launch Daemon
+[DEBUG] Loaded attack-pattern: Ptrace System Calls
+[DEBUG] Loaded attack-pattern: Power Settings
+[DEBUG] Loaded attack-pattern: Dynamic API Resolution
+[DEBUG] Loaded attack-pattern: Remote Desktop Protocol
+[DEBUG] Loaded attack-pattern: Logon Script (Windows)
+[DEBUG] Loaded attack-pattern: ListPlanting
+[DEBUG] Loaded attack-pattern: Hide Infrastructure
+[DEBUG] Loaded attack-pattern: Domain or Tenant Policy Modification
+[DEBUG] Loaded attack-pattern: XSL Script Processing
+[DEBUG] Loaded attack-pattern: Scan Databases
+[DEBUG] Loaded attack-pattern: Hidden Files and Directories
+[DEBUG] Loaded attack-pattern: Create Snapshot
+[DEBUG] Loaded attack-pattern: Determine Physical Locations
+[DEBUG] Loaded attack-pattern: Office Test
+[DEBUG] Loaded attack-pattern: Develop Capabilities
+[DEBUG] Loaded attack-pattern: Dynamic Data Exchange
+[DEBUG] Loaded attack-pattern: NTDS
+[DEBUG] Loaded attack-pattern: SNMP (MIB Dump)
+[DEBUG] Loaded attack-pattern: Steganography
+[DEBUG] Loaded attack-pattern: Malicious Link
+[DEBUG] Loaded attack-pattern: Application Access Token
+[DEBUG] Loaded attack-pattern: LSASS Driver
+[DEBUG] Loaded attack-pattern: Service Execution
+[DEBUG] Loaded attack-pattern: Cloud Accounts
+[DEBUG] Loaded attack-pattern: Environmental Keying
+[DEBUG] Loaded attack-pattern: Fallback Channels
+[DEBUG] Loaded attack-pattern: Local Storage Discovery
+[DEBUG] Loaded attack-pattern: NTFS File Attributes
+[DEBUG] Loaded attack-pattern: Kerberoasting
+[DEBUG] Loaded attack-pattern: NTFS File Attributes
+[DEBUG] Loaded attack-pattern: DCSync
+[DEBUG] Loaded attack-pattern: System Time Discovery
+[DEBUG] Loaded attack-pattern: At
+[DEBUG] Loaded attack-pattern: Service Execution
+[DEBUG] Loaded attack-pattern: Dynamic-link Library Injection
+[DEBUG] Loaded attack-pattern: PowerShell
+[DEBUG] Loaded attack-pattern: Exploits
+[DEBUG] Loaded attack-pattern: Modify Authentication Process
+[DEBUG] Loaded attack-pattern: Udev Rules
+[DEBUG] Loaded attack-pattern: Credential API Hooking
+[DEBUG] Loaded attack-pattern: Firmware Corruption
+[DEBUG] Loaded attack-pattern: Inhibit System Recovery
+[DEBUG] Loaded attack-pattern: Netsh Helper DLL
+[DEBUG] Loaded attack-pattern: Spearphishing via Service
+[DEBUG] Loaded attack-pattern: Internal Proxy
+[DEBUG] Loaded attack-pattern: System Script Proxy Execution
+[DEBUG] Loaded attack-pattern: Custom Command and Control Protocol
+[DEBUG] Loaded attack-pattern: Dead Drop Resolver
+[DEBUG] Loaded attack-pattern: InstallUtil
+[DEBUG] Loaded attack-pattern: Junk Data
+[DEBUG] Loaded attack-pattern: Spearphishing Service
+[DEBUG] Loaded attack-pattern: Commonly Used Port
+[DEBUG] Loaded attack-pattern: vSphere Installation Bundles
+[DEBUG] Loaded attack-pattern: Container API
+[DEBUG] Loaded attack-pattern: Domains
+[DEBUG] Loaded attack-pattern: SQL Stored Procedures
+[DEBUG] Loaded attack-pattern: Network Device Authentication
+[DEBUG] Loaded attack-pattern: Disk Content Wipe
+[DEBUG] Loaded attack-pattern: Messaging Applications
+[DEBUG] Loaded attack-pattern: Exfiltration Over Unencrypted Non-C2 Protocol
+[DEBUG] Loaded attack-pattern: Compression
+[DEBUG] Loaded attack-pattern: Dylib Hijacking
+[DEBUG] Loaded attack-pattern: Downgrade System Image
+[DEBUG] Loaded attack-pattern: Local Accounts
+[DEBUG] Loaded attack-pattern: Wi-Fi Networks
+[DEBUG] Loaded attack-pattern: Exploitation for Defense Evasion
+[DEBUG] Loaded attack-pattern: Trusted Developer Utilities Proxy Execution
+[DEBUG] Loaded attack-pattern: System Shutdown/Reboot
+[DEBUG] Loaded attack-pattern: MMC
+[DEBUG] Loaded attack-pattern: Process Argument Spoofing
+[DEBUG] Loaded attack-pattern: Windows Admin Shares
+[DEBUG] Loaded attack-pattern: COR_PROFILER
+[DEBUG] Loaded intrusion-set: Indrik Spider
+[DEBUG] Loaded intrusion-set: LuminousMoth
+[DEBUG] Loaded intrusion-set: Medusa Group
+[DEBUG] Loaded intrusion-set: Wizard Spider
+[DEBUG] Loaded intrusion-set: Elderwood
+[DEBUG] Loaded intrusion-set: Frankenstein
+[DEBUG] Loaded intrusion-set: FIN7
+[DEBUG] Loaded intrusion-set: UNC3886
+[DEBUG] Loaded intrusion-set: Velvet Ant
+[DEBUG] Loaded intrusion-set: WIRTE
+[DEBUG] Loaded intrusion-set: Dragonfly
+[DEBUG] Loaded intrusion-set: OilRig
+[DEBUG] Loaded intrusion-set: Equation
+[DEBUG] Loaded intrusion-set: Fox Kitten
+[DEBUG] Loaded intrusion-set: Lazarus Group
+[DEBUG] Loaded intrusion-set: Aquatic Panda
+[DEBUG] Loaded intrusion-set: Daggerfly
+[DEBUG] Loaded intrusion-set: TeamTNT
+[DEBUG] Loaded intrusion-set: TA505
+[DEBUG] Loaded intrusion-set: Inception
+[DEBUG] Loaded intrusion-set: admin@338
+[DEBUG] Loaded intrusion-set: BlackTech
+[DEBUG] Loaded intrusion-set: APT42
+[DEBUG] Loaded intrusion-set: Malteiro
+[DEBUG] Loaded intrusion-set: Earth Lusca
+[DEBUG] Loaded intrusion-set: Play
+[DEBUG] Loaded intrusion-set: Sandworm Team
+[DEBUG] Loaded intrusion-set: UNC2452
+[DEBUG] Loaded intrusion-set: TA577
+[DEBUG] Loaded intrusion-set: Turla
+[DEBUG] Loaded intrusion-set: Suckfly
+[DEBUG] Loaded intrusion-set: Ember Bear
+[DEBUG] Loaded intrusion-set: FIN6
+[DEBUG] Loaded intrusion-set: Silence
+[DEBUG] Loaded intrusion-set: Patchwork
+[DEBUG] Loaded intrusion-set: APT28
+[DEBUG] Loaded intrusion-set: Aoqin Dragon
+[DEBUG] Loaded intrusion-set: Cinnamon Tempest
+[DEBUG] Loaded intrusion-set: HEXANE
+[DEBUG] Loaded intrusion-set: Darkhotel
+[DEBUG] Loaded intrusion-set: Ke3chang
+[DEBUG] Loaded intrusion-set: Honeybee
+[DEBUG] Loaded intrusion-set: Volt Typhoon
+[DEBUG] Loaded intrusion-set: Leafminer
+[DEBUG] Loaded intrusion-set: Magic Hound
+[DEBUG] Loaded intrusion-set: APT29
+[DEBUG] Loaded intrusion-set: EXOTIC LILY
+[DEBUG] Loaded intrusion-set: Cobalt Group
+[DEBUG] Loaded intrusion-set: Andariel
+[DEBUG] Loaded intrusion-set: HAFNIUM
+[DEBUG] Loaded intrusion-set: APT39
+[DEBUG] Loaded intrusion-set: MuddyWater
+[DEBUG] Loaded intrusion-set: APT38
+[DEBUG] Loaded intrusion-set: Transparent Tribe
+[DEBUG] Loaded intrusion-set: APT32
+[DEBUG] Loaded intrusion-set: BRONZE BUTLER
+[DEBUG] Loaded intrusion-set: POLONIUM
+[DEBUG] Loaded intrusion-set: APT5
+[DEBUG] Loaded intrusion-set: BackdoorDiplomacy
+[DEBUG] Loaded intrusion-set: Kimsuky
+[DEBUG] Loaded intrusion-set: Leviathan
+[DEBUG] Loaded intrusion-set: Storm-1811
+[DEBUG] Loaded intrusion-set: Ajax Security Team
+[DEBUG] Loaded intrusion-set: Akira
+[DEBUG] Loaded intrusion-set: Mustang Panda
+[DEBUG] Loaded intrusion-set: LAPSUS$
+[DEBUG] Loaded intrusion-set: Chimera
+[DEBUG] Loaded intrusion-set: TA2541
+[DEBUG] Loaded intrusion-set: ToddyCat
+[DEBUG] Loaded intrusion-set: BITTER
+[DEBUG] Loaded intrusion-set: RTM
+[DEBUG] Loaded intrusion-set: menuPass
+[DEBUG] Loaded intrusion-set: Operation Wocao
+[DEBUG] Loaded intrusion-set: Storm-0501
+[DEBUG] Loaded intrusion-set: Tropic Trooper
+[DEBUG] Loaded intrusion-set: Mustard Tempest
+[DEBUG] Loaded intrusion-set: APT19
+[DEBUG] Loaded intrusion-set: Moses Staff
+[DEBUG] Loaded intrusion-set: Night Dragon
+[DEBUG] Loaded intrusion-set: Molerats
+[DEBUG] Loaded intrusion-set: Stealth Falcon
+[DEBUG] Loaded intrusion-set: DarkVishnya
+[DEBUG] Loaded intrusion-set: APT37
+[DEBUG] Loaded intrusion-set: Threat Group-1314
+[DEBUG] Loaded intrusion-set: APT41
+[DEBUG] Loaded intrusion-set: INC Ransom
+[DEBUG] Loaded intrusion-set: FIN13
+[DEBUG] Loaded intrusion-set: Group5
+[DEBUG] Loaded intrusion-set: PLATINUM
+[DEBUG] Loaded intrusion-set: GALLIUM
+[DEBUG] Loaded intrusion-set: FIN10
+[DEBUG] Loaded intrusion-set: Winnti Group
+[DEBUG] Loaded intrusion-set: FIN8
+[DEBUG] Loaded intrusion-set: Rocke
+[DEBUG] Loaded intrusion-set: RedEcho
+[DEBUG] Loaded intrusion-set: Saint Bear
+[DEBUG] Loaded intrusion-set: Scattered Spider
+[DEBUG] Loaded intrusion-set: CURIUM
+[DEBUG] Loaded intrusion-set: Windigo
+[DEBUG] Loaded intrusion-set: Blue Mockingbird
+[DEBUG] Loaded intrusion-set: RedCurl
+[DEBUG] Loaded intrusion-set: CostaRicto
+[DEBUG] Loaded intrusion-set: FIN4
+/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/blackcat_cti_pipeline_stage2.py:87: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+[DEBUG] Loaded intrusion-set: Contagious Interview
+[DEBUG] Loaded intrusion-set: Gorgon Group
+[DEBUG] Loaded intrusion-set: Dragonfly 2.0
+[DEBUG] Loaded intrusion-set: Sidewinder
+[DEBUG] Loaded intrusion-set: Gelsemium
+[DEBUG] Loaded intrusion-set: Higaisa
+[DEBUG] Loaded intrusion-set: APT30
+[DEBUG] Loaded intrusion-set: Windshift
+[DEBUG] Loaded intrusion-set: Confucius
+[DEBUG] Loaded intrusion-set: BlackByte
+[DEBUG] Loaded intrusion-set: Threat Group-3390
+[DEBUG] Loaded intrusion-set: Tonto Team
+[DEBUG] Loaded intrusion-set: Gamaredon Group
+[DEBUG] Loaded intrusion-set: Agrius
+[DEBUG] Loaded intrusion-set: Sea Turtle
+[DEBUG] Loaded intrusion-set: Rancor
+[DEBUG] Loaded intrusion-set: Moonstone Sleet
+[DEBUG] Loaded intrusion-set: TA551
+[DEBUG] Loaded intrusion-set: Salt Typhoon
+[DEBUG] Loaded intrusion-set: Axiom
+[DEBUG] Loaded intrusion-set: Dark Caracal
+[DEBUG] Loaded intrusion-set: Nomadic Octopus
+[DEBUG] Loaded intrusion-set: APT12
+[DEBUG] Loaded intrusion-set: APT3
+[DEBUG] Loaded intrusion-set: Putter Panda
+[DEBUG] Loaded intrusion-set: Metador
+[DEBUG] Loaded intrusion-set: TA459
+[DEBUG] Loaded intrusion-set: ZIRCONIUM
+[DEBUG] Loaded intrusion-set: APT1
+[DEBUG] Loaded intrusion-set: Naikon
+[DEBUG] Loaded intrusion-set: Dust Storm
+[DEBUG] Loaded intrusion-set: Sowbug
+[DEBUG] Loaded intrusion-set: Mofang
+[DEBUG] Loaded intrusion-set: Machete
+[DEBUG] Loaded intrusion-set: FIN5
+[DEBUG] Loaded intrusion-set: Winter Vivern
+[DEBUG] Loaded intrusion-set: SideCopy
+[DEBUG] Loaded intrusion-set: APT33
+[DEBUG] Loaded intrusion-set: Lotus Blossom
+[DEBUG] Loaded intrusion-set: GOLD SOUTHFIELD
+[DEBUG] Loaded intrusion-set: Volatile Cedar
+[DEBUG] Loaded intrusion-set: Evilnum
+[DEBUG] Loaded intrusion-set: Sharpshooter
+[DEBUG] Loaded intrusion-set: Cleaver
+[DEBUG] Loaded intrusion-set: TEMP.Veles
+[DEBUG] Loaded intrusion-set: DarkHydrus
+[DEBUG] Loaded intrusion-set: Whitefly
+[DEBUG] Loaded intrusion-set: Silent Librarian
+[DEBUG] Loaded intrusion-set: APT18
+[DEBUG] Loaded intrusion-set: Carbanak
+[DEBUG] Loaded intrusion-set: Orangeworm
+[DEBUG] Loaded intrusion-set: Deep Panda
+[DEBUG] Loaded intrusion-set: APT-C-36
+[DEBUG] Loaded intrusion-set: The White Company
+[DEBUG] Loaded intrusion-set: Poseidon Group
+[DEBUG] Loaded intrusion-set: LazyScripter
+[DEBUG] Loaded intrusion-set: Gallmaker
+[DEBUG] Loaded intrusion-set: MoustachedBouncer
+[DEBUG] Loaded intrusion-set: CopyKittens
+[DEBUG] Loaded intrusion-set: Star Blizzard
+[DEBUG] Loaded intrusion-set: Thrip
+[DEBUG] Loaded intrusion-set: Stolen Pencil
+[DEBUG] Loaded intrusion-set: PROMETHIUM
+[DEBUG] Loaded intrusion-set: GCMAN
+[DEBUG] Loaded intrusion-set: Ferocious Kitten
+[DEBUG] Loaded intrusion-set: PittyTiger
+[DEBUG] Loaded intrusion-set: APT17
+[DEBUG] Loaded intrusion-set: Water Galura
+[DEBUG] Loaded intrusion-set: BlackOasis
+[DEBUG] Loaded intrusion-set: IndigoZebra
+[DEBUG] Loaded intrusion-set: SilverTerrier
+[DEBUG] Loaded intrusion-set: Strider
+[DEBUG] Loaded intrusion-set: AppleJeus
+[DEBUG] Loaded intrusion-set: Scarlet Mimic
+[DEBUG] Loaded intrusion-set: TA578
+[DEBUG] Loaded intrusion-set: APT16
+[DEBUG] Loaded intrusion-set: Moafee
+[DEBUG] Loaded intrusion-set: NEODYMIUM
+[DEBUG] Loaded intrusion-set: DragonOK
+[DEBUG] Loaded intrusion-set: Taidoor
+[DEBUG] Loaded intrusion-set: APT-C-23
+[DEBUG] Loaded intrusion-set: MONSOON
+[DEBUG] Loaded intrusion-set: Charming Kitten
+[DEBUG] Loaded intrusion-set: APT34
+[DEBUG][MITRE] attack_patterns loaded: 835
+[DEBUG][MITRE] malware loaded: 696
+[DEBUG][MITRE] groups loaded: 187
+[DEBUG][MITRE] tools loaded: 91
+[DEBUG][MITRE] relationships loaded: 20048
+[DEBUG][MITRE] name_index entries: 1778
+[DEBUG][MITRE] attack_id_index entries: 835
+[DEBUG][MITRE] sample first 5 technique IDs: ['T1055.011', 'T1053.005', 'T1205.002', 'T1066', 'T1560.001']
+[+] Running Phase 2: IR → STIX
+    [*] Processing Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.ir-only.json
+        → wrote Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.ir-only.stix.json
+        → wrote Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.ir-only.stix.txt
+[D3FEND] Enriching STIX bundle...
+[D3FEND] No scenario directory found.
+[D3FEND] Loaded TTL ontology module: d3fend-protege.ttl
+[D3FEND] Loaded TTL ontology module: d3fend-cco.ttl
+[D3FEND] ERROR parsing /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/mappings/d3fend-ontology-mappings.ttl: at line 107 of <>:
+Bad syntax (objectList expected) at ^ in:
+"...b'ws a dublin code property" .\n    owl:sameAs bibo:contributor'^b" . ## Isn't handled well by OWLAPI/Robot; and capturing this"..."
+[D3FEND] Loaded TTL ontology module: example-initiative.ttl
+[D3FEND] Loaded TTL ontology module: d3fend-catalog.ttl
+[D3FEND] Defensive techniques discovered: 0
+[D3FEND] CAD Graph: 16 nodes, 0 edges
+        → performed D3FEND enrichment
+ontology_info keys:
+dict_keys(['ontology_modules', 'cad_schema', 'mappings_used', 'bundle', 'cad_graph'])
+        → wrote Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.ir-only.cad.json (CAD Graph Preview)
+
+===== D3FEND ENRICHMENT DEBUG =====
+[Ontology] Loaded 5 ontology_modules:
+   - /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/d3fend-protege.ttl
+   - /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/mappings/d3fend-cco.ttl
+   - /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/mappings/d3fend-ontology-mappings.ttl
+   - /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/initiatives/example-initiative.ttl
+   - /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/extensions/d3fend-catalog.ttl
+
+[CAD Schema] /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/D3fend_CAD_Graph_Schema.json
+
+[Dynamic D3FEND Class Mappings]:
+   malware              → d3f:malware
+   tool                 → d3f:tool
+   threat-actor         → d3f:threat-actor
+   attack-pattern       → d3f:attack-pattern
+===== END D3FEND ENRICHMENT DEBUG =====
+

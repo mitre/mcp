@@ -1,0 +1,1 @@
+import{getContext as e,getElement as r,store as t}from"@wordpress/interactivity";t("bloginabox-theme/card",{state:{isVisible:!1},actions:{init(){const{ref:t}=r(),i=e(),o=new IntersectionObserver(e=>{e.forEach(e=>{e.isIntersecting&&(i.isVisible=!0,o.unobserve(e.target))})},{root:null,rootMargin:"0px",threshold:.15});o.observe(t)}}});

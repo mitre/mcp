@@ -1,8 +1,11 @@
 import logging
 import dspy
 from app.utility.base_service import BaseService
+
 from plugins.mcp.app.mcp_factory_client import run as factory_run
 from plugins.mcp.app.mcp_planner_client import run as planner_run
+from plugins.mcp.app.range_planner_client import run as range_planner_run
+
 from plugins.mcp.app.rag import RAGService
 from enum import Enum
 import mlflow
@@ -15,6 +18,7 @@ class ExecuteStyle(Enum):
     LLMplanner = "planner"
     RAGplanner = "rag_planner"
     RAGfactory = "rag_factory"
+    RANGEplanner = "range_planner"
 
 class MCPService(BaseService):
     def __init__(self, services):
@@ -135,19 +139,59 @@ class MCPService(BaseService):
                 # Execute appropriate pipeline
                 result = {}
                 if use_rag:
-                    if focus in [ExecuteStyle.LLMplanner.value, ExecuteStyle.RAGplanner.value]:
-                        self.log.info(f"[MCP] Executing RAG-enhanced planner with prompt: {prompt}")
-                        result = await planner_run(prompt, lm_obj, rag_context=rag_context, run_id=run_id)
-                    else:
-                        self.log.info(f"[MCP] Executing RAG-enhanced factory with prompt: {prompt}")
-                        result = await factory_run(prompt, lm_obj, rag_context=rag_context, run_id=run_id)
+                    match focus:
+                        case ExecuteStyle.LLMplanner.value | ExecuteStyle.RAGplanner.value:
+                            self.log.info(f"[MCP] Executing RAG-enhanced planner with prompt: {prompt}")
+                            result = await planner_run(
+                                prompt,
+                                lm_obj,
+                                rag_context=rag_context,
+                                run_id=run_id,
+                            )
+
+                        case ExecuteStyle.RANGEplanner.value:
+                            self.log.info(f"[MCP] Executing RAG-enhanced RANGE planner with prompt: {prompt}")
+                            result = await range_planner_run(
+                                prompt,
+                                lm_obj,
+                                rag_context=rag_context,
+                                run_id=run_id,
+                            )
+
+                        case _:  # default → RAG factory
+                            self.log.info(f"[MCP] Executing RAG-enhanced factory with prompt: {prompt}")
+                            result = await factory_run(
+                                prompt,
+                                lm_obj,
+                                rag_context=rag_context,
+                                run_id=run_id,
+                            )
+
                 else:
-                    if focus == ExecuteStyle.LLMplanner.value:
-                        self.log.info(f"[MCP] Executing planner with prompt: {prompt}")
-                        result = await planner_run(prompt, lm_obj, run_id=run_id)
-                    else:
-                        self.log.info(f"[MCP] Executing factory with prompt: {prompt}")
-                        result = await factory_run(prompt, lm_obj, run_id=run_id)
+                    match focus:
+                        case ExecuteStyle.LLMplanner.value:
+                            self.log.info(f"[MCP] Executing planner with prompt: {prompt}")
+                            result = await planner_run(
+                                prompt,
+                                lm_obj,
+                                run_id=run_id,
+                            )
+
+                        case ExecuteStyle.RANGEplanner.value:
+                            self.log.info(f"[MCP] Executing RANGE planner with prompt: {prompt}")
+                            result = await range_planner_run(
+                                prompt,
+                                lm_obj,
+                                run_id=run_id,
+                            )
+
+                        case _:
+                            self.log.info(f"[MCP] Executing factory with prompt: {prompt}")
+                            result = await factory_run(
+                                prompt,
+                                lm_obj,
+                                run_id=run_id,
+                            )
 
                 mlflow.set_tag("stage", "complete")
                 mlflow.set_tag("status", "success")

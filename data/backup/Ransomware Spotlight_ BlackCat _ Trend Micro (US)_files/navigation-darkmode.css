@@ -1,0 +1,185 @@
+/* new nav */
+.headerAssemblyV1 {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999999999999999;
+}
+
+    .headerAssemblyV1 .page-header nav .hamburger-wrapper .mainNavMenuV1 .mainNavMenu .list-wrapper:nth-child(3) .menu-link.is-active::before {
+        position: absolute;
+        font-family: "Material Icons Outlined";
+        -webkit-font-feature-settings: "liga" 1;
+        font-feature-settings: "liga" 1;
+        content: "\279D";
+        font-size: 22px;
+        font-size: 1.5rem;
+        right: -16.5px;
+        right: -1.03125rem;
+    }
+
+
+
+    .headerAssemblyV1 .page-header nav .hamburger-wrapper .mainNavMenuV1 .mainNavMenu .nav-item-2 li .label .menu-link:hover::before {
+        position: absolute;
+        font-family: "Material Icons Outlined";
+        -webkit-font-feature-settings: "liga" 1;
+        font-feature-settings: "liga" 1;
+        content: "\279D";
+        font-size: 22px;
+        font-size: 1.5rem;
+        right: -16.5px;
+        right: -1.03125rem;
+    }
+
+    .headerAssemblyV1 .page-header nav .hamburger-wrapper .mainNavMenuV1 .mainNavMenu .list-wrapper:nth-child(1) .nav-level-0 .label::after {
+        position: absolute;
+        font-family: "Material Icons Outlined";
+        -webkit-font-feature-settings: "liga" 1;
+        font-feature-settings: "liga" 1;
+        content: "\276F";
+        font-size: 24px;
+        font-size: 1.5rem;
+        right: 25px;
+        right: 1.5625rem;
+        top: 50%;
+        -webkit-transform: translateY(-50%);
+        -ms-transform: translateY(-50%);
+        transform: translateY(-50%);
+    }
+
+
+    .headerAssemblyV1 .page-header .utilityMenuV1 .utilityMenu .dropDownMenuV1 .label::after {
+        position: absolute;
+        font-family: "Material Icons Outlined";
+        -webkit-font-feature-settings: "liga" 1;
+        font-feature-settings: "liga" 1;
+        content: "\276F";
+        font-size: 24px;
+        font-size: 1.5rem;
+        right: 25px;
+        right: 1.5625rem;
+        top: 50%;
+        -webkit-transform: translateY(-50%);
+        -ms-transform: translateY(-50%);
+        transform: translateY(-50%);
+    }
+
+
+    .headerAssemblyV1 .page-header nav .hamburger-wrapper {
+        max-height: 90vh !important;
+    }
+
+        .headerAssemblyV1 .page-header nav .hamburger-wrapper .mainNavMenuV1 .mainNavMenu .list-wrapper:nth-child(2) .nav-level-1 .label.branch::after {
+            position: absolute;
+            font-family: "Material Icons Outlined";
+            -webkit-font-feature-settings: "liga" 1;
+            font-feature-settings: "liga" 1;
+            content: "\276F";
+            font-size: 24px;
+            font-size: 1.5rem;
+            right: 25px;
+            right: 1.5625rem;
+            top: 50%;
+            -webkit-transform: translateY(-50%);
+            -ms-transform: translateY(-50%);
+            transform: translateY(-50%);
+        }
+
+        .headerAssemblyV1 .page-header nav .hamburger-wrapper .mainNavMenuV1 .mainNavMenu .list-wrapper:nth-child(2), .headerAssemblyV1 .page-header nav .hamburger-wrapper .mainNavMenuV1 .mainNavMenu .list-wrapper:nth-child(3), .headerAssemblyV1 .page-header nav .hamburger-wrapper .mainNavMenuV1 .mainNavMenu .list-wrapper:nth-child(4), .headerAssemblyV1 .page-header nav .hamburger-wrapper .mainNavMenuV1 .mainNavMenu .list-wrapper:nth-child(5) {
+            transition: none;
+        }
+
+
+        .headerAssemblyV1 .page-header nav .hamburger-wrapper .mainNavMenuV1 .mainNavMenu .back-one-level span::before {
+            position: absolute;
+            font-family: "Material Icons Outlined";
+            -webkit-font-feature-settings: "liga" 1;
+            font-feature-settings: "liga" 1;
+            content: "\276E";
+            font-size: 24px;
+            font-size: 1.5rem;
+            left: 0;
+            top: 50%;
+            -webkit-transform: translateY(-50%);
+            -ms-transform: translateY(-50%);
+            transform: translateY(-50%);
+        }
+
+    .headerAssemblyV1 .page-header .utilityMenuV1 .utilityMenu .utility-wrapper.active-utility-wrapper .back-one-level-utility span::before {
+        position: absolute;
+        font-family: "Material Icons Outlined";
+        -webkit-font-feature-settings: "liga" 1;
+        font-feature-settings: "liga" 1;
+        content: "\276E";
+        font-size: 24px;
+        font-size: 1.5rem;
+        left: 0;
+        top: 50%;
+        -webkit-transform: translateY(-50%);
+        -ms-transform: translateY(-50%);
+        transform: translateY(-50%);
+    }
+
+    .headerAssemblyV1 .page-header .utilityMenuV1 .utilityMenu .utility-wrapper:nth-child(2) {
+        transition: none;
+    }
+
+    .headerAssemblyV1 .page-header nav .hamburger-wrapper {
+        max-height: 90vh !important;
+        overflow-y: auto;
+    }
+
+        .headerAssemblyV1 .page-header nav .hamburger-wrapper .mainNavMenuV1 .mainNavMenu .menu-link {
+            width: 100%;
+        }
+
+
+    .headerAssemblyV1 .page-header nav .header-bar .inner-nav-wrapper .search-icon {
+        margin-right: 20px;
+        z-index: 9999999;
+        position: relative;
+    }
+
+section.bottommargintop {
+    z-index: 999999999 !important;
+}
+
+#cludo-search-form table.gsc-search-box {
+    margin-bottom: 0px;
+    width: 100%;
+}
+
+.headerAssemblyV1 .page-header nav .header-bar .inner-nav-wrapper .close-search-icon {
+    margin-right: 15px;
+    color: #fff;
+}
+
+.businessHeaderV1 {
+    --stickyNavPaddingTop: 100px;
+}
+
+@media screen and (max-width: 1021px) {
+    .search.is-visible {
+        height: auto !important;
+        z-index: 99999999999;
+        position: fixed;
+    }
+
+    .search .inner-search-wrap .main-menu-search::before {
+        width: 0px;
+    }
+
+    #cludo-search-form table.gsc-search-box {
+        margin-bottom: 0px;
+        width: 100%;
+        margin-top: 0px;
+    }
+
+    .businessHeaderV1 {
+        --stickyNavPaddingTop: 75px;
+    }
+}
+
+
+/* end new nav */

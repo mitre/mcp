@@ -1,0 +1,12 @@
+[
+  {
+    "source": "Exmatter",
+    "relationship": "communicates-with",
+    "target": "BlackMatter"
+  },
+  {
+    "source": "Exmatter",
+    "relationship": "associated-with",
+    "target": "BlackMatter"
+  }
+]

@@ -1,10 +1,23 @@
----
 llm:
-  model: gpt-4o
-  api_key: 
-  offline: true
+  model: ollama/gemma3n:latest
+  api_key: "ollama"
+  api_base: http://127.0.0.1:11434
+  offline: false
   use_mock: false
+
 factory:
-  model: gpt-4o
-  api_key: 
+  model: ollama/gemma3n:latest
+  api_key: "ollama"
+  api_base: http://127.0.0.1:11434
+  offline: false
+  use_mock: false
   temperature: 0.4
+
+cti:
+  model: ollama/gemma3n:latest 
+  api_key: "ollama"
+  api_base: http://127.0.0.1:11434
+  offline: false
+  use_mock: false
+  temperature: 0.1
+  stix_dir: plugins/mcp/data/stix_cti  # where we’ll save bundles

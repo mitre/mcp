@@ -1,7 +1,10 @@
 import dspy
 import json
-from typing import List, Dict, Optional
+from typing import List, Dict
 import logging
+import os
+import glob
+from app.utility.base_world import BaseWorld
 
 class RAGService:
     """RAG service for CTI (Cyber Threat Intelligence) data retrieval using STIX bundles."""
@@ -21,16 +24,38 @@ class RAGService:
         if stix_bundle_path:
             self.load_stix_bundle(stix_bundle_path)
     
-    def load_stix_bundle(self, stix_bundle_path: str, embed_model: str = 'openai/text-embedding-3-small'):
-        """Load STIX bundle from file path and build embeddings."""
+    def load_stix_bundle(
+        self,
+        stix_bundle_path: str,
+        embed_model: str = 'openai/text-embedding-3-small',
+        cti_dir: str = 'plugins/mcp/data/stix_cti'
+    ):
+        """Load base STIX bundle + any CTI STIX bundles from dir, then build embeddings."""
+        bundles = []
+
+        # Base bundle (the one you pass in)
         try:
             with open(stix_bundle_path, 'r') as f:
-                stix_bundle = json.load(f)
-            self.initialize_from_bundles([stix_bundle], embed_model=embed_model)
+                base_bundle = json.load(f)
+            bundles.append(base_bundle)
         except FileNotFoundError:
             raise FileNotFoundError(f"STIX bundle not found at: {stix_bundle_path}")
         except json.JSONDecodeError:
             raise ValueError(f"Invalid JSON in STIX bundle: {stix_bundle_path}")
+
+        # Extra CTI-derived bundles from CTI MCP (if directory exists)
+        if os.path.isdir(cti_dir):
+            for path in glob.glob(os.path.join(cti_dir, '*.json')):
+                try:
+                    with open(path, 'r') as f:
+                        bundles.append(json.load(f))
+                    self.log.info(f"[RAG] Loaded CTI STIX bundle: {path}")
+                except Exception as ex:
+                    self.log.warning(f"[RAG] Failed to load CTI STIX bundle {path}: {ex}")
+
+        # One call, reusing your existing multi-bundle initializer
+        self.initialize_from_bundles(bundles, embed_model=embed_model)
+
     
     def initialize_from_bundles(self, stix_bundles: List[dict], embed_model: str = 'openai/text-embedding-3-small'):
         """Initialize the RAG service with multiple STIX bundles and create retriever."""
@@ -141,7 +166,7 @@ class RAGService:
             "thoughts": thoughts  # <-- used for Stage/Thoughts display
         }
 
-
+    
 # Legacy functions for backward compatibility
 def search_cti_title(query: str) -> list[str]:
     """Legacy function - use RAGService instead."""

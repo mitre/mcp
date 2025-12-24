@@ -1,0 +1,17 @@
+{
+  "timestamp": "2025-11-26T18:21:54.071533Z",
+  "input_counts": {
+    "malware": 4,
+    "tools": 6,
+    "threat_actors": 2,
+    "infrastructure": 0,
+    "attack_patterns": 4,
+    "behaviors": 7,
+    "relationships": 0
+  },
+  "output_counts": {
+    "total_stix_objects": 16,
+    "relationships": 0,
+    "attack_patterns": 4
+  }
+}
