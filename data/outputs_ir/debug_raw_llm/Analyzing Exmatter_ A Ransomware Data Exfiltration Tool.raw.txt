@@ -1,0 +1,840 @@
+```json
+{
+  "threat_actors": [
+    {
+      "name": "Kroll's Threat Intelligence team reports more than 200 ransomware threat actor groups",
+      "description": "Kroll's Threat Intelligence team tracks more than 200 ransomware threat actor groups based on over 3,200 incident response engagements in 2021."
+    },
+    {
+      "name": "BlackMatter",
+      "description": "Originally associated with the BlackMatter Ransomware-as-a-Service (RaaS) operation, but variants are now used by other RaaS groups."
+    }
+  ],
+  "malware": [
+    {
+      "name": "Exmatter",
+      "description": "A custom exfiltration tool used by ransomware operators to steal user files, databases, and compressed files. It uploads data to a preconfigured server via SFTP.  It also has anti-forensic capabilities and can use a WebDav client as a secondary exfiltration method."
+    },
+    {
+      "name": "Ryuk Infostealer",
+      "description": "An exfiltration tool capable of programmatic identification and automatic exfiltration of data."
+    },
+    {
+      "name": "StealBit",
+      "description": "An exfiltration tool capable of programmatic identification and automatic exfiltration of data, associated with the LockBit 2.0 operator."
+    },
+    {
+      "name": "Conti Ransomware",
+      "description": "A ransomware group that a newer variant of Exmatter was observed being used with for exfiltration."
+    }
+  ],
+  "tools": [
+    {
+      "name": "Exmatter",
+      "description": "Custom exfiltration tool that iterates through folders, prioritizes recently modified files, and excludes directories within 'C:\\ProgramData\\'. It uses SFTP to exfiltrate data, with options for WebDav failover and a SOCKS5 proxy."
+    },
+    {
+      "name": "PowerShell",
+      "description": "Used by Exmatter to overwrite the file and delete itself after exfiltration, employing anti-forensic techniques."
+    },
+    {
+      "name": "ADFind",
+      "description": "Tool used for network and Active Directory administration that can be abused for reconnaissance."
+    },
+    {
+      "name": "Advanced IP Scanner",
+      "description": "Tool used for network scanning that can be abused for reconnaissance."
+    },
+    {
+      "name": "Windows Sysinternals suite",
+      "description": "Legitimately signed binaries that can be used for malicious activities like credential dumping (Procdump) and malware/ransomware deployment (PsExec)."
+    },
+    {
+      "name": "Themida",
+      "description": "Anti-reverse engineering software protection utility used to protect the Exmatter executable."
+    }
+  ],
+  "infrastructure": [],
+  "attack_patterns": [
+    "Data exfiltration before ransomware deployment",
+    "Targeting specific file extensions (web/application source code, Remote Desktop shortcuts, CAD/GIS files)",
+    "Use of legitimate tools for reconnaissance",
+    "Tampering with Group Policy Objects (GPO)"
+  ],
+  "behaviors": [
+    {
+      "description": "Data exfiltration is performed shortly before ransomware deployment."
+    },
+    {
+      "description": "The tool prioritizes recently modified files for exfiltration."
+    },
+    {
+      "description": "The tool ignores directories within 'C:\\ProgramData\\'."
+    },
+    {
+      "description": "The tool accepts command-line arguments to hide its window."
+    },
+    {
+      "description": "Uses SFTP to exfiltrate data."
+    },
+    {
+      "description": "Uses WebDav as a secondary exfiltration method."
+    },
+    {
+      "description": "Uses a SOCKS5 proxy."
+    }
+  ],
+  "relationships": [
+    {
+      "source": "Exmatter",
+      "relationship": "uses",
+      "target": "SFTP"
+    },
+    {
+      "source": "Exmatter",
+      "relationship": "uses",
+      "target": "WebDav"
+    },
+    {
+      "source": "Exmatter",
+      "relationship": "uses",
+      "target": "PowerShell"
+    },
+    {
+      "source": "Exmatter",
+      "relationship": "associated-with",
+      "target": "BlackMatter"
+    },
+    {
+      "source": "Ryuk Infostealer",
+      "relationship": "used-by",
+      "target": "ransomware operators"
+    },
+    {
+      "source": "StealBit",
+      "relationship": "used-by",
+      "target": "LockBit 2.0 operator"
+    }
+  ]
+}
+```
+```json
+{
+  "threat_actors": [
+    {
+      "name": "Kroll's Threat Intelligence team reports more than 200 ransomware threat actor groups",
+      "description": "Kroll's Threat Intelligence team tracks more than 200 ransomware threat actor groups based on over 3,200 incident response engagements in 2021."
+    },
+    {
+      "name": "BlackMatter",
+      "description": "Originally associated with the BlackMatter Ransomware-as-a-Service (RaaS) operation, but variants are now used by other RaaS groups."
+    }
+  ],
+  "malware": [
+    {
+      "name": "Exmatter",
+      "description": "A custom exfiltration tool used by ransomware operators to steal user files, databases, and compressed files. It uploads data to a preconfigured server via SFTP.  It also has anti-forensic capabilities and can use a WebDav client as a secondary exfiltration method."
+    },
+    {
+      "name": "Ryuk Infostealer",
+      "description": "An exfiltration tool capable of programmatic identification and automatic exfiltration of data."
+    },
+    {
+      "name": "StealBit",
+      "description": "An exfiltration tool capable of programmatic identification and automatic exfiltration of data, associated with the LockBit 2.0 operator."
+    },
+    {
+      "name": "Conti Ransomware",
+      "description": "A ransomware group that a newer variant of Exmatter was observed being used with for exfiltration."
+    }
+  ],
+  "tools": [
+    {
+      "name": "Exmatter",
+      "description": "Custom exfiltration tool that iterates through folders, prioritizes recently modified files, and excludes directories within 'C:\\ProgramData\\'. It uses SFTP to exfiltrate data, with options for WebDav failover and a SOCKS5 proxy."
+    },
+    {
+      "name": "PowerShell",
+      "description": "Used by Exmatter to overwrite the file and delete itself after exfiltration, employing anti-forensic techniques."
+    },
+    {
+      "name": "ADFind",
+      "description": "Tool used for network and Active Directory administration that can be abused for reconnaissance."
+    },
+    {
+      "name": "Advanced IP Scanner",
+      "description": "Tool used for network scanning that can be abused for reconnaissance."
+    },
+    {
+      "name": "Windows Sysinternals suite",
+      "description": "Legitimately signed binaries that can be used for malicious activities like credential dumping (Procdump) and malware/ransomware deployment (PsExec)."
+    },
+    {
+      "name": "Themida",
+      "description": "Anti-reverse engineering software protection utility used to protect the Exmatter executable."
+    }
+  ],
+  "infrastructure": [],
+  "attack_patterns": [
+    "Data exfiltration before ransomware deployment",
+    "Targeting specific file extensions (web/application source code, Remote Desktop shortcuts, CAD/GIS files)",
+    "Use of legitimate tools for reconnaissance",
+    "Tampering with Group Policy Objects (GPO)"
+  ],
+  "behaviors": [
+    {
+      "description": "Data exfiltration is performed shortly before ransomware deployment."
+    },
+    {
+      "description": "The tool prioritizes recently modified files for exfiltration."
+    },
+    {
+      "description": "The tool ignores directories within 'C:\\ProgramData\\'."
+    },
+    {
+      "description": "The tool accepts command-line arguments to hide its window."
+    },
+    {
+      "description": "Uses SFTP to exfiltrate data."
+    },
+    {
+      "description": "Uses WebDav as a secondary exfiltration method."
+    },
+    {
+      "description": "Uses a SOCKS5 proxy."
+    }
+  ],
+  "relationships": [
+    {
+      "source": "Exmatter",
+      "relationship": "uses",
+      "target": "SFTP"
+    },
+    {
+      "source": "Exmatter",
+      "relationship": "uses",
+      "target": "WebDav"
+    },
+    {
+      "source": "Exmatter",
+      "relationship": "uses",
+      "target": "PowerShell"
+    },
+    {
+      "source": "Exmatter",
+      "relationship": "associated-with",
+      "target": "BlackMatter"
+    },
+    {
+      "source": "Ryuk Infostealer",
+      "relationship": "used-by",
+      "target": "ransomware operators"
+    },
+    {
+      "source": "StealBit",
+      "relationship": "used-by",
+      "target": "LockBit 2.0 operator"
+    }
+  ]
+}
+```
+```json
+{
+  "threat_actors": [
+    {
+      "name": "Kroll's Threat Intelligence team reports more than 200 ransomware threat actor groups",
+      "description": "Kroll's Threat Intelligence team tracks more than 200 ransomware threat actor groups based on over 3,200 incident response engagements in 2021."
+    },
+    {
+      "name": "BlackMatter",
+      "description": "Originally associated with the BlackMatter Ransomware-as-a-Service (RaaS) operation, but variants are now used by other RaaS groups."
+    }
+  ],
+  "malware": [
+    {
+      "name": "Exmatter",
+      "description": "A custom exfiltration tool used by ransomware operators to steal user files, databases, and compressed files. It uploads data to a preconfigured server via SFTP.  It also has anti-forensic capabilities and can use a WebDav client as a secondary exfiltration method."
+    },
+    {
+      "name": "Ryuk Infostealer",
+      "description": "An exfiltration tool capable of programmatic identification and automatic exfiltration of data."
+    },
+    {
+      "name": "StealBit",
+      "description": "An exfiltration tool capable of programmatic identification and automatic exfiltration of data, associated with the LockBit 2.0 operator."
+    },
+    {
+      "name": "Conti Ransomware",
+      "description": "A ransomware group that a newer variant of Exmatter was observed being used with for exfiltration."
+    }
+  ],
+  "tools": [
+    {
+      "name": "Exmatter",
+      "description": "Custom exfiltration tool that iterates through folders, prioritizes recently modified files, and excludes directories within 'C:\\ProgramData\\'. It uses SFTP to exfiltrate data, with options for WebDav failover and a SOCKS5 proxy."
+    },
+    {
+      "name": "PowerShell",
+      "description": "Used by Exmatter to overwrite the file and delete itself after exfiltration, employing anti-forensic techniques."
+    },
+    {
+      "name": "ADFind",
+      "description": "Tool used for network and Active Directory administration that can be abused for reconnaissance."
+    },
+    {
+      "name": "Advanced IP Scanner",
+      "description": "Tool used for network scanning that can be abused for reconnaissance."
+    },
+    {
+      "name": "Windows Sysinternals suite",
+      "description": "Legitimately signed binaries that can be used for malicious activities like credential dumping (Procdump) and malware/ransomware deployment (PsExec)."
+    },
+    {
+      "name": "Themida",
+      "description": "Anti-reverse engineering software protection utility used to protect the Exmatter executable."
+    }
+  ],
+  "infrastructure": [],
+  "attack_patterns": [
+    "Data exfiltration before ransomware deployment",
+    "Targeting specific file extensions (web/application source code, Remote Desktop shortcuts, CAD/GIS files)",
+    "Use of legitimate tools for reconnaissance",
+    "Tampering with Group Policy Objects (GPO)"
+  ],
+  "behaviors": [
+    {
+      "description": "Data exfiltration is performed shortly before ransomware deployment."
+    },
+    {
+      "description": "The tool prioritizes recently modified files for exfiltration."
+    },
+    {
+      "description": "The tool ignores directories within 'C:\\ProgramData\\'."
+    },
+    {
+      "description": "The tool accepts command-line arguments to hide its window."
+    },
+    {
+      "description": "Uses SFTP to exfiltrate data."
+    },
+    {
+      "description": "Uses WebDav as a secondary exfiltration method."
+    },
+    {
+      "description": "Uses a SOCKS5 proxy."
+    }
+  ],
+  "relationships": [
+    {
+      "source": "Exmatter",
+      "relationship": "uses",
+      "target": "SFTP"
+    },
+    {
+      "source": "Exmatter",
+      "relationship": "uses",
+      "target": "WebDav"
+    },
+    {
+      "source": "Exmatter",
+      "relationship": "uses",
+      "target": "PowerShell"
+    },
+    {
+      "source": "Exmatter",
+      "relationship": "associated-with",
+      "target": "BlackMatter"
+    },
+    {
+      "source": "Ryuk Infostealer",
+      "relationship": "used-by",
+      "target": "ransomware operators"
+    },
+    {
+      "source": "StealBit",
+      "relationship": "used-by",
+      "target": "LockBit 2.0 operator"
+    }
+  ]
+}
+```
+```json
+{
+  "threat_actors": [
+    {
+      "name": "Kroll's Threat Intelligence team reports more than 200 ransomware threat actor groups",
+      "description": "Kroll's Threat Intelligence team tracks more than 200 ransomware threat actor groups based on over 3,200 incident response engagements in 2021."
+    },
+    {
+      "name": "BlackMatter",
+      "description": "Originally associated with the BlackMatter Ransomware-as-a-Service (RaaS) operation, but variants are now used by other RaaS groups."
+    }
+  ],
+  "malware": [
+    {
+      "name": "Exmatter",
+      "description": "A custom exfiltration tool used by ransomware operators to steal user files, databases, and compressed files. It uploads data to a preconfigured server via SFTP.  It also has anti-forensic capabilities and can use a WebDav client as a secondary exfiltration method."
+    },
+    {
+      "name": "Ryuk Infostealer",
+      "description": "An exfiltration tool capable of programmatic identification and automatic exfiltration of data."
+    },
+    {
+      "name": "StealBit",
+      "description": "An exfiltration tool capable of programmatic identification and automatic exfiltration of data, associated with the LockBit 2.0 operator."
+    },
+    {
+      "name": "Conti Ransomware",
+      "description": "A ransomware group that a newer variant of Exmatter was observed being used with for exfiltration."
+    }
+  ],
+  "tools": [
+    {
+      "name": "Exmatter",
+      "description": "Custom exfiltration tool that iterates through folders, prioritizes recently modified files, and excludes directories within 'C:\\ProgramData\\'. It uses SFTP to exfiltrate data, with options for WebDav failover and a SOCKS5 proxy."
+    },
+    {
+      "name": "PowerShell",
+      "description": "Used by Exmatter to overwrite the file and delete itself after exfiltration, employing anti-forensic techniques."
+    },
+    {
+      "name": "ADFind",
+      "description": "Tool used for network and Active Directory administration that can be abused for reconnaissance."
+    },
+    {
+      "name": "Advanced IP Scanner",
+      "description": "Tool used for network scanning that can be abused for reconnaissance."
+    },
+    {
+      "name": "Windows Sysinternals suite",
+      "description": "Legitimately signed binaries that can be used for malicious activities like credential dumping (Procdump) and malware/ransomware deployment (PsExec)."
+    },
+    {
+      "name": "Themida",
+      "description": "Anti-reverse engineering software protection utility used to protect the Exmatter executable."
+    }
+  ],
+  "infrastructure": [],
+  "attack_patterns": [
+    "Data exfiltration before ransomware deployment",
+    "Targeting specific file extensions (web/application source code, Remote Desktop shortcuts, CAD/GIS files)",
+    "Use of legitimate tools for reconnaissance",
+    "Tampering with Group Policy Objects (GPO)"
+  ],
+  "behaviors": [
+    {
+      "description": "Data exfiltration is performed shortly before ransomware deployment."
+    },
+    {
+      "description": "The tool prioritizes recently modified files for exfiltration."
+    },
+    {
+      "description": "The tool ignores directories within 'C:\\ProgramData\\'."
+    },
+    {
+      "description": "The tool accepts command-line arguments to hide its window."
+    },
+    {
+      "description": "Uses SFTP to exfiltrate data."
+    },
+    {
+      "description": "Uses WebDav as a secondary exfiltration method."
+    },
+    {
+      "description": "Uses a SOCKS5 proxy."
+    }
+  ],
+  "relationships": [
+    {
+      "source": "Exmatter",
+      "relationship": "uses",
+      "target": "SFTP"
+    },
+    {
+      "source": "Exmatter",
+      "relationship": "uses",
+      "target": "WebDav"
+    },
+    {
+      "source": "Exmatter",
+      "relationship": "uses",
+      "target": "PowerShell"
+    },
+    {
+      "source": "Exmatter",
+      "relationship": "associated-with",
+      "target": "BlackMatter"
+    },
+    {
+      "source": "Ryuk Infostealer",
+      "relationship": "used-by",
+      "target": "ransomware operators"
+    },
+    {
+      "source": "StealBit",
+      "relationship": "used-by",
+      "target": "LockBit 2.0 operator"
+    }
+  ]
+}
+```
+```json
+{
+  "threat_actors": [
+    {
+      "name": "Kroll's Threat Intelligence team reports more than 200 ransomware threat actor groups",
+      "description": "Kroll's Threat Intelligence team tracks more than 200 ransomware threat actor groups based on over 3,200 incident response engagements in 2021."
+    },
+    {
+      "name": "BlackMatter",
+      "description": "Originally associated with the BlackMatter Ransomware-as-a-Service (RaaS) operation, but variants are now used by other RaaS groups."
+    }
+  ],
+  "malware": [
+    {
+      "name": "Exmatter",
+      "description": "A custom exfiltration tool used by ransomware operators to steal user files, databases, and compressed files. It uploads data to a preconfigured server via SFTP.  It also has anti-forensic capabilities and can use a WebDav client as a secondary exfiltration method."
+    },
+    {
+      "name": "Ryuk Infostealer",
+      "description": "An exfiltration tool capable of programmatic identification and automatic exfiltration of data."
+    },
+    {
+      "name": "StealBit",
+      "description": "An exfiltration tool capable of programmatic identification and automatic exfiltration of data, associated with the LockBit 2.0 operator."
+    },
+    {
+      "name": "Conti Ransomware",
+      "description": "A ransomware group that a newer variant of Exmatter was observed being used with for exfiltration."
+    }
+  ],
+  "tools": [
+    {
+      "name": "Exmatter",
+      "description": "Custom exfiltration tool that iterates through folders, prioritizes recently modified files, and excludes directories within 'C:\\ProgramData\\'. It uses SFTP to exfiltrate data, with options for WebDav failover and a SOCKS5 proxy."
+    },
+    {
+      "name": "PowerShell",
+      "description": "Used by Exmatter to overwrite the file and delete itself after exfiltration, employing anti-forensic techniques."
+    },
+    {
+      "name": "ADFind",
+      "description": "Tool used for network and Active Directory administration that can be abused for reconnaissance."
+    },
+    {
+      "name": "Advanced IP Scanner",
+      "description": "Tool used for network scanning that can be abused for reconnaissance."
+    },
+    {
+      "name": "Windows Sysinternals suite",
+      "description": "Legitimately signed binaries that can be used for malicious activities like credential dumping (Procdump) and malware/ransomware deployment (PsExec)."
+    },
+    {
+      "name": "Themida",
+      "description": "Anti-reverse engineering software protection utility used to protect the Exmatter executable."
+    }
+  ],
+  "infrastructure": [],
+  "attack_patterns": [
+    "Data exfiltration before ransomware deployment",
+    "Targeting specific file extensions (web/application source code, Remote Desktop shortcuts, CAD/GIS files)",
+    "Use of legitimate tools for reconnaissance",
+    "Tampering with Group Policy Objects (GPO)"
+  ],
+  "behaviors": [
+    {
+      "description": "Data exfiltration is performed shortly before ransomware deployment."
+    },
+    {
+      "description": "The tool prioritizes recently modified files for exfiltration."
+    },
+    {
+      "description": "The tool ignores directories within 'C:\\ProgramData\\'."
+    },
+    {
+      "description": "The tool accepts command-line arguments to hide its window."
+    },
+    {
+      "description": "Uses SFTP to exfiltrate data."
+    },
+    {
+      "description": "Uses WebDav as a secondary exfiltration method."
+    },
+    {
+      "description": "Uses a SOCKS5 proxy."
+    }
+  ],
+  "relationships": [
+    {
+      "source": "Exmatter",
+      "relationship": "uses",
+      "target": "SFTP"
+    },
+    {
+      "source": "Exmatter",
+      "relationship": "uses",
+      "target": "WebDav"
+    },
+    {
+      "source": "Exmatter",
+      "relationship": "uses",
+      "target": "PowerShell"
+    },
+    {
+      "source": "Exmatter",
+      "relationship": "associated-with",
+      "target": "BlackMatter"
+    },
+    {
+      "source": "Ryuk Infostealer",
+      "relationship": "used-by",
+      "target": "ransomware operators"
+    },
+    {
+      "source": "StealBit",
+      "relationship": "used-by",
+      "target": "LockBit 2.0 operator"
+    }
+  ]
+}
+```
+```json
+{
+  "threat_actors": [
+    {
+      "name": "Kroll's Threat Intelligence team reports more than 200 ransomware threat actor groups",
+      "description": "Kroll's Threat Intelligence team tracks more than 200 ransomware threat actor groups based on over 3,200 incident response engagements in 2021."
+    },
+    {
+      "name": "BlackMatter",
+      "description": "Originally associated with the BlackMatter Ransomware-as-a-Service (RaaS) operation, but variants are now used by other RaaS groups."
+    }
+  ],
+  "malware": [
+    {
+      "name": "Exmatter",
+      "description": "A custom exfiltration tool used by ransomware operators to steal user files, databases, and compressed files. It uploads data to a preconfigured server via SFTP.  It also has anti-forensic capabilities and can use a WebDav client as a secondary exfiltration method."
+    },
+    {
+      "name": "Ryuk Infostealer",
+      "description": "An exfiltration tool capable of programmatic identification and automatic exfiltration of data."
+    },
+    {
+      "name": "StealBit",
+      "description": "An exfiltration tool capable of programmatic identification and automatic exfiltration of data, associated with the LockBit 2.0 operator."
+    },
+    {
+      "name": "Conti Ransomware",
+      "description": "A ransomware group that a newer variant of Exmatter was observed being used with for exfiltration."
+    }
+  ],
+  "tools": [
+    {
+      "name": "Exmatter",
+      "description": "Custom exfiltration tool that iterates through folders, prioritizes recently modified files, and excludes directories within 'C:\\ProgramData\\'. It uses SFTP to exfiltrate data, with options for WebDav failover and a SOCKS5 proxy."
+    },
+    {
+      "name": "PowerShell",
+      "description": "Used by Exmatter to overwrite the file and delete itself after exfiltration, employing anti-forensic techniques."
+    },
+    {
+      "name": "ADFind",
+      "description": "Tool used for network and Active Directory administration that can be abused for reconnaissance."
+    },
+    {
+      "name": "Advanced IP Scanner",
+      "description": "Tool used for network scanning that can be abused for reconnaissance."
+    },
+    {
+      "name": "Windows Sysinternals suite",
+      "description": "Legitimately signed binaries that can be used for malicious activities like credential dumping (Procdump) and malware/ransomware deployment (PsExec)."
+    },
+    {
+      "name": "Themida",
+      "description": "Anti-reverse engineering software protection utility used to protect the Exmatter executable."
+    }
+  ],
+  "infrastructure": [],
+  "attack_patterns": [
+    "Data exfiltration before ransomware deployment",
+    "Targeting specific file extensions (web/application source code, Remote Desktop shortcuts, CAD/GIS files)",
+    "Use of legitimate tools for reconnaissance",
+    "Tampering with Group Policy Objects (GPO)"
+  ],
+  "behaviors": [
+    {
+      "description": "Data exfiltration is performed shortly before ransomware deployment."
+    },
+    {
+      "description": "The tool prioritizes recently modified files for exfiltration."
+    },
+    {
+      "description": "The tool ignores directories within 'C:\\ProgramData\\'."
+    },
+    {
+      "description": "The tool accepts command-line arguments to hide its window."
+    },
+    {
+      "description": "Uses SFTP to exfiltrate data."
+    },
+    {
+      "description": "Uses WebDav as a secondary exfiltration method."
+    },
+    {
+      "description": "Uses a SOCKS5 proxy."
+    }
+  ],
+  "relationships": [
+    {
+      "source": "Exmatter",
+      "relationship": "uses",
+      "target": "SFTP"
+    },
+    {
+      "source": "Exmatter",
+      "relationship": "uses",
+      "target": "WebDav"
+    },
+    {
+      "source": "Exmatter",
+      "relationship": "uses",
+      "target": "PowerShell"
+    },
+    {
+      "source": "Exmatter",
+      "relationship": "associated-with",
+      "target": "BlackMatter"
+    },
+    {
+      "source": "Ryuk Infostealer",
+      "relationship": "used-by",
+      "target": "ransomware operators"
+    },
+    {
+      "source": "StealBit",
+      "relationship": "used-by",
+      "target": "LockBit 2.0 operator"
+    }
+  ]
+}
+```
+```json
+{
+  "threat_actors": [
+    {
+      "name": "Kroll's Threat Intelligence team reports more than 200 ransomware threat actor groups",
+      "description": "Kroll's Threat Intelligence team tracks more than 200 ransomware threat actor groups based on over 3,200 incident response engagements in 2021."
+    },
+    {
+      "name": "BlackMatter",
+      "description": "Originally associated with the BlackMatter Ransomware-as-a-Service (RaaS) operation, but variants are now used by other RaaS groups."
+    }
+  ],
+  "malware": [
+    {
+      "name": "Exmatter",
+      "description": "A custom exfiltration tool used by ransomware operators to steal user files, databases, and compressed files. It uploads data to a preconfigured server via SFTP.  It also has anti-forensic capabilities and can use a WebDav client as a secondary exfiltration method."
+    },
+    {
+      "name": "Ryuk Infostealer",
+      "description": "An exfiltration tool capable of programmatic identification and automatic exfiltration of data."
+    },
+    {
+      "name": "StealBit",
+      "description": "An exfiltration tool capable of programmatic identification and automatic exfiltration of data, associated with the LockBit 2.0 operator."
+    },
+    {
+      "name": "Conti Ransomware",
+      "description": "A ransomware group that a newer variant of Exmatter was observed being used with for exfiltration."
+    }
+  ],
+  "tools": [
+    {
+      "name": "Exmatter",
+      "description": "Custom exfiltration tool that iterates through folders, prioritizes recently modified files, and excludes directories within 'C:\\ProgramData\\'. It uses SFTP to exfiltrate data, with options for WebDav failover and a SOCKS5 proxy."
+    },
+    {
+      "name": "PowerShell",
+      "description": "Used by Exmatter to overwrite the file and delete itself after exfiltration, employing anti-forensic techniques."
+    },
+    {
+      "name": "ADFind",
+      "description": "Tool used for network and Active Directory administration that can be abused for reconnaissance."
+    },
+    {
+      "name": "Advanced IP Scanner",
+      "description": "Tool used for network scanning that can be abused for reconnaissance."
+    },
+    {
+      "name": "Windows Sysinternals suite",
+      "description": "Legitimately signed binaries that can be used for malicious activities like credential dumping (Procdump) and malware/ransomware deployment (PsExec)."
+    },
+    {
+      "name": "Themida",
+      "description": "Anti-reverse engineering software protection utility used to protect the Exmatter executable."
+    }
+  ],
+  "infrastructure": [],
+  "attack_patterns": [
+    "Data exfiltration before ransomware deployment",
+    "Targeting specific file extensions (web/application source code, Remote Desktop shortcuts, CAD/GIS files)",
+    "Use of legitimate tools for reconnaissance",
+    "Tampering with Group Policy Objects (GPO)"
+  ],
+  "behaviors": [
+    {
+      "description": "Data exfiltration is performed shortly before ransomware deployment."
+    },
+    {
+      "description": "The tool prioritizes recently modified files for exfiltration."
+    },
+    {
+      "description": "The tool ignores directories within 'C:\\ProgramData\\'."
+    },
+    {
+      "description": "The tool accepts command-line arguments to hide its window."
+    },
+    {
+      "description": "Uses SFTP to exfiltrate data."
+    },
+    {
+      "description": "Uses WebDav as a secondary exfiltration method."
+    },
+    {
+      "description": "Uses a SOCKS5 proxy."
+    }
+  ],
+  "relationships": [
+    {
+      "source": "Exmatter",
+      "relationship": "uses",
+      "target": "SFTP"
+    },
+    {
+      "source": "Exmatter",
+      "relationship": "uses",
+      "target": "WebDav"
+    },
+    {
+      "source": "Exmatter",
+      "relationship": "uses",
+      "target": "PowerShell"
+    },
+    {
+      "source": "Exmatter",
+      "relationship": "associated-with",
+      "target": "BlackMatter"
+    },
+    {
+      "source": "Ryuk Infostealer",
+      "relationship": "used-by",
+      "target": "ransomware operators"
+    },
+    {
+      "source": "StealBit",
+      "relationship": "used-by",
+      "target": "LockBit 2.0 operator"
+    }
+  ]
+}
+```

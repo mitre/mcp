@@ -81,7 +81,6 @@ def cosine_sim(a, b):
         return 0.0
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
-
 # ---------------------------------------------------------
 # Behavior → technique mapping
 # ---------------------------------------------------------
@@ -111,6 +110,8 @@ def map_behaviors_to_techniques(behaviors, techniques, text):
 
         s = technique_score(tech, text_tokens, behavior_tokens)
         if s > 1.0:
+            tech = dict(tech)
+            tech["confidence"] = s
             print(f"[MITRE-SCORE] {tech['id']} {tech['name']} → {s:.2f}")
             scored.append((s, tech))
 

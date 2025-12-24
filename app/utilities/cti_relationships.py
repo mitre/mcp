@@ -10,7 +10,7 @@ This module:
 import spacy, re, asyncio
 from nltk.corpus import wordnet as wn
 from utilities.cti_mitre_extract import cosine_sim
-from cti_parsing_test import ollama_generate_async
+from utilities.cti_parsing import ollama_generate_async
 
 
 # Load spaCy model
@@ -463,3 +463,4 @@ def best_entity_match(phrase, ir):
         return candidates[0]
 
     return None
+

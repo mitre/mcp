@@ -19,7 +19,7 @@ import json
 import asyncio
 from pathlib import Path
 
-from cti_parsing_test import ollama_generate_async
+from utilities.cti_parsing import ollama_generate_async
 
 
 # --------------------------------------------------------------------
