@@ -7,32 +7,34 @@ All orchestration, CLI, and scenario routing lives in cti_ingest_svc.py.
 """
 
 import json
-import re
 import asyncio
 from pathlib import Path
 
 # ------------------------------------------------------------
 # CTI Raw Text Cleaning and Extraction
 # ------------------------------------------------------------
-from utilities.cti_raw_parser import parse_raw_cti
 from utilities.cti_raw_cleaner import clean_raw_directory
-
 from utilities.cti_parsing import extract_ir, render_ir_summary
 from utilities.cti_mitre_extract import extract_mitre_techniques, convert_sets
+
 from utilities.cti_relationships import (
     semantic_relationships,
     normalize_llm_relationships,
     repair_llm_relationship_dicts,
     pattern_based_relationships,
+    relationships_from_behaviors
 )
+
 from utilities.cti_taxonomy_loader import build_normalized_attack_patterns
 from utilities.cti_linguistics import (
     normalize_behavior_text,
     canonicalize_relationship_endpoints,
     extract_dynamic_techniques
 )
-from utilities.cti_entity_validator import validate_entities, repair_entities
 
+from utilities.cti_entity_validator import validate_entities, repair_entities
+from utilities.cti_relationships import REL_REJECTIONS
+from utilities.cti_mitre_extract import MITRE_DROPPED
 # ------------------------------------------------------------
 # NLP Enhancement Layers
 # ------------------------------------------------------------
@@ -43,48 +45,23 @@ from utilities.nlp.cti_semantic_enrichment import clean_ir_nlp_layer3
 # ------------------------------------------------------------
 # Directory Constants
 # ------------------------------------------------------------
-RAW_DIR_NAME     = "raw"
-CLEAN_DIR_NAME   = "clean"
-OUTPUTS_IR_DIR   = "outputs_ir"
-IMAGES_DIR_NAME  = "images"
+RAW_DIR_NAME    = "raw"
+CLEAN_DIR_NAME  = "clean"
+OUTPUTS_IR_DIR  = "outputs_ir"
+IMAGES_DIR_NAME = "images"
 
 # ==============================================================
 # Directory Setup
 # ==============================================================
 
 def ensure_dirs(base_dir: Path):
-    raw_dir    = base_dir / RAW_DIR_NAME
-    clean_dir  = base_dir / CLEAN_DIR_NAME
-    outputs    = base_dir / OUTPUTS_IR_DIR
-    images_dir = base_dir / IMAGES_DIR_NAME
-    for d in (raw_dir, clean_dir, outputs, images_dir):
+    raw_dir   = base_dir / RAW_DIR_NAME
+    clean_dir = base_dir / CLEAN_DIR_NAME
+    outputs   = base_dir / OUTPUTS_IR_DIR
+    images    = base_dir / IMAGES_DIR_NAME
+    for d in (raw_dir, clean_dir, outputs, images):
         d.mkdir(parents=True, exist_ok=True)
-    return raw_dir, clean_dir, outputs, images_dir
-
-# ==============================================================
-# CTI Detection
-# ==============================================================
-
-def is_likely_cti_text(txt: str) -> bool:
-    lowered = txt.lower()
-
-    cti_markers = [
-        "tactic", "technique", "ttp", "exfiltrat", "lateral", "c2",
-        "command and control", "malware", "ransomware", "threat actor",
-        "indicator", "infrastructure", "payload", "weaponize",
-        "initial access", "execution", "persistence"
-    ]
-
-    hits = sum(1 for k in cti_markers if k in lowered)
-    print(f"[CTI-DETECT] len={len(txt)} keyword_hits={hits}")
-
-    if hits >= 3:
-        return True
-
-    if len(txt) > 200 and ("attack" in lowered or "threat" in lowered):
-        return True
-
-    return False
+    return raw_dir, clean_dir, outputs, images
 
 # ==============================================================
 # Step 1 — raw → clean
@@ -100,239 +77,223 @@ def step_raw_to_clean(base_dir: Path):
 
 async def step_parse_to_ir(base_dir: Path, stop_after: str | None = None):
     _, clean_dir, outputs, _ = ensure_dirs(base_dir)
-    ir_dir = outputs / "debug_ir"
-    mitre_dir = outputs / "debug_mitre"
-    rel_dir = outputs / "debug_relationships"
 
-    for d in (ir_dir, mitre_dir, rel_dir):
+    ir_dir     = outputs / "debug_ir"
+    rel_dir    = outputs / "debug_relationships"
+    mitre_dir  = outputs / "debug_mitre"
+    final_dir  = outputs / "complete"
+
+    for d in (ir_dir, rel_dir, mitre_dir, final_dir):
         d.mkdir(parents=True, exist_ok=True)
 
+    sem = asyncio.Semaphore(3)
 
-    for path in clean_dir.glob("*.txt"):
-        print(f"\n[*] Processing: {path.name}")
+    async def process_file(path: Path):
+        async with sem:
+            print(f"\n[*] Processing: {path.name}")
+            txt = path.read_text(errors="ignore")
 
-        txt = path.read_text(errors="ignore")
-        if not is_likely_cti_text(txt):
-            print("    → Skipping: not CTI")
-            continue
-
-        debug_dir = outputs / "debug_raw_llm"
-        debug_dir.mkdir(exist_ok=True)
-        debug_file = debug_dir / f"{path.stem}.raw.txt"
-
-        # ----------------------------------------------------
-        # IR extraction
-        # ----------------------------------------------------
-        print("    → Calling LLM for IR…")
-        ir = await extract_ir(txt, debug_path=debug_file)
-
-        print(
-            f"[IR] Entities → actors={len(ir.get('threat_actors',[]))} "
-            f"malware={len(ir.get('malware',[]))} "
-            f"tools={len(ir.get('tools',[]))} "
-            f"infra={len(ir.get('infrastructure',[]))}"
-        )
-
-        # ---------------- DEBUG: IR-only ----------------
-        if stop_after == "ir":
-            ir_json = ir_dir / f"{path.stem}.ir-only.json"
-            ir_txt  = ir_dir / f"{path.stem}.ir-only.txt"
-
-            ir_dump = convert_sets(ir)
-            ir_json.write_text(json.dumps(ir_dump, indent=2), encoding="utf-8")
-            ir_txt.write_text(render_ir_summary(ir_dump), encoding="utf-8")
-            print("    → Wrote IR-only JSON:", ir_json)
-            print("    → Wrote IR-only TXT :", ir_txt)
-            continue
-
-        # ----------------------------------------------------
-        # NLP Layers 1 & 2
-        # ----------------------------------------------------
-        print("    → NLP Layer 1: behavior + actor enhancements…")
-        ir = clean_ir_nlp_layer1(ir, txt)
-
-        print("    → NLP Layer 2: dependency-based relationship recovery…")
-        ir = clean_ir_nlp_layer2(ir, txt)
-
-        try:
-            ir = await validate_entities(ir)
-        except Exception as e:
-            print(f"[!] Entity validation error: {e}")
-
-        # ----------------------------------------------------
-        # MITRE enrichment
-        # ----------------------------------------------------
-        print("    → Extracting MITRE techniques…")
-        techniques, lookup = build_normalized_attack_patterns()
-
-        clean_behaviors = []
-        for b in ir.get("behaviors", []):
-            text = b.get("text") if isinstance(b, dict) else str(b)
-            text = text.strip()
-            if text:
-                clean_behaviors.append({"description": normalize_behavior_text(text)})
-
-        ir["behaviors"] = clean_behaviors
-        print(f"[IR] Normalized behaviors: {len(clean_behaviors)}")
-
-        print("    → NLP Layer 3: semantic enrichment…")
-        ir = clean_ir_nlp_layer3(ir, {"attack_patterns": techniques})
-        layer3_ttps = ir.get("attack_patterns", [])
-
-        ling_techs = extract_dynamic_techniques(txt, techniques)
-        print(f"[LING] Extracted {len(ling_techs)} dynamic techniques")
-
-        mitre_techs = extract_mitre_techniques(
-            txt, ir.get("behaviors", []), techniques, lookup
-        )
-
-        normalized = []
-        seen = set()
-        for t in layer3_ttps + ling_techs + mitre_techs:
-            tid = t.get("id") if isinstance(t, dict) else t
-            if tid and tid not in seen:
-                seen.add(tid)
-                normalized.append(t if isinstance(t, dict) else {"id": tid, "name": tid})
-
-        # ----------------------------------------------------
-        # Analyst-style MITRE filtering (behavior-anchored)
-        # ----------------------------------------------------
-        behavior_text = " ".join(
-            b.get("description","") for b in ir.get("behaviors", [])
-        ).lower()
-
-        filtered = []
-        for t in normalized:
-            # Normalize evidence to text for analyst filtering
-            raw_evidence = t.get("evidence", "")
-
-            if isinstance(raw_evidence, list):
-                evidence_text = " ".join(str(e) for e in raw_evidence)
+            # -----------------------------
+            # Resume or extract IR
+            # -----------------------------
+            ir_path = ir_dir / f"{path.stem}.ir-only.json"
+            if ir_path.exists():
+                ir = json.loads(ir_path.read_text())
+                print(f"[RESUME] Loaded IR for {path.stem}")
             else:
-                evidence_text = str(raw_evidence)
+                ir = await extract_ir(txt)
+                ir = convert_sets(ir)
+                ir_path.write_text(json.dumps(ir, indent=2), encoding="utf-8")
+                (ir_dir / f"{path.stem}.ir-only.txt").write_text(
+                    render_ir_summary(ir), encoding="utf-8"
+                )
 
-            evidence = f"{evidence_text} {t.get('name','')}".lower()
-            if any(word in behavior_text for word in evidence.split()):
-                filtered.append(t)
+            if stop_after == "ir":
+                return
 
-        filtered.sort(key=lambda t: t.get("confidence", 0), reverse=True)
-        ir["attack_patterns"] = filtered
-        print(f"[IR] Total MITRE techniques after merge: {len(normalized)}")
+            # -----------------------------
+            # NLP cleanup layers
+            # -----------------------------
+            ir = clean_ir_nlp_layer1(ir, txt)
+            ir = clean_ir_nlp_layer2(ir, txt)
 
-        # ---------------- DEBUG: MITRE-only ----------------
-        if stop_after == "mitre":
-            mitre_json = mitre_dir / f"{path.stem}.mitre-only.json"
-            mitre_txt  = mitre_dir / f"{path.stem}.mitre-only.txt"
+            # -----------------------------
+            # Relationship extraction (MUST happen before validation)
+            # -----------------------------
+            print("    → Extracting relationships…")
 
-            mitre_dump = convert_sets(ir)
-            mitre_json.write_text(json.dumps(mitre_dump, indent=2), encoding="utf-8")
-            mitre_txt.write_text(
-                "\n".join(f"{t['id']} — {t.get('name','')}" for t in ir["attack_patterns"]),
-                encoding="utf-8"
-            )
-            print("    → Wrote MITRE-only JSON:", mitre_json)
-            print("    → Wrote MITRE-only TXT :", mitre_txt)
-            continue
+            rel_sem = await semantic_relationships(txt, ir)
+            rel_beh = relationships_from_behaviors(ir.get("behaviors", []), ir)
 
-        # ----------------------------------------------------
-        # Relationship extraction
-        # ----------------------------------------------------
-        print("    → Extracting relationships…")
-        rel_sem = semantic_relationships(txt, ir)
+            try:
+                rel_llm = await normalize_llm_relationships(
+                    ir.get("relationships", []), ir
+                )
+                rel_llm = repair_llm_relationship_dicts(rel_llm, ir)
+            except Exception:
+                rel_llm = []
 
-        try:
-            rel_llm = normalize_llm_relationships(ir.get("relationships", []), ir)
-            rel_llm = repair_llm_relationship_dicts(rel_llm, ir)
-        except Exception as e:
-            print(f"[REL3] LLM relationship error: {e}")
-            rel_llm = []
+            try:
+                rel_pat = pattern_based_relationships(txt, ir)
+            except Exception:
+                rel_pat = []
 
-        try:
-            rel_pat = pattern_based_relationships(txt, ir)
-        except Exception as e:
-            print(f"[REL3] Pattern-based error: {e}")
-            rel_pat = []
+            all_rel = rel_sem + rel_beh + rel_llm + rel_pat
+            ir["relationships"] = canonicalize_relationship_endpoints(ir, all_rel)
 
-        all_rel = canonicalize_relationship_endpoints(
-            ir, ir.get("relationships", []) + rel_sem + rel_llm + rel_pat
-        )
+            # -----------------------------
+            # NOW validate entities (safe)
+            # -----------------------------
+            ir = await validate_entities(ir)
 
-        ir["relationships"] = canonicalize_relationship_endpoints(ir, all_rel)
-        ir = repair_entities(ir)
-        ir["threat_actors"] = infer_threat_actors(ir)
-        # valid = {
-        #     e["name"].lower()
-        #     for g in ("threat_actors", "malware", "tools", "infrastructure")
-        #     for e in ir.get(g, [])
-        # }
-        valid_entities = {
-            e.get("name","").lower()
-            for group in ("threat_actors", "malware", "tools", "infrastructure")
-            for e in ir.get(group, [])
-            if e.get("name")
-        }
+            ir = repair_entities(ir)
 
-        cleaned = [
-            r for r in ir.get("relationships", [])
-            if (
-                r.get("source","").lower() in valid_entities
-                or r.get("target","").lower() in valid_entities
-            )
-        ]
+            # Preserve extracted actors; augment with inferred
+            existing = ir.get("threat_actors", [])
+            existing_names = {
+                a.get("name","").lower()
+                for a in existing if a.get("name")
+            }
 
-        ir["relationships"] = cleaned
-        print(f"[REL] kept={len(cleaned)}")
+            inferred = infer_threat_actors(ir)
+            for a in inferred:
+                n = a.get("name","").lower()
+                if n and n not in existing_names:
+                    existing.append(a)
+                    existing_names.add(n)
 
-        # ---------------- DEBUG: RELATIONSHIPS-only ----------------
-        if stop_after == "relationships":
-            rel_json = rel_dir / f"{path.stem}.relationships-only.json"
-            rel_txt  = rel_dir / f"{path.stem}.relationships-only.txt"
+            ir["threat_actors"] = existing
+
+            # Filter relationships to valid entities
+            valid_entities = {
+                e.get("name","").lower()
+                for g in ("threat_actors","malware","tools","infrastructure")
+                for e in ir.get(g, [])
+                if e.get("name")
+            }
+
+            # Analyst rule:
+            # Keep relationship if EITHER endpoint is still valid
+            ir["relationships"] = [
+                r for r in ir.get("relationships", [])
+                if (
+                    r.get("source","").lower() in valid_entities
+                    and (
+                        r.get("target","").lower() in valid_entities
+                        or r.get("target","").startswith("<")
+                    )
+                )
+            ]
+
+
+            # Debug relationships
+            try:
+                (rel_dir / f"{path.stem}.relationships.rejected.json").write_text(
+                    json.dumps(REL_REJECTIONS, indent=2), encoding="utf-8"
+                )
+            except Exception:
+                pass
 
             rel_dump = convert_sets(ir)
-            rel_json.write_text(json.dumps(rel_dump, indent=2), encoding="utf-8")
-            rel_txt.write_text(
+            (rel_dir / f"{path.stem}.relationships.json").write_text(
+                json.dumps(rel_dump, indent=2), encoding="utf-8"
+            )
+            (rel_dir / f"{path.stem}.relationships.txt").write_text(
                 "\n".join(
                     f"{r['source']} {r['relationship']} {r['target']}"
-                    for r in ir["relationships"]
+                    for r in ir.get("relationships", [])
                 ),
                 encoding="utf-8"
             )
-            print("    → Wrote REL-only JSON:", rel_json)
-            print("    → Wrote REL-only TXT :", rel_txt)
-            continue
 
-        # ----------------------------------------------------
-        # Final outputs
-        # ----------------------------------------------------
-        ir = convert_sets(ir)
-        final_dir = outputs / "complete"
-        final_dir.mkdir(exist_ok=True)
+            if stop_after == "relationships":
+                return
 
-        ir_json = final_dir / f"{path.stem}.json"
-        ir_txt  = final_dir / f"{path.stem}.txt"
+            # -----------------------------
+            # MITRE enrichment (unchanged)
+            # -----------------------------
+            techniques, lookup = build_normalized_attack_patterns()
 
-        ir_json.write_text(json.dumps(ir, indent=2), encoding="utf-8")
-        ir_txt.write_text(render_ir_summary(ir), encoding="utf-8")
+            clean_behaviors = []
+            for b in ir.get("behaviors", []):
+                raw = b.get("text") if isinstance(b, dict) else str(b)
+                if not raw:
+                    continue
 
-        print("    → Wrote complete JSON:", ir_json)
-        print("    → Wrote complete TXT :", ir_txt)
+                norm = normalize_behavior_text(raw)
+                if not norm:
+                    continue
 
+                clean_behaviors.append({
+                    "text": norm,
+                    "description": norm,
+                    "confidence": b.get("confidence", 0.6),
+                    "source": b.get("source", "llm"),
+                })
+
+            ir["behaviors"] = clean_behaviors
+            ir = clean_ir_nlp_layer3(ir, {"attack_patterns": techniques})
+
+            ling = extract_dynamic_techniques(txt, techniques)
+            mitre = extract_mitre_techniques(
+                txt, ir.get("behaviors", []), techniques, lookup
+            )
+
+            seen, merged = set(), []
+            for t in ir.get("attack_patterns", []) + ling + mitre:
+                if isinstance(t, dict):
+                    tid = t.get("id")
+                    if not tid:
+                        continue
+                    entry = t
+                elif isinstance(t, str):
+                    tid = t
+                    entry = {"id": tid, "name": tid}
+                else:
+                    continue
+
+                if tid not in seen:
+                    seen.add(tid)
+                    merged.append(entry)
+
+            ir["attack_patterns"] = [
+                {
+                    "id": t["id"],
+                    "name": t["name"],
+                    "confidence": round(min(float(t.get("confidence",0.0)),1.0),2),
+                    "evidence": t.get("evidence") or t.get("source_context") or "",
+                }
+                for t in merged
+            ]
+
+            final = convert_sets(ir)
+            (final_dir / f"{path.stem}.json").write_text(
+                json.dumps(final, indent=2), encoding="utf-8"
+            )
+            (final_dir / f"{path.stem}.txt").write_text(
+                render_ir_summary(final), encoding="utf-8"
+            )
+
+    await asyncio.gather(*(process_file(p) for p in clean_dir.glob("*.txt")))
     print("\n[+] parse-to-ir complete.")
+
+# ==============================================================
+# Threat Actor Inference
+# ==============================================================
 
 def infer_threat_actors(ir: dict) -> list[dict]:
     """
-    Infer threat actors based on demonstrated malicious agency.
-
-    An entity is considered a threat actor if it appears as the SOURCE
-    of a relationship whose TARGET is malware, tools, or infrastructure.
-    This avoids brittle keyword or relationship-name filtering.
+    Augment actors based on relationships.
+    MUST NOT remove or gate existing actors.
     """
+    if not ir.get("relationships"):
+        return []
 
-    malware = {m.get("name") for m in ir.get("malware", []) if m.get("name")}
-    tools = {t.get("name") for t in ir.get("tools", []) if t.get("name")}
-    infrastructure = {i.get("name") for i in ir.get("infrastructure", []) if i.get("name")}
+    malware = {m["name"].lower() for m in ir.get("malware", []) if m.get("name")}
+    tools   = {t["name"].lower() for t in ir.get("tools", []) if t.get("name")}
+    infra   = {i["name"].lower() for i in ir.get("infrastructure", []) if i.get("name")}
 
-    malicious_targets = {t.lower() for t in malware | tools | infrastructure}
+    malicious_targets = malware | tools | infra
 
     malicious_sources = {
         r.get("source","").lower()
@@ -341,15 +302,6 @@ def infer_threat_actors(ir: dict) -> list[dict]:
     }
 
     return [
-        actor for actor in ir.get("threat_actors", [])
-        if actor.get("name","").lower() in malicious_sources
+        a for a in ir.get("threat_actors", [])
+        if a.get("name","").lower() in malicious_sources
     ]
-    
-def get_step_output_dir(outputs_base: Path, step: str | None) -> Path:
-    """
-    Return a step-scoped output directory under outputs_ir.
-    """
-    if not step:
-        return outputs_base / "complete"
-
-    return outputs_base / f"debug_{step}"

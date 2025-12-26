@@ -103,6 +103,8 @@ async def validate_entities(ir: dict):
 
             if decision == "yes":
                 kept.append(ent)
+            if decision == "uncertain":
+                ent["confidence"] = 0.6
             else:
                 removed.append((name, decision))
 

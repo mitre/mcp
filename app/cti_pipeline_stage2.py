@@ -24,7 +24,7 @@ Debug / Observability:
 import argparse
 import json
 from pathlib import Path
-import uuid
+
 import datetime
 
 
@@ -51,6 +51,7 @@ from utilities.cti_taxonomy_loader import (
 from utilities.cti_stix_validation import validate_bundle
 from utilities.cti_stix_report_writer import render_stix_report
 from utilities.cti_defend_enricher import enrich_stix_bundle_with_defend
+from utilities.cti_relationships import canonicalize_verb
 
 
 # -----------------------------------------------------------
@@ -259,7 +260,7 @@ def convert_ir_to_stix(ir: dict, debug: dict, taxonomy: dict) -> dict:
             debug["relationship_debug"].append(entry)
             continue
 
-        stix_rel = normalize_relationship_verb(raw_rel)
+        stix_rel = canonicalize_verb(raw_rel)
         rel_obj = make_relationship(stix_rel, name_to_id[src_name], name_to_id[dst_name])
 
         if rel_obj:
@@ -451,36 +452,3 @@ def run_stix_to_cad_only(base_dir: Path):
         else:
             print("        [!] No CAD graph returned.")
 
-# -----------------------------------------------------------
-# Main CLI
-# -----------------------------------------------------------
-
-def main():
-    parser = argparse.ArgumentParser(description="Phase 2: IR → STIX")
-    parser.add_argument(
-        "--base-dir",
-        type=Path,
-        default=DEFAULT_BASE_DIR,
-        help="Base directory (contains outputs_ir/, outputs_stix/)"
-    )
-    
-    parser.add_argument(
-        "--stix-to-cad",
-        action="store_true",
-        help="Skip IR→STIX and ONLY run STIX→CAD enrichment"
-    )
-
-    args = parser.parse_args()
-    base_dir = args.base_dir.resolve()
-    print(f"[+] Using base dir: {base_dir}")
-    # -------------------------------
-    # Dispatch based on flag
-    # -------------------------------
-    if args.stix_to_cad:
-        run_stix_to_cad_only(base_dir)
-    else:
-        run_phase2(base_dir)
-
-
-if __name__ == "__main__":
-    main()

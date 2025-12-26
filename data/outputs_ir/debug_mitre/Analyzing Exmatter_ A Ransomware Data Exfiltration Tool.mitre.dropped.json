@@ -1,0 +1,162 @@
+[
+  {
+    "reason": "evidence_too_short",
+    "behavior": "uses sftp to exfiltrate data."
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "uses a socks5 proxy."
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "track groups"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "examine one"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "analyze samples"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "\u2019 toolset"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "know"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "have"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "put pressure"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "design"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "observe"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "identify attackers"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "assess"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "mean"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "identify"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "establish"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "identify factor"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "leverage techniques"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "observe variants"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "suggest"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "observe variant"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "include filter"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "confirm"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "extract executable"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "find"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "identify data"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "attempt"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "utilize tools"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "use binaries"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "raise suspicion"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "observe actors"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "recommend strategies"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "implement practices"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "find more"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "map posture"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "highlight need"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "reach"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "stay"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "draw"
+  },
+  {
+    "reason": "evidence_too_short",
+    "behavior": "ensure"
+  }
+]

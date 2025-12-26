@@ -1,0 +1,107 @@
+Threat Actors:
+  - BlackMatter: Originally associated with the BlackMatter Ransomware-as-a-Service (RaaS) operation, but variants are now used by other RaaS groups.
+
+Malware:
+  - Ryuk Infostealer: An exfiltration tool capable of programmatic identification and automatic exfiltration of data.
+  - Conti Ransomware: A ransomware group that a newer variant of Exmatter was observed being used with for exfiltration.
+
+Tools:
+  - Exmatter: Custom exfiltration tool that iterates through folders, prioritizes recently modified files, and excludes directories within 'C:\ProgramData\'. It uses SFTP to exfiltrate data, with options for WebDav failover and a SOCKS5 proxy.
+  - PowerShell: Used by Exmatter to overwrite the file and delete itself after exfiltration, employing anti-forensic techniques.
+  - ADFind: Tool used for network and Active Directory administration that can be abused for reconnaissance.
+  - Advanced IP Scanner: Tool used for network scanning that can be abused for reconnaissance.
+  - Windows Sysinternals suite: Legitimately signed binaries that can be used for malicious activities like credential dumping (Procdump) and malware/ransomware deployment (PsExec).
+  - Themida: Anti-reverse engineering software protection utility used to protect the Exmatter executable.
+
+Infrastructure:
+  (none)
+
+Attack Patterns:
+  - Data exfiltration before ransomware deployment: 
+  - Targeting specific file extensions (web/application source code, Remote Desktop shortcuts, CAD/GIS files): 
+  - Use of legitimate tools for reconnaissance: 
+  - Tampering with Group Policy Objects (GPO): 
+  - LC_MAIN Hijacking: 
+  - Spearphishing via Service: 
+  - Develop Capabilities: 
+  - Spearphishing via Service: 
+  - Reflection Amplification: 
+  - OS Exhaustion Flood: 
+  - Data Transfer Size Limits: 
+  - Impair Defenses: 
+  - Data Manipulation: 
+  - Match Legitimate Resource Name or Location: 
+  - Port Knocking: 
+  - Space after Filename: 
+  - Container and Resource Discovery: 
+  - Virtual Private Server: 
+  - Masquerade File Type: 
+  - Bidirectional Communication: 
+  - Hidden Files and Directories: 
+  - Masquerade Account Name: 
+  - Mark-of-the-Web Bypass: 
+  - Modify System Image: 
+  - Spearphishing Attachment: 
+  - Indicator Removal from Tools: 
+  - Dylib Hijacking: 
+  - Binary Padding: 
+  - Spearphishing Attachment: 
+  - Clear Command History: 
+  - Clear Command History: 
+  - Credentials In Files: 
+  - Credentials in Files: 
+  - Archive Collected Data: 
+  - Archive via Custom Method: 
+  - Exfiltration over USB: 
+  - Data Encrypted: 
+  - Hidden Files and Directories: 
+
+Behaviors:
+  - (unnamed): data exfiltration is performed shortly before ransomware deployment.
+  - (unnamed): the tool prioritizes recently modified files for exfiltration.
+  - (unnamed): the tool ignores directories within 'c:\programdata\'.
+  - (unnamed): the tool accepts command-line arguments to hide its window.
+  - (unnamed): uses sftp to exfiltrate data.
+  - (unnamed): uses webdav as a secondary exfiltration method.
+  - (unnamed): uses a socks5 proxy.
+  - (unnamed): track groups
+  - (unnamed): examine one
+  - (unnamed): analyze samples
+  - (unnamed): ’ toolset
+  - (unnamed): know
+  - (unnamed): have
+  - (unnamed): put pressure
+  - (unnamed): design
+  - (unnamed): observe
+  - (unnamed): identify attackers
+  - (unnamed): assess
+  - (unnamed): mean
+  - (unnamed): identify
+  - (unnamed): establish
+  - (unnamed): identify factor
+  - (unnamed): leverage techniques
+  - (unnamed): observe variants
+  - (unnamed): suggest
+  - (unnamed): observe variant
+  - (unnamed): include filter
+  - (unnamed): confirm
+  - (unnamed): extract executable
+  - (unnamed): find
+  - (unnamed): identify data
+  - (unnamed): attempt
+  - (unnamed): utilize tools
+  - (unnamed): use binaries
+  - (unnamed): raise suspicion
+  - (unnamed): observe actors
+  - (unnamed): recommend strategies
+  - (unnamed): implement practices
+  - (unnamed): find more
+  - (unnamed): map posture
+  - (unnamed): highlight need
+  - (unnamed): reach
+  - (unnamed): stay
+  - (unnamed): draw
+  - (unnamed): ensure
+
+Relationships:
+  (none)
