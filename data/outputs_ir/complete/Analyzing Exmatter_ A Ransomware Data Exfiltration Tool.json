@@ -4,13 +4,38 @@
       "name": "BlackMatter",
       "description": "Originally associated with the BlackMatter Ransomware-as-a-Service (RaaS) operation, but variants are now used by other RaaS groups.",
       "canonical": "blackmatter"
+    },
+    {
+      "name": "BlackMatter",
+      "description": "Originally associated with the BlackMatter Ransomware-as-a-Service (RaaS) operation, but variants are now used by other RaaS groups.",
+      "canonical": "blackmatter"
     }
   ],
   "malware": [
     {
+      "name": "Exmatter",
+      "description": "A custom exfiltration tool used by ransomware operators to steal user files, databases, and compressed files. It uploads data to a preconfigured server via SFTP.  It also has anti-forensic capabilities and can use a WebDav client as a secondary exfiltration method.",
+      "canonical": "exmatter"
+    },
+    {
       "name": "Ryuk Infostealer",
       "description": "An exfiltration tool capable of programmatic identification and automatic exfiltration of data.",
       "canonical": "ryukinfostealer"
+    },
+    {
+      "name": "Ryuk Infostealer",
+      "description": "An exfiltration tool capable of programmatic identification and automatic exfiltration of data.",
+      "canonical": "ryukinfostealer"
+    },
+    {
+      "name": "StealBit",
+      "description": "An exfiltration tool capable of programmatic identification and automatic exfiltration of data, associated with the LockBit 2.0 operator.",
+      "canonical": "stealbit"
+    },
+    {
+      "name": "Conti Ransomware",
+      "description": "A ransomware group that a newer variant of Exmatter was observed being used with for exfiltration.",
+      "canonical": "contiransomware"
     },
     {
       "name": "Conti Ransomware",
@@ -25,9 +50,24 @@
       "canonical": "exmatter"
     },
     {
+      "name": "Exmatter",
+      "description": "Custom exfiltration tool that iterates through folders, prioritizes recently modified files, and excludes directories within 'C:\\ProgramData\\'. It uses SFTP to exfiltrate data, with options for WebDav failover and a SOCKS5 proxy.",
+      "canonical": "exmatter"
+    },
+    {
       "name": "PowerShell",
       "description": "Used by Exmatter to overwrite the file and delete itself after exfiltration, employing anti-forensic techniques.",
       "canonical": "powershell"
+    },
+    {
+      "name": "PowerShell",
+      "description": "Used by Exmatter to overwrite the file and delete itself after exfiltration, employing anti-forensic techniques.",
+      "canonical": "powershell"
+    },
+    {
+      "name": "ADFind",
+      "description": "Tool used for network and Active Directory administration that can be abused for reconnaissance.",
+      "canonical": "adfind"
     },
     {
       "name": "ADFind",
@@ -40,9 +80,24 @@
       "canonical": "advancedipscanner"
     },
     {
+      "name": "Advanced IP Scanner",
+      "description": "Tool used for network scanning that can be abused for reconnaissance.",
+      "canonical": "advancedipscanner"
+    },
+    {
       "name": "Windows Sysinternals suite",
       "description": "Legitimately signed binaries that can be used for malicious activities like credential dumping (Procdump) and malware/ransomware deployment (PsExec).",
       "canonical": "windowssysinternalssuite"
+    },
+    {
+      "name": "Windows Sysinternals suite",
+      "description": "Legitimately signed binaries that can be used for malicious activities like credential dumping (Procdump) and malware/ransomware deployment (PsExec).",
+      "canonical": "windowssysinternalssuite"
+    },
+    {
+      "name": "Themida",
+      "description": "Anti-reverse engineering software protection utility used to protect the Exmatter executable.",
+      "canonical": "themida"
     },
     {
       "name": "Themida",
@@ -52,230 +107,6 @@
   ],
   "infrastructure": [],
   "attack_patterns": [
-    {
-      "id": "Data exfiltration before ransomware deployment",
-      "name": "Data exfiltration before ransomware deployment",
-      "confidence": 0.0,
-      "evidence": ""
-    },
-    {
-      "id": "Targeting specific file extensions (web/application source code, Remote Desktop shortcuts, CAD/GIS files)",
-      "name": "Targeting specific file extensions (web/application source code, Remote Desktop shortcuts, CAD/GIS files)",
-      "confidence": 0.0,
-      "evidence": ""
-    },
-    {
-      "id": "Use of legitimate tools for reconnaissance",
-      "name": "Use of legitimate tools for reconnaissance",
-      "confidence": 0.0,
-      "evidence": ""
-    },
-    {
-      "id": "Tampering with Group Policy Objects (GPO)",
-      "name": "Tampering with Group Policy Objects (GPO)",
-      "confidence": 0.0,
-      "evidence": ""
-    },
-    {
-      "id": "T1149",
-      "name": "LC_MAIN Hijacking",
-      "confidence": 0.91,
-      "evidence": [
-        "as well if the"
-      ]
-    },
-    {
-      "id": "T1194",
-      "name": "Spearphishing via Service",
-      "confidence": 0.91,
-      "evidence": [
-        "as well if the"
-      ]
-    },
-    {
-      "id": "T1587",
-      "name": "Develop Capabilities",
-      "confidence": 0.91,
-      "evidence": [
-        "be in development even"
-      ]
-    },
-    {
-      "id": "T1566.003",
-      "name": "Spearphishing via Service",
-      "confidence": 0.91,
-      "evidence": [
-        "as well if the"
-      ]
-    },
-    {
-      "id": "T1498.002",
-      "name": "Reflection Amplification",
-      "confidence": 0.9,
-      "evidence": [
-        "as well if the"
-      ]
-    },
-    {
-      "id": "T1499.001",
-      "name": "OS Exhaustion Flood",
-      "confidence": 0.9,
-      "evidence": [
-        "as well if the"
-      ]
-    },
-    {
-      "id": "T1030",
-      "name": "Data Transfer Size Limits",
-      "confidence": 0.9,
-      "evidence": [
-        "data indicating it may"
-      ]
-    },
-    {
-      "id": "T1562",
-      "name": "Impair Defenses",
-      "confidence": 0.9,
-      "evidence": [
-        "and thus provide threat"
-      ]
-    },
-    {
-      "id": "T1565",
-      "name": "Data Manipulation",
-      "confidence": 0.9,
-      "evidence": [
-        "as well if the"
-      ]
-    },
-    {
-      "id": "T1036.005",
-      "name": "Match Legitimate Resource Name or Location",
-      "confidence": 0.9,
-      "evidence": [
-        "as well if the"
-      ]
-    },
-    {
-      "id": "T1205.001",
-      "name": "Port Knocking",
-      "confidence": 0.9,
-      "evidence": [
-        "as well if the"
-      ]
-    },
-    {
-      "id": "T1151",
-      "name": "Space after Filename",
-      "confidence": 0.9,
-      "evidence": [
-        "as well if the"
-      ]
-    },
-    {
-      "id": "T1613",
-      "name": "Container and Resource Discovery",
-      "confidence": 0.9,
-      "evidence": [
-        "as well if the"
-      ]
-    },
-    {
-      "id": "T1584.003",
-      "name": "Virtual Private Server",
-      "confidence": 0.9,
-      "evidence": [
-        "as well if the"
-      ]
-    },
-    {
-      "id": "T1036.008",
-      "name": "Masquerade File Type",
-      "confidence": 0.9,
-      "evidence": [
-        "found that any file"
-      ]
-    },
-    {
-      "id": "T1102.002",
-      "name": "Bidirectional Communication",
-      "confidence": 0.9,
-      "evidence": [
-        "as well if the"
-      ]
-    },
-    {
-      "id": "T1564.001",
-      "name": "Hidden Files and Directories",
-      "confidence": 0.9,
-      "evidence": [
-        "found that any file"
-      ]
-    },
-    {
-      "id": "T1036.010",
-      "name": "Masquerade Account Name",
-      "confidence": 0.9,
-      "evidence": [
-        "as well if the"
-      ]
-    },
-    {
-      "id": "T1553.005",
-      "name": "Mark-of-the-Web Bypass",
-      "confidence": 0.9,
-      "evidence": [
-        "found that any file"
-      ]
-    },
-    {
-      "id": "T1601",
-      "name": "Modify System Image",
-      "confidence": 0.9,
-      "evidence": [
-        "that these operating system"
-      ]
-    },
-    {
-      "id": "T1566.001",
-      "name": "Spearphishing Attachment",
-      "confidence": 0.89,
-      "evidence": [
-        "as well if the"
-      ]
-    },
-    {
-      "id": "T1066",
-      "name": "Indicator Removal from Tools",
-      "confidence": 0.89,
-      "evidence": [
-        "as well if the"
-      ]
-    },
-    {
-      "id": "T1157",
-      "name": "Dylib Hijacking",
-      "confidence": 0.89,
-      "evidence": [
-        "as well if the"
-      ]
-    },
-    {
-      "id": "T1009",
-      "name": "Binary Padding",
-      "confidence": 0.89,
-      "evidence": [
-        "exfiltrating data should the"
-      ]
-    },
-    {
-      "id": "T1193",
-      "name": "Spearphishing Attachment",
-      "confidence": 0.89,
-      "evidence": [
-        "as well if the"
-      ]
-    },
     {
       "id": "T1070.003",
       "name": "Clear Command History",
@@ -326,6 +157,12 @@
     },
     {
       "id": "T1158",
+      "name": "Hidden Files and Directories",
+      "confidence": 1.0,
+      "evidence": "the tool ignores directories within 'c:\\programdata\\'."
+    },
+    {
+      "id": "T1564.001",
       "name": "Hidden Files and Directories",
       "confidence": 1.0,
       "evidence": "the tool ignores directories within 'c:\\programdata\\'."
@@ -438,21 +275,6 @@
       "kill_chain_phase": "unknown"
     },
     {
-      "description": "track groups",
-      "normalized": "track groups",
-      "semantic_vector": [
-        0.8509803921568628,
-        0.2078431372549019,
-        -0.05882352941176472,
-        -0.23921568627450984,
-        -0.45882352941176474,
-        -0.6549019607843137,
-        0.3254901960784313,
-        0.9764705882352942
-      ],
-      "kill_chain_phase": "unknown"
-    },
-    {
       "description": "examine one",
       "normalized": "examine one",
       "semantic_vector": [
@@ -483,51 +305,6 @@
       "kill_chain_phase": "unknown"
     },
     {
-      "description": "\u2019 toolset",
-      "normalized": "\u2019 toolset",
-      "semantic_vector": [
-        0.9607843137254901,
-        -0.43529411764705883,
-        -0.6627450980392157,
-        -0.592156862745098,
-        -0.4980392156862745,
-        -0.0039215686274509665,
-        -0.6313725490196078,
-        0.615686274509804
-      ],
-      "kill_chain_phase": "unknown"
-    },
-    {
-      "description": "know",
-      "normalized": "know",
-      "semantic_vector": [
-        0.607843137254902,
-        -0.788235294117647,
-        0.4039215686274509,
-        -0.9921568627450981,
-        -0.6627450980392157,
-        0.6235294117647059,
-        0.33333333333333326,
-        -0.9058823529411765
-      ],
-      "kill_chain_phase": "unknown"
-    },
-    {
-      "description": "have",
-      "normalized": "have",
-      "semantic_vector": [
-        -0.803921568627451,
-        -0.5294117647058824,
-        -0.45882352941176474,
-        0.41960784313725497,
-        -0.6862745098039216,
-        -0.803921568627451,
-        -0.9372549019607843,
-        0.6470588235294117
-      ],
-      "kill_chain_phase": "unknown"
-    },
-    {
       "description": "put pressure",
       "normalized": "put pressure",
       "semantic_vector": [
@@ -539,36 +316,6 @@
         0.9137254901960785,
         -0.3254901960784313,
         0.2784313725490195
-      ],
-      "kill_chain_phase": "unknown"
-    },
-    {
-      "description": "design",
-      "normalized": "design",
-      "semantic_vector": [
-        0.30980392156862746,
-        -0.019607843137254943,
-        0.8196078431372549,
-        0.3019607843137255,
-        0.7098039215686274,
-        0.26274509803921564,
-        -0.8588235294117648,
-        0.16862745098039222
-      ],
-      "kill_chain_phase": "unknown"
-    },
-    {
-      "description": "observe",
-      "normalized": "observe",
-      "semantic_vector": [
-        -0.09019607843137256,
-        0.8196078431372549,
-        0.1450980392156862,
-        0.5764705882352941,
-        -0.8666666666666667,
-        -0.6235294117647059,
-        0.7098039215686274,
-        0.2941176470588236
       ],
       "kill_chain_phase": "unknown"
     },
@@ -588,66 +335,6 @@
       "kill_chain_phase": "unknown"
     },
     {
-      "description": "assess",
-      "normalized": "assess",
-      "semantic_vector": [
-        -0.8431372549019608,
-        0.4509803921568627,
-        -1.0,
-        -0.26274509803921564,
-        -0.3803921568627451,
-        0.12941176470588234,
-        0.8745098039215686,
-        -0.0117647058823529
-      ],
-      "kill_chain_phase": "unknown"
-    },
-    {
-      "description": "mean",
-      "normalized": "mean",
-      "semantic_vector": [
-        0.019607843137254832,
-        -0.35686274509803917,
-        -0.5058823529411764,
-        0.3647058823529412,
-        0.26274509803921564,
-        0.3803921568627451,
-        0.8980392156862744,
-        0.7098039215686274
-      ],
-      "kill_chain_phase": "unknown"
-    },
-    {
-      "description": "identify",
-      "normalized": "identify",
-      "semantic_vector": [
-        -0.8823529411764706,
-        -0.05882352941176472,
-        -0.9137254901960784,
-        -0.2784313725490196,
-        -0.0980392156862745,
-        -0.26274509803921564,
-        -0.1215686274509804,
-        -0.7098039215686274
-      ],
-      "kill_chain_phase": "unknown"
-    },
-    {
-      "description": "establish",
-      "normalized": "establish",
-      "semantic_vector": [
-        -0.5450980392156863,
-        -0.803921568627451,
-        -0.30980392156862746,
-        0.12941176470588234,
-        0.19215686274509802,
-        0.4745098039215687,
-        -0.8901960784313725,
-        -0.5450980392156863
-      ],
-      "kill_chain_phase": "unknown"
-    },
-    {
       "description": "identify factor",
       "normalized": "identify factor",
       "semantic_vector": [
@@ -663,21 +350,6 @@
       "kill_chain_phase": "unknown"
     },
     {
-      "description": "leverage techniques",
-      "normalized": "leverage techniques",
-      "semantic_vector": [
-        -0.6470588235294117,
-        0.6313725490196078,
-        -0.5372549019607843,
-        -0.5607843137254902,
-        -0.34901960784313724,
-        0.7019607843137254,
-        -0.05882352941176472,
-        0.9764705882352942
-      ],
-      "kill_chain_phase": "unknown"
-    },
-    {
       "description": "observe variants",
       "normalized": "observe variants",
       "semantic_vector": [
@@ -689,21 +361,6 @@
         0.9372549019607843,
         -0.12941176470588234,
         0.10588235294117654
-      ],
-      "kill_chain_phase": "unknown"
-    },
-    {
-      "description": "suggest",
-      "normalized": "suggest",
-      "semantic_vector": [
-        0.7254901960784315,
-        -0.10588235294117643,
-        -0.14509803921568631,
-        -0.9215686274509804,
-        -0.35686274509803917,
-        -0.2549019607843137,
-        0.7098039215686274,
-        0.9372549019607843
       ],
       "kill_chain_phase": "unknown"
     },
@@ -738,51 +395,6 @@
       "kill_chain_phase": "unknown"
     },
     {
-      "description": "confirm",
-      "normalized": "confirm",
-      "semantic_vector": [
-        -0.5058823529411764,
-        -0.7019607843137254,
-        -0.027450980392156876,
-        -0.6705882352941177,
-        0.41176470588235303,
-        -0.7333333333333334,
-        0.7960784313725491,
-        -0.9843137254901961
-      ],
-      "kill_chain_phase": "unknown"
-    },
-    {
-      "description": "extract executable",
-      "normalized": "extract executable",
-      "semantic_vector": [
-        0.4745098039215687,
-        0.41960784313725497,
-        -0.6862745098039216,
-        0.9215686274509804,
-        0.4274509803921569,
-        0.19999999999999996,
-        0.9137254901960785,
-        0.26274509803921564
-      ],
-      "kill_chain_phase": "unknown"
-    },
-    {
-      "description": "find",
-      "normalized": "find",
-      "semantic_vector": [
-        0.803921568627451,
-        -0.21568627450980393,
-        -0.8980392156862745,
-        0.8196078431372549,
-        -0.584313725490196,
-        0.3568627450980393,
-        -0.9294117647058824,
-        0.968627450980392
-      ],
-      "kill_chain_phase": "unknown"
-    },
-    {
       "description": "identify data",
       "normalized": "identify data",
       "semantic_vector": [
@@ -794,21 +406,6 @@
         0.23921568627450984,
         0.9372549019607843,
         -0.14509803921568631
-      ],
-      "kill_chain_phase": "unknown"
-    },
-    {
-      "description": "attempt",
-      "normalized": "attempt",
-      "semantic_vector": [
-        0.5607843137254902,
-        0.615686274509804,
-        -0.19999999999999996,
-        0.6313725490196078,
-        0.968627450980392,
-        -0.8431372549019608,
-        0.780392156862745,
-        0.5215686274509803
       ],
       "kill_chain_phase": "unknown"
     },
@@ -873,21 +470,6 @@
       "kill_chain_phase": "unknown"
     },
     {
-      "description": "recommend strategies",
-      "normalized": "recommend strategies",
-      "semantic_vector": [
-        -0.019607843137254943,
-        -0.3411764705882353,
-        -0.803921568627451,
-        -0.3803921568627451,
-        -0.803921568627451,
-        0.07450980392156858,
-        0.41960784313725497,
-        0.21568627450980382
-      ],
-      "kill_chain_phase": "unknown"
-    },
-    {
       "description": "implement practices",
       "normalized": "implement practices",
       "semantic_vector": [
@@ -918,21 +500,6 @@
       "kill_chain_phase": "unknown"
     },
     {
-      "description": "map posture",
-      "normalized": "map posture",
-      "semantic_vector": [
-        0.33333333333333326,
-        0.019607843137254832,
-        0.6470588235294117,
-        0.6000000000000001,
-        -0.43529411764705883,
-        -0.04313725490196074,
-        0.6627450980392158,
-        -0.5058823529411764
-      ],
-      "kill_chain_phase": "unknown"
-    },
-    {
       "description": "highlight need",
       "normalized": "highlight need",
       "semantic_vector": [
@@ -946,67 +513,159 @@
         -0.050980392156862786
       ],
       "kill_chain_phase": "unknown"
-    },
-    {
-      "description": "reach",
-      "normalized": "reach",
-      "semantic_vector": [
-        0.8588235294117648,
-        -0.45882352941176474,
-        -0.23921568627450984,
-        0.9294117647058824,
-        0.04313725490196085,
-        0.8901960784313725,
-        -0.6,
-        -0.34901960784313724
-      ],
-      "kill_chain_phase": "unknown"
-    },
-    {
-      "description": "stay",
-      "normalized": "stay",
-      "semantic_vector": [
-        -0.5529411764705883,
-        0.4901960784313726,
-        -0.8352941176470589,
-        -0.6862745098039216,
-        0.22352941176470598,
-        -0.050980392156862786,
-        -0.48235294117647054,
-        0.3176470588235294
-      ],
-      "kill_chain_phase": "unknown"
-    },
-    {
-      "description": "draw",
-      "normalized": "draw",
-      "semantic_vector": [
-        -0.37254901960784315,
-        0.9372549019607843,
-        0.4901960784313726,
-        0.607843137254902,
-        0.7882352941176471,
-        -0.06666666666666665,
-        0.46666666666666656,
-        -0.37254901960784315
-      ],
-      "kill_chain_phase": "unknown"
-    },
-    {
-      "description": "ensure",
-      "normalized": "ensure",
-      "semantic_vector": [
-        -0.6941176470588235,
-        0.615686274509804,
-        -0.7098039215686274,
-        -0.7098039215686274,
-        0.1607843137254903,
-        0.0117647058823529,
-        -0.8431372549019608,
-        -0.9921568627450981
-      ],
-      "kill_chain_phase": "unknown"
     }
   ],
-  "relationships": []
+  "relationships": [
+    {
+      "source": "BlackMatter",
+      "relationship": "uses",
+      "target": "<unspecified>",
+      "confidence": 0.5,
+      "evidence": [
+        "use binaries",
+        "uses a socks5 proxy."
+      ],
+      "source_context": "behavior"
+    }
+  ],
+  "qualified_behaviors": [
+    {
+      "text": "data exfiltration is performed shortly before ransomware deployment.",
+      "source": "nlp-layer1",
+      "description": "data exfiltration is performed shortly before ransomware deployment.",
+      "confidence": 0.6
+    },
+    {
+      "text": "the tool prioritizes recently modified files for exfiltration.",
+      "source": "nlp-layer1",
+      "description": "the tool prioritizes recently modified files for exfiltration.",
+      "confidence": 0.6
+    },
+    {
+      "text": "the tool ignores directories within 'c:\\programdata\\'.",
+      "source": "nlp-layer1",
+      "description": "the tool ignores directories within 'c:\\programdata\\'.",
+      "confidence": 0.6
+    },
+    {
+      "text": "the tool accepts command-line arguments to hide its window.",
+      "source": "nlp-layer1",
+      "description": "the tool accepts command-line arguments to hide its window.",
+      "confidence": 0.6
+    },
+    {
+      "text": "uses sftp to exfiltrate data.",
+      "source": "nlp-layer1",
+      "description": "uses sftp to exfiltrate data.",
+      "confidence": 0.6
+    },
+    {
+      "text": "uses webdav as a secondary exfiltration method.",
+      "source": "nlp-layer1",
+      "description": "uses webdav as a secondary exfiltration method.",
+      "confidence": 0.6
+    },
+    {
+      "text": "uses a socks5 proxy.",
+      "source": "nlp-layer1",
+      "description": "uses a socks5 proxy.",
+      "confidence": 0.6
+    },
+    {
+      "text": "examine one",
+      "source": "nlp-layer1",
+      "description": "examine one",
+      "confidence": 0.6
+    },
+    {
+      "text": "analyze samples",
+      "source": "nlp-layer1",
+      "description": "analyze samples",
+      "confidence": 0.6
+    },
+    {
+      "text": "put pressure",
+      "source": "nlp-layer1",
+      "description": "put pressure",
+      "confidence": 0.6
+    },
+    {
+      "text": "identify attackers",
+      "source": "nlp-layer1",
+      "description": "identify attackers",
+      "confidence": 0.6
+    },
+    {
+      "text": "identify factor",
+      "source": "nlp-layer1",
+      "description": "identify factor",
+      "confidence": 0.6
+    },
+    {
+      "text": "observe variants",
+      "source": "nlp-layer1",
+      "description": "observe variants",
+      "confidence": 0.6
+    },
+    {
+      "text": "observe variant",
+      "source": "nlp-layer1",
+      "description": "observe variant",
+      "confidence": 0.6
+    },
+    {
+      "text": "include filter",
+      "source": "nlp-layer1",
+      "description": "include filter",
+      "confidence": 0.6
+    },
+    {
+      "text": "identify data",
+      "source": "nlp-layer1",
+      "description": "identify data",
+      "confidence": 0.6
+    },
+    {
+      "text": "utilize tools",
+      "source": "nlp-layer1",
+      "description": "utilize tools",
+      "confidence": 0.6
+    },
+    {
+      "text": "use binaries",
+      "source": "nlp-layer1",
+      "description": "use binaries",
+      "confidence": 0.6
+    },
+    {
+      "text": "raise suspicion",
+      "source": "nlp-layer1",
+      "description": "raise suspicion",
+      "confidence": 0.6
+    },
+    {
+      "text": "observe actors",
+      "source": "nlp-layer1",
+      "description": "observe actors",
+      "confidence": 0.6
+    },
+    {
+      "text": "implement practices",
+      "source": "nlp-layer1",
+      "description": "implement practices",
+      "confidence": 0.6
+    },
+    {
+      "text": "find more",
+      "source": "nlp-layer1",
+      "description": "find more",
+      "confidence": 0.6
+    },
+    {
+      "text": "highlight need",
+      "source": "nlp-layer1",
+      "description": "highlight need",
+      "confidence": 0.6
+    }
+  ]
 }

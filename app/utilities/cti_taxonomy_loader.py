@@ -21,6 +21,8 @@ This replaces the old loader that assumed 3 separate JSON files.
 
 import json, re
 from pathlib import Path
+import spacy
+nlp = spacy.load("en_core_web_lg")
 
 # ======================================================================
 #  Load the unified MITRE ATT&CK bundle
@@ -113,7 +115,7 @@ def load_mitre_taxonomy(taxonomy=None):
                 norm = re.sub(r"[^a-z0-9]+", " ", base).strip()
                 name_index[f"{obj_type}:{norm}"] = (obj_type, obj_id, obj)
 
-            print("[DEBUG] Loaded attack-pattern:", name)
+            # print("[DEBUG] Loaded attack-pattern:", name)
         # ------------------------------
         # MALWARE
         # ------------------------------
@@ -125,7 +127,7 @@ def load_mitre_taxonomy(taxonomy=None):
                 norm = re.sub(r"[^a-z0-9]+", " ", base).strip()
                 name_index[f"malware:{norm}"] = ("malware", obj_id, obj)
 
-            print("[DEBUG] Loaded malware:", name)
+            # print("[DEBUG] Loaded malware:", name)
         # ------------------------------
         # INTRUSION SETS (GROUPS)
         # ------------------------------
@@ -137,7 +139,7 @@ def load_mitre_taxonomy(taxonomy=None):
                 norm = re.sub(r"[^a-z0-9]+", " ", base).strip()
                 name_index[f"intrusion-set:{norm}"] = ("intrusion-set", obj_id, obj)
 
-            print("[DEBUG] Loaded intrusion-set:", name)
+            # print("[DEBUG] Loaded intrusion-set:", name)
         # ------------------------------
         # TOOLS
         # ------------------------------
@@ -149,7 +151,7 @@ def load_mitre_taxonomy(taxonomy=None):
                 norm = re.sub(r"[^a-z0-9]+", " ", base).strip()
                 name_index[f"tool:{norm}"] = ("tool", obj_id, obj)
 
-            print("[DEBUG] Loaded tool:", name)
+            # print("[DEBUG] Loaded tool:", name)
         # ------------------------------
         # RELATIONSHIPS
         # ------------------------------
@@ -165,10 +167,7 @@ def load_mitre_taxonomy(taxonomy=None):
             rel_type = obj.get("relationship_type")
             src_ref  = obj.get("source_ref")
             tgt_ref  = obj.get("target_ref")
-
-            # print(f"[DEBUG][MITRE] Loaded relationship:"
-            #     f" type={rel_type}, src={src_ref}, tgt={tgt_ref}")
-            
+          
             
     # ---------------------------------------------------------
     # DEBUG: Verify indexing worked
@@ -180,12 +179,7 @@ def load_mitre_taxonomy(taxonomy=None):
     print("[DEBUG][MITRE] relationships loaded:", len(relationships))
     print("[DEBUG][MITRE] name_index entries:", len(name_index))
     print("[DEBUG][MITRE] attack_id_index entries:", len(attack_id_index))
-
-    # Example: show the first 5 ATT&CK technique IDs
-    sample_ids = list(attack_id_index.keys())[:5]
-    print("[DEBUG][MITRE] sample first 5 technique IDs:", sample_ids)
-
-        
+      
     return {
         "attack_patterns": attack_patterns,
         "malware": malware,
@@ -225,51 +219,6 @@ def lookup_attack_id(tid: str, taxonomy: dict):
         return None
     return taxonomy["attack_id_index"].get(tid.upper().strip())
 
-# def load_phase1_attack_bundle():
-#     base = Path(__file__).resolve().parent / "cti_taxonomy"
-#     path = base / "enterprise_attack.json"
-
-#     bundle = json.loads(path.read_text(encoding="utf-8"))
-
-#     techniques = []
-#     by_id = {}
-
-#     for obj in bundle.get("objects", []):
-#         if obj.get("type") != "attack-pattern":
-#             continue
-
-#         tid = None
-#         for ref in obj.get("external_references", []):
-#             if ref.get("source_name") == "mitre-attack":
-#                 tid = ref.get("external_id")
-#                 break
-
-#         if not tid:
-#             continue
-
-#         desc = obj.get("description", "")
-#         name = obj.get("name", "")
-
-#         entry = {
-#             "id": tid,
-#             "name": name,
-#             "description": desc,
-#             "tokens": set(name.lower().split()),
-#             "desc_tokens": set(desc.lower().split()),
-#             "kill_chain": [
-#                 k.get("phase_name") for k in obj.get("kill_chain_phases", [])
-#                 if k.get("phase_name")
-#             ],
-#             "platforms": obj.get("x_mitre_platforms", []),
-#         }
-
-#         techniques.append(entry)
-#         by_id[tid] = entry
-
-#     return techniques, by_id
-
-import spacy
-nlp = spacy.load("en_core_web_lg")
 
 def build_normalized_attack_patterns():
     """

@@ -1,97 +1,109 @@
 """
-cti_linguistics.py — Entity Canonicalization, Behavior Normalization,
-and Dynamic Linguistic Technique Extraction.
+cti_linguistics.py — Linguistic Signal Extraction for Stage 1
 
-This module provides:
-
+Responsibilities:
   • Behavior text normalization
-  • Entity canonicalization via fuzzy matching
-  • Relationship endpoint normalization
+  • Fuzzy entity canonicalization
+  • Relationship endpoint canonicalization
   • Entity-type identification
-  • Fully dynamic MITRE technique candidate extraction based solely on:
+  • Dynamic linguistic MITRE technique extraction using:
         - noun chunks
-        - verb-object pairs
-        - syscall/API keywords
-        - natural-language behavior phrases
-        - semantic similarity to MITRE ATT&CK technique descriptions
+        - verb–object pairs
+        - structural verbs
+        - sliding windows
+        - semantic similarity to ATT&CK descriptions
 
-NO static keyword lists, NO brittle mappings.
-
-This is the Stage-1 linguistic technique extractor.
+NO static keyword lists.
+NO brittle mappings.
 """
 
 import re
 import numpy as np
 import spacy
+import asyncio
 from rapidfuzz import fuzz
+from functools import lru_cache
+
+# ============================================================
+# NLP MODEL (GLOBAL SINGLE LOAD)
+# ============================================================
 
 nlp = spacy.load("en_core_web_lg")
 
 
 # ============================================================
-# Behavior normalization
+# BEHAVIOR NORMALIZATION
 # ============================================================
 
 def normalize_behavior_text(text: str) -> str:
-    """Normalize LLM-extracted behavior descriptions."""
+    """
+    Normalize behavior text without destroying semantics.
+    """
     return re.sub(r"\s+", " ", text or "").strip().lower()
 
 
 # ============================================================
-# Fuzzy entity resolution
+# FUZZY ENTITY RESOLUTION
 # ============================================================
 
-def fuzzy_resolve(name: str, candidates):
-    """RapidFuzz-based fuzzy matching used for canonicalization."""
+def fuzzy_resolve(name: str, candidates: list[dict]) -> dict | None:
     if not name:
         return None
+
     name_l = name.lower()
-    best = None
-    best_score = 0
+    best, best_score = None, 0
 
     for c in candidates:
         cname = c.get("name", "").lower()
+        if not cname:
+            continue
+
         s = fuzz.partial_ratio(name_l, cname)
-        if s > best_score and s >= 80:
-            best = c
-            best_score = s
+        if s >= 80 and s > best_score:
+            best, best_score = c, s
+
     return best
 
 
-def canonicalize_entity(name: str, ir: dict):
+def canonicalize_entity(name: str, ir: dict) -> str:
     if not name:
         return name
+
     pool = (
         ir.get("threat_actors", [])
         + ir.get("malware", [])
         + ir.get("tools", [])
         + ir.get("infrastructure", [])
     )
+
     hit = fuzzy_resolve(name, pool)
     return hit.get("name") if hit else name
 
 
-def canonicalize_relationship_endpoints(ir, rels=None):
+def canonicalize_relationship_endpoints(ir: dict, rels: list | None = None) -> list:
     if rels is None:
         rels = ir.get("relationships", [])
+
     for r in rels:
         r["source"] = canonicalize_entity(r.get("source"), ir)
         r["target"] = canonicalize_entity(r.get("target"), ir)
+
     return rels
 
 
 # ============================================================
-# Entity type identification
+# ENTITY TYPE IDENTIFICATION
 # ============================================================
 
 def normalize_entity_type(name: str, ir: dict) -> str:
     if not name:
         return "unknown"
-    name_l = name.lower().strip()
+
+    n = name.lower().strip()
 
     def match(group):
         return any(
-            isinstance(e, dict) and e.get("name", "").lower() == name_l
+            isinstance(e, dict) and e.get("name", "").lower() == n
             for e in ir.get(group, [])
         )
 
@@ -104,113 +116,204 @@ def normalize_entity_type(name: str, ir: dict) -> str:
 
 
 # ============================================================
-# Dynamic Linguistic Technique Extraction
+# SAFE spaCy VECTOR ACCESS
 # ============================================================
 
-def extract_candidate_phrases(text: str):
-    """
-    Extract linguistic features from CTI text:
-    - noun chunks ("remote command execution")
-    - verb → object pairs ("inject process")
-    - syscall/API identifiers ("CreateFile", "sys_open", "connect")
-    - 2–4 token sliding windows
-    """
-    doc = nlp(text)
-    phrases = set()
-
-    # --- Noun chunks ---
-    for ch in doc.noun_chunks:
-        t = ch.text.strip().lower()
-        if len(t.split()) >= 2:
-            phrases.add(t)
-
-    # --- Verb-object pairs ---
-    for tok in doc:
-        if tok.pos_ != "VERB":
-            continue
-        obj = None
-        for c in tok.children:
-            if c.dep_ in ("dobj", "pobj"):
-                obj = c.text.lower()
-        if obj:
-            phrases.add(f"{tok.lemma_.lower()} {obj}")
-
-    # --- Syscall / API tokens ---
-    api_hits = re.findall(r"\b[a-zA-Z_][A-Za-z0-9_]{3,}\b", text)
-    for a in api_hits:
-        phrases.add(a.lower())
-
-    # --- Sliding windows ---
-    alpha_tokens = [t.text.lower() for t in doc if t.is_alpha]
-    for i in range(len(alpha_tokens) - 3):
-        window = " ".join(alpha_tokens[i:i+4])
-        phrases.add(window)
-
-    cleaned = []
-    for p in phrases:
-        if len(p) < 4:
-            continue
-        if len(p.split()) > 6:
-            continue
-        if p.isnumeric():
-            continue
-        cleaned.append(p)
-
-    return cleaned
-
-
-def phrase_vector(phrase: str):
-    """Safe wrapper around spaCy vectors."""
+@lru_cache(maxsize=4096)
+def phrase_vector(phrase: str) -> np.ndarray:
     try:
         return nlp(phrase).vector
-    except:
+    except Exception:
         return np.zeros(300)
 
 
-def cosine(a, b):
-    if np.linalg.norm(a) == 0 or np.linalg.norm(b) == 0:
+def cosine(a: np.ndarray, b: np.ndarray) -> float:
+    if a is None or b is None:
         return 0.0
-    return float(np.dot(a, b) / (np.linalg.norm(a)*np.linalg.norm(b)))
+    na = np.linalg.norm(a)
+    nb = np.linalg.norm(b)
+    if na == 0 or nb == 0:
+        return 0.0
+    return float(np.dot(a, b) / (na * nb))
 
 
-def semantic_match_techniques(phrases, techniques, threshold=0.42):
+# ============================================================
+# LINGUISTIC PHRASE EXTRACTION (NON-BRITTLE)
+# ============================================================
+
+def extract_candidate_phrases(text: str) -> list[str]:
     """
-    Performs semantic similarity between linguistic phrases
-    and MITRE ATT&CK technique descriptions.
+    Extract structurally admissible linguistic phrases.
+
+    Produces OVER-COMPLETE candidates; pruning happens later.
     """
+    if not text:
+        return []
+
+    raw_phrases = set()
+
+    MAX_CHARS = int(nlp.max_length * 0.8)
+    doc_cache = {}
+
+    for offset in range(0, len(text), MAX_CHARS):
+        chunk = text[offset:offset + MAX_CHARS]
+
+        if chunk not in doc_cache:
+            doc_cache[chunk] = nlp(chunk)
+
+        doc = doc_cache[chunk]
+
+        # --- noun chunks ---
+        for ch in doc.noun_chunks:
+            t = ch.text.strip().lower()
+            if len(t.split()) >= 2:
+                raw_phrases.add(t)
+
+        # --- verb → object ---
+        for tok in doc:
+            if tok.pos_ != "VERB":
+                continue
+            for c in tok.children:
+                if c.dep_ in ("dobj", "pobj"):
+                    raw_phrases.add(f"{tok.lemma_.lower()} {c.text.lower()}")
+
+        # --- structural verbs ---
+        for tok in doc:
+            if tok.pos_ == "VERB" and tok.is_alpha and not tok.is_stop:
+                raw_phrases.add(tok.lemma_.lower())
+
+        # --- sliding windows ---
+        alpha = [t for t in doc if t.is_alpha]
+        for i in range(len(alpha) - 3):
+            window = alpha[i:i + 4]
+            if any(t.pos_ == "VERB" for t in window):
+                raw_phrases.add(" ".join(t.text.lower() for t in window))
+
+    print(f"[LING] raw_phrases={len(raw_phrases)}")
+
+    # ========================================================
+    # STRUCTURAL OPERATIONAL FILTER
+    # ========================================================
+    cleaned = []
+
+    for p in raw_phrases:
+        doc_p = nlp(p)
+
+        if not any(t.pos_ == "VERB" for t in doc_p):
+            continue
+        if not any(t.dep_ in ("dobj", "pobj") for t in doc_p):
+            continue
+        if len(p) < 4 or len(p.split()) > 6 or p.isnumeric():
+            continue
+
+        cleaned.append(p)
+
+    print(f"[LING] operational_phrases={len(cleaned)}")
+    return cleaned
+
+
+# ============================================================
+# SEMANTIC MATCHING AGAINST MITRE
+# ============================================================
+
+async def _semantic_match_phrase(
+    phrase: str,
+    p_vec: np.ndarray,
+    techniques: list[dict],
+    threshold: float
+) -> list[dict]:
+
+    matches = []
+    for tech in techniques:
+        t_vec = tech.get("vector")
+        if t_vec is None:
+            continue
+
+        sim = cosine(p_vec, np.asarray(t_vec, dtype=float))
+        dyn_thresh = threshold + 0.15 if len(phrase.split()) <= 2 else threshold
+
+        if sim >= dyn_thresh:
+            matches.append({
+                "tech": tech,
+                "phrase": phrase,
+                "score": sim,
+            })
+
+    return matches
+
+
+async def semantic_match_techniques(
+    phrases: list[str],
+    techniques: list[dict],
+    threshold: float = 0.42
+) -> list[dict]:
+
+    tasks = [
+        _semantic_match_phrase(p, phrase_vector(p), techniques, threshold)
+        for p in phrases
+    ]
+
     results = []
-    for p in phrases:
-        p_vec = phrase_vector(p)
-        for tech in techniques:
-            t_vec = tech.get("vector", None)
-            if t_vec is None:
-                continue     # Technique has no embedding → skip
-            t_vec = np.asarray(t_vec, dtype=float)
-            sim = cosine(p_vec, t_vec)
+    for chunk in await asyncio.gather(*tasks):
+        results.extend(chunk)
 
-            if sim >= threshold:
-                results.append({
-                    "tech": tech,
-                    "phrase": p,
-                    "score": sim
-                })
     results.sort(key=lambda x: x["score"], reverse=True)
     return results
 
 
-def extract_dynamic_techniques(text: str, techniques: list, limit=25):
+# ============================================================
+# STAGE-1 DYNAMIC TECHNIQUE EXTRACTION
+# ============================================================
+
+async def extract_dynamic_techniques(text: str, arg2, arg3=None, limit=25, *_, **__):
     """
-    Full extraction pipeline:
-        1. extract_candidate_phrases()
-        2. semantic_match_techniques()
-        3. return top N unique techniques
+    Backward-compatible dynamic technique extraction.
+
+    Supported call styles:
+      (text, techniques, behaviors=None, limit=25)
+
+    This prevents silent mis-wiring that causes missing techniques and downstream sparsity.
     """
-    phrases = extract_candidate_phrases(text)
+
+    # Heuristic: techniques are dicts with "id"/"name"; behaviors are dicts with "text"/"description"
+    def looks_like_techniques(x):
+        return isinstance(x, list) and (not x or (isinstance(x[0], dict) and ("id" in x[0] or "name" in x[0])))
+
+    def looks_like_behaviors(x):
+        return isinstance(x, list) and (not x or (isinstance(x[0], dict) and ("description" in x[0] or "text" in x[0])))
+
+    techniques = None
+    behaviors = None
+
+    if looks_like_techniques(arg2):
+        techniques = arg2
+        behaviors = arg3 if looks_like_behaviors(arg3) else None
+    else:
+        # old style: arg2=behaviors, arg3=techniques
+        behaviors = arg2 if looks_like_behaviors(arg2) else None
+        techniques = arg3 if looks_like_techniques(arg3) else None
+
+    techniques = techniques or []
+    behaviors = behaviors or []
+
+    print(f"[LING] techniques_in={len(techniques)} behaviors_in={len(behaviors)}")
+
+    behavior_text = ""
+    if behaviors:
+        behavior_text = "\n".join(
+            (b.get("sentence") or b.get("description") or b.get("text") or "")
+            for b in behaviors
+            if isinstance(b, dict)
+        )
+
+    if not behavior_text.strip():
+        behavior_text = text
+
+    phrases = extract_candidate_phrases(behavior_text)
     print(f"[LING] candidate phrases extracted: {len(phrases)}")
 
-    matches = semantic_match_techniques(phrases, techniques)
+    matches = await semantic_match_techniques(phrases, techniques)
     print(f"[LING] semantic matches above threshold: {len(matches)}")
-
 
     seen = set()
     out = []
@@ -222,10 +325,10 @@ def extract_dynamic_techniques(text: str, techniques: list, limit=25):
                 "id": tid,
                 "name": m["tech"]["name"],
                 "confidence": round(float(m["score"]), 4),
-                "evidence": [m["phrase"]]
+                "evidence": [m["phrase"]],
             })
         if len(out) >= limit:
             break
-    out = [t for t in out if t["confidence"] >= 0.18]
 
+    out = [t for t in out if t["confidence"] >= 0.18]
     return out

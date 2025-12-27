@@ -1,20 +1,11 @@
 [
   {
     "reason": "relationship_allowed_failed",
-    "source": "Ryuk Infostealer",
-    "verb": "utilize",
+    "source": "BlackMatter",
+    "verb": "use",
     "rel_class": "uses",
-    "target": "StealBit",
-    "evidence": "It\u2019s the third exfiltration toolset utilized by ransomware operators observed in the wild, after the release of Ryuk Infostealer in January 2020 and StealBit, which is associated with the LockBit 2.0 operator.",
-    "source_context": "sentence"
-  },
-  {
-    "reason": "relationship_allowed_failed",
-    "source": "StealBit",
-    "verb": "utilize",
-    "rel_class": "uses",
-    "target": "Ryuk Infostealer",
-    "evidence": "It\u2019s the third exfiltration toolset utilized by ransomware operators observed in the wild, after the release of Ryuk Infostealer in January 2020 and StealBit, which is associated with the LockBit 2.0 operator.",
+    "target": "<remote-infrastructure>",
+    "evidence": "uses sftp to exfiltrate data.\nuses webdav as a secondary exfiltration method.\nuses a socks5 proxy.\nexamine one\nanalyze samples\nput pressure\nidentify attackers\nidentify factor\nobserve variants\nobserve variant\ninclude filter\nidentify data\nutilize tools\nuse binaries\nraise suspicion\nobserve actors\nimplement practices\nfind more\nhighlight need",
     "source_context": "sentence"
   },
   {
@@ -22,8 +13,8 @@
     "source": "BlackMatter",
     "verb": "use",
     "rel_class": "uses",
-    "target": "Exmatter",
-    "evidence": "Although Exmatter was originally associated with the now-defunct BlackMatter Ransomware-as-a-Service (RaaS) operation, Kroll has since observed variants of this tool being used by other RaaS groups.\n",
+    "target": "<remote-infrastructure>",
+    "evidence": "uses sftp to exfiltrate data.\nuses webdav as a secondary exfiltration method.\nuses a socks5 proxy.\nexamine one\nanalyze samples\nput pressure\nidentify attackers\nidentify factor\nobserve variants\nobserve variant\ninclude filter\nidentify data\nutilize tools\nuse binaries\nraise suspicion\nobserve actors\nimplement practices\nfind more\nhighlight need",
     "source_context": "sentence"
   },
   {
@@ -31,98 +22,35 @@
     "source": "BlackMatter",
     "verb": "use",
     "rel_class": "uses",
-    "target": "Exmatter",
-    "evidence": "Although Exmatter was originally associated with the now-defunct BlackMatter Ransomware-as-a-Service (RaaS) operation, Kroll has since observed variants of this tool being used by other RaaS groups.\n",
+    "target": "<remote-infrastructure>",
+    "evidence": "uses sftp to exfiltrate data.\nuses webdav as a secondary exfiltration method.\nuses a socks5 proxy.\nexamine one\nanalyze samples\nput pressure\nidentify attackers\nidentify factor\nobserve variants\nobserve variant\ninclude filter\nidentify data\nutilize tools\nuse binaries\nraise suspicion\nobserve actors\nimplement practices\nfind more\nhighlight need",
     "source_context": "sentence"
   },
   {
     "reason": "relationship_allowed_failed",
-    "source": "Exmatter",
+    "source": "BlackMatter",
+    "verb": "utilize",
+    "rel_class": "uses",
+    "target": "<remote-infrastructure>",
+    "evidence": "uses sftp to exfiltrate data.\nuses webdav as a secondary exfiltration method.\nuses a socks5 proxy.\nexamine one\nanalyze samples\nput pressure\nidentify attackers\nidentify factor\nobserve variants\nobserve variant\ninclude filter\nidentify data\nutilize tools\nuse binaries\nraise suspicion\nobserve actors\nimplement practices\nfind more\nhighlight need",
+    "source_context": "sentence"
+  },
+  {
+    "reason": "relationship_allowed_failed",
+    "source": "BlackMatter",
     "verb": "use",
     "rel_class": "uses",
-    "target": "Conti Ransomware",
-    "evidence": "More recently, Kroll\u2019s incident response investigators have observed a new variant of the Exmatter tool being used for exfiltration prior to Conti ransomware deployment.",
-    "source_context": "sentence"
+    "target": "<remote-infrastructure>",
+    "evidence": "uses sftp to exfiltrate data.",
+    "source_context": "behavior"
   },
   {
     "reason": "relationship_allowed_failed",
-    "source": "Conti Ransomware",
+    "source": "BlackMatter",
     "verb": "use",
     "rel_class": "uses",
-    "target": "Exmatter",
-    "evidence": "More recently, Kroll\u2019s incident response investigators have observed a new variant of the Exmatter tool being used for exfiltration prior to Conti ransomware deployment.",
-    "source_context": "sentence"
-  },
-  {
-    "reason": "relationship_allowed_failed",
-    "source": "Conti Ransomware",
-    "verb": "use",
-    "rel_class": "uses",
-    "target": "Exmatter",
-    "evidence": "More recently, Kroll\u2019s incident response investigators have observed a new variant of the Exmatter tool being used for exfiltration prior to Conti ransomware deployment.",
-    "source_context": "sentence"
-  },
-  {
-    "reason": "relationship_allowed_failed",
-    "source": "Exmatter",
-    "verb": "use",
-    "rel_class": "uses",
-    "target": "Conti Ransomware",
-    "evidence": "More recently, Kroll\u2019s incident response investigators have observed a new variant of the Exmatter tool being used for exfiltration prior to Conti ransomware deployment.",
-    "source_context": "sentence"
-  },
-  {
-    "reason": "relationship_allowed_failed",
-    "source": "Exmatter",
-    "verb": "compile",
-    "rel_class": "collects",
-    "target": "Themida",
-    "evidence": "Exmatter Analysis in Action\nIn an analysis of Exmatter, Kroll\u2019s Malware Analysis and Reverse Engineering team confirmed the sample was a .NET Windows executable file that had been compiled with Themida, an anti-reverse engineering software protection utility.",
-    "source_context": "sentence"
-  },
-  {
-    "reason": "relationship_allowed_failed",
-    "source": "Exmatter",
-    "verb": "compile",
-    "rel_class": "collects",
-    "target": "Themida",
-    "evidence": "Exmatter Analysis in Action\nIn an analysis of Exmatter, Kroll\u2019s Malware Analysis and Reverse Engineering team confirmed the sample was a .NET Windows executable file that had been compiled with Themida, an anti-reverse engineering software protection utility.",
-    "source_context": "sentence"
-  },
-  {
-    "reason": "relationship_allowed_failed",
-    "source": "Themida",
-    "verb": "compile",
-    "rel_class": "collects",
-    "target": "Exmatter",
-    "evidence": "Exmatter Analysis in Action\nIn an analysis of Exmatter, Kroll\u2019s Malware Analysis and Reverse Engineering team confirmed the sample was a .NET Windows executable file that had been compiled with Themida, an anti-reverse engineering software protection utility.",
-    "source_context": "sentence"
-  },
-  {
-    "reason": "relationship_allowed_failed",
-    "source": "Themida",
-    "verb": "compile",
-    "rel_class": "collects",
-    "target": "Exmatter",
-    "evidence": "Exmatter Analysis in Action\nIn an analysis of Exmatter, Kroll\u2019s Malware Analysis and Reverse Engineering team confirmed the sample was a .NET Windows executable file that had been compiled with Themida, an anti-reverse engineering software protection utility.",
-    "source_context": "sentence"
-  },
-  {
-    "reason": "relationship_allowed_failed",
-    "source": "ADFind",
-    "verb": "use",
-    "rel_class": "uses",
-    "target": "Advanced IP Scanner",
-    "evidence": "Tools such as ADFind and Advanced IP Scanner, for example, are widely used for network and Active Directory administration but can also be abused to aid in reconnaissance.",
-    "source_context": "sentence"
-  },
-  {
-    "reason": "relationship_allowed_failed",
-    "source": "Advanced IP Scanner",
-    "verb": "use",
-    "rel_class": "uses",
-    "target": "ADFind",
-    "evidence": "Tools such as ADFind and Advanced IP Scanner, for example, are widely used for network and Active Directory administration but can also be abused to aid in reconnaissance.",
-    "source_context": "sentence"
+    "target": "<remote-infrastructure>",
+    "evidence": "uses webdav as a secondary exfiltration method.",
+    "source_context": "behavior"
   }
 ]

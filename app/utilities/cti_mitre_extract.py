@@ -1,214 +1,257 @@
 """
 cti_mitre_extract.py — MITRE ATT&CK Technique Extraction
 
-This module:
-    • Extracts explicit ATT&CK technique IDs from CTI text
-    • Scores and ranks inferred techniques from behaviors
-    • Applies analyst-style selectivity and throttling
-    • Produces sparse, explainable MITRE mappings for Stage 1 IR
+Stage-1 MITRE extraction with analyst-style selectivity.
+
+Responsibilities:
+  • Extract explicit ATT&CK IDs from text
+  • Infer techniques from QUALIFIED behaviors only
+  • Enforce sparsity, plausibility, and evidence quality
+  • Provide explainable confidence + rejection logging
+
+This module performs NO orchestration.
 """
 
 import re
 import numpy as np
 import spacy
 from functools import lru_cache
-
-# -------------------------------------------------------------------
-# NLP model (single global load)
-# -------------------------------------------------------------------
-
-nlp = spacy.load("en_core_web_lg")
 from spacy.lang.en.stop_words import STOP_WORDS as SPACY_STOP_WORDS
 
 
-# -------------------------------------------------------------------
-# Analyst-style hard limits (explicit, enforced)
-# -------------------------------------------------------------------
+# ============================================================
+# NLP MODEL (GLOBAL SINGLE LOAD)
+# ============================================================
+
+nlp = spacy.load("en_core_web_lg")
+
+
+# ============================================================
+# ANALYST LIMITS (EXPLICIT + ENFORCED)
+# ============================================================
 
 MAX_TECHNIQUES_PER_BEHAVIOR = 2
-MAX_TECHNIQUES_PER_TACTIC = 3
 MAX_TOTAL_INFERRED = 15
-MITRE_DROPPED = []
-# -------------------------------------------------------------------
-# Vector caching (BIGGEST performance win)
-# -------------------------------------------------------------------
+
+MITRE_DROPPED: list[dict] = []
+
+
+# ============================================================
+# VECTOR CACHE (PERFORMANCE CRITICAL)
+# ============================================================
 
 @lru_cache(maxsize=4096)
 def vectorize(text: str):
     return nlp(text).vector
 
-# -------------------------------------------------------------------
-# Extract explicit technique IDs from text
-# -------------------------------------------------------------------
+
+# ============================================================
+# NUMERIC SAFETY
+# ============================================================
+
+def cosine_sim(a: np.ndarray, b: np.ndarray) -> float:
+    if a is None or b is None:
+        return 0.0
+    na = np.linalg.norm(a)
+    nb = np.linalg.norm(b)
+    if na == 0 or nb == 0:
+        return 0.0
+    return float(np.dot(a, b) / (na * nb))
+
+
+# ============================================================
+# EXPLICIT ATT&CK ID EXTRACTION (STRICT)
+# ============================================================
 
 def extract_ids_from_text(text: str, lookup: dict) -> list[str]:
     """
-    Match ONLY full ATT&CK technique IDs (e.g., T1059, T1059.001).
-    Prevents substring false positives.
+    Match ONLY full ATT&CK IDs (T1059, T1059.001).
+    No substrings, no inference.
     """
     if not text:
         return []
 
-    text = text.upper()
-    matches = re.findall(r"\bT\d{4}(?:\.\d{3})?\b", text)
-    return [m for m in matches if m in lookup]
+    matches = re.findall(r"\bT\d{4}(?:\.\d{3})?\b", text.upper())
+    valid = [m for m in matches if m in lookup]
 
-# -------------------------------------------------------------------
-# Cosine similarity (safe)
-# -------------------------------------------------------------------
+    if valid:
+        print(f"[MITRE] explicit_ids={len(valid)}")
 
-def cosine_sim(a: np.ndarray, b: np.ndarray) -> float:
-    if np.linalg.norm(a) == 0 or np.linalg.norm(b) == 0:
-        return 0.0
-    return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
+    return valid
 
-# -------------------------------------------------------------------
-# Scoring function — analyst-centric
-# -------------------------------------------------------------------
 
-def technique_score(tech: dict, text_tokens: set, behavior_tokens: set) -> float:
+# ============================================================
+# TECHNIQUE SCORING (ANALYST-CENTRIC)
+# ============================================================
+
+def technique_score(
+    tech: dict,
+    behavior_tokens: set,
+    document_tokens: set
+) -> float:
     """
-    Compute confidence score for mapping behavior → MITRE technique.
-    Analyst realism: behavior anchoring dominates.
+    Score behavior → technique alignment.
+
+    Analyst priority:
+      1. Direct behavior token overlap
+      2. Secondary document anchoring
+      3. Semantic similarity (soft bounded)
     """
     score = 0.0
-
     tech_tokens = tech.get("tokens", set()) or set()
 
-    # 1) Behavior overlap is the primary signal
+    # --- 1) HARD behavior anchoring ---
     if tech_tokens & behavior_tokens:
         score += 6.0
 
-    # 2) Document overlap is a secondary/tie-break signal
-    if tech_tokens & text_tokens:
+    # --- 2) Secondary document overlap ---
+    if tech_tokens & document_tokens:
         score += 2.0
 
-    # 3) Prefix overlap (soft signal)
+    # --- 3) Prefix soft match ---
     for tok in tech_tokens:
-        if any(t.startswith(tok[:4]) for t in behavior_tokens):
+        if any(b.startswith(tok[:4]) for b in behavior_tokens):
             score += 0.5
             break
 
-    # 4) Semantic similarity (cached vectors)
-    if behavior_tokens and "vector" in tech:
+    # --- 4) Semantic similarity (soft bounded) ---
+    if "vector" in tech and behavior_tokens:
         beh_vec = vectorize(" ".join(sorted(behavior_tokens)))
         sim = cosine_sim(beh_vec, tech["vector"])
-        if sim > 0.55:
-            score += sim * 3.0
+
+        if sim >= 0.65:
+            weight = 1.0
+        elif sim >= 0.45:
+            weight = 0.7
+        elif sim >= 0.30:
+            weight = 0.4
+        else:
+            weight = 0.1
+
+        score += sim * 3.0 * weight
 
     return score
 
 
-# -------------------------------------------------------------------
-# Behavior → technique inference (analyst-fixed)
-# -------------------------------------------------------------------
+# ============================================================
+# BEHAVIOR → TECHNIQUE INFERENCE (QUALIFIED ONLY)
+# ============================================================
 
 def map_behaviors_to_techniques(
-        behaviors: list,
-        techniques: list,
-        text: str
-    ) -> list[dict]:
+    behaviors: list[dict],
+    techniques: list[dict],
+    text: str
+) -> list[dict]:
     """
-    Infer MITRE techniques from behaviors using analyst-style constraints.
+    Infer MITRE techniques from QUALIFIED behaviors.
 
     Guarantees:
       • Evidence required
-      • Rank first, then select
-      • Hard caps per behavior and globally
+      • Ranked before selection
+      • Hard global + per-behavior caps
     """
     if not behaviors or not techniques:
         return []
 
-    text_tokens = set(re.findall(r"[a-z0-9]+", text.lower()))
-    all_scored = []
-
-    # Stop-word set like "a", "the", "and"
-    _SW = SPACY_STOP_WORDS
+    doc_tokens = set(re.findall(r"[a-z0-9]+", text.lower()))
+    all_scored: list[tuple[float, dict]] = []
 
     for b in behaviors:
-        if not isinstance(b, dict):
-            continue
-
         evidence = b.get("text") or b.get("description")
         if not evidence:
-            MITRE_DROPPED.append({"reason": "missing_evidence", "behavior": str(b)[:200]})
+            MITRE_DROPPED.append({"reason": "missing_evidence"})
             continue
 
-        # Evidence-quality gate (hard requirement)
         ev_tokens = re.findall(r"[a-z0-9]+", evidence.lower())
         if len(ev_tokens) < 6:
-            MITRE_DROPPED.append({"reason": "evidence_too_short", "behavior": evidence[:200]})
+            MITRE_DROPPED.append({
+                "reason": "evidence_too_short",
+                "behavior": evidence
+            })
             continue
 
-        stop_ratio = sum(1 for t in ev_tokens if t in _SW) / max(len(ev_tokens), 1)
+        stop_ratio = sum(1 for t in ev_tokens if t in SPACY_STOP_WORDS) / len(ev_tokens)
         if stop_ratio >= 0.75:
-            MITRE_DROPPED.append({"reason": "evidence_stopword_heavy", "behavior": evidence[:200]})
+            MITRE_DROPPED.append({
+                "reason": "stopword_heavy",
+                "behavior": evidence[:160]
+            })
             continue
 
-        behavior_tokens = set(ev_tokens)
-        scored = []
+        behavior_tokens = {
+            t for t in ev_tokens
+            if t not in {"analyze", "observe", "identify", "report", "highlight", "find"}
+        }
+
+        scored: list[tuple[float, dict]] = []
 
         for tech in techniques:
-            # Soft platform gate (analyst realism)
             platforms = tech.get("platforms", [])
             if platforms:
                 if not any(p.lower() in text.lower() for p in platforms):
                     if len(platforms) == 1:
                         continue
 
-            s = technique_score(tech, text_tokens, behavior_tokens)
+            s = technique_score(tech, behavior_tokens, doc_tokens)
 
-            # HARD behavior anchor: require at least one exact behavior-token overlap
-            tech_tokens = tech.get("tokens", set()) or set()
-            if not (tech_tokens & behavior_tokens):
+            # HARD operational anchor
+            if not (tech.get("tokens", set()) & behavior_tokens):
                 continue
 
-            # Threshold: keep only meaningful matches
+            # Soft kill-chain plausibility
+            b_phases = {b.get("kill_chain_phase") for b in behaviors if b.get("kill_chain_phase")}
+            tactics = set(tech.get("tactics", []))
+            if b_phases and tactics:
+                if not any(p in t.lower() for p in b_phases for t in tactics):
+                    s *= 0.5
+
             if s >= 3.0:
-                tcopy = {"id": tech.get("id"), "name": tech.get("name")}
-                # Normalize to [0,1] (with current scoring, ~10 is "very strong")
-                tcopy["confidence"] = round(min(s / 10.0, 1.0), 2)
-                tcopy["evidence"] = evidence
-                scored.append((s, tcopy))
+                scored.append((
+                    s,
+                    {
+                        "id": tech.get("id"),
+                        "name": tech.get("name"),
+                        "confidence": round(min(s / 10.0, 1.0), 2),
+                        "evidence": evidence,
+                        "source": "inferred",
+                    }
+                ))
 
-        # Rank and cap PER BEHAVIOR
         scored.sort(key=lambda x: x[0], reverse=True)
-        for s, t in scored[:MAX_TECHNIQUES_PER_BEHAVIOR]:
-            all_scored.append((s, t))
+        all_scored.extend(scored[:MAX_TECHNIQUES_PER_BEHAVIOR])
 
-    # Global ranking and cap
     all_scored.sort(key=lambda x: x[0], reverse=True)
-    return [t for _, t in all_scored[:MAX_TOTAL_INFERRED]]
-# -------------------------------------------------------------------
-# Stage-1 MITRE extractor (entrypoint)
-# -------------------------------------------------------------------
+    final = [t for _, t in all_scored[:MAX_TOTAL_INFERRED]]
+
+    print(f"[MITRE] inferred={len(final)} dropped={len(MITRE_DROPPED)}")
+    return final
+
+
+# ============================================================
+# STAGE-1 ENTRYPOINT
+# ============================================================
 
 def extract_mitre_techniques(
-        text: str,
-        behaviors: list,
-        techniques: list,
-        lookup: dict
-    ) -> list[dict]:
+    text: str,
+    behaviors: list[dict],
+    techniques: list[dict],
+    lookup: dict
+) -> list[dict]:
     """
     Stage-1 MITRE extractor.
 
     Combines:
-      • Explicit ATT&CK IDs found in text
-      • Analyst-filtered inferred techniques
+      • Explicit ATT&CK IDs (always accepted)
+      • Inferred techniques from QUALIFIED behaviors
 
-    Guarantees:
-      • Sparse output
-      • Deterministic ordering
-      • Explainable confidence scores
+    Output is sparse, ranked, explainable.
     """
     if not text:
         return []
 
-    # Explicit IDs are always allowed
     explicit_ids = extract_ids_from_text(text, lookup)
-    explicit = [lookup[e] for e in explicit_ids if e in lookup]
+    explicit = [lookup[i] for i in explicit_ids if i in lookup]
 
-    # Inferred techniques (ranked + capped)
     inferred = map_behaviors_to_techniques(behaviors, techniques, text)
 
     combined, seen = [], set()
@@ -226,12 +269,12 @@ def extract_mitre_techniques(
 
     return combined
 
-# -------------------------------------------------------------------
-# Utility: JSON-safe conversion
-# -------------------------------------------------------------------
+
+# ============================================================
+# JSON-SAFE CONVERSION
+# ============================================================
 
 def convert_sets(obj):
-    """Recursively convert Python sets to sorted lists."""
     if isinstance(obj, dict):
         return {k: convert_sets(v) for k, v in obj.items()}
     if isinstance(obj, list):

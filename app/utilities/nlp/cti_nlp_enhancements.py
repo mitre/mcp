@@ -40,20 +40,20 @@ def extract_dependency_behaviors(doc):
     """
     behaviors = []
     for sent in doc.sents:
-        root = sent.root
-        if root.pos_ != "VERB":
-            continue
+            root = sent.root
+            if root.pos_ != "VERB":
+                continue
 
-        obj = None
-        for child in root.children:
-            if child.dep_ in ("dobj", "pobj", "attr", "dative"):
-                obj = child.text
-                break
+            obj = None
+            for child in root.children:
+                if child.dep_ in ("dobj", "pobj", "attr", "dative"):
+                    obj = child.text
+                    break
 
-        if obj:
-            behaviors.append(f"{root.lemma_} {obj}")
-        else:
-            behaviors.append(root.lemma_)
+            if obj:
+                behaviors.append(f"{root.lemma_} {obj}")
+            else:
+                behaviors.append(root.lemma_)
 
     return behaviors
 
@@ -130,7 +130,25 @@ def clean_ir_nlp_layer1(ir: dict, original_text: str) -> dict:
     # Deduplicate
     merged = list({m: m for m in merged}.values())
 
-    ir["behaviors"] = [{"text": m, "source": "nlp-layer1"} for m in merged]
+    # ------------------------
+    # Structural Behavior Filtering (Senior-grade)
+    # ------------------------
+    filtered = []
+
+    for m in merged:
+        doc_b = nlp(m)
+
+        # Require at least one VERB
+        if not any(t.pos_ == "VERB" for t in doc_b):
+            continue
+
+        # Require at least one object/target
+        if not any(t.dep_ in ("dobj", "pobj", "attr") for t in doc_b):
+            continue
+
+        filtered.append(m)
+
+    ir["behaviors"] = [{"text": m, "source": "nlp-layer1"} for m in filtered]
     _log(f"Behaviors after NLP Layer 1: {len(ir['behaviors'])}")
 
     # ------------------------

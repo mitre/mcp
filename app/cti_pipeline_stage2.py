@@ -51,8 +51,6 @@ from utilities.cti_taxonomy_loader import (
 from utilities.cti_stix_validation import validate_bundle
 from utilities.cti_stix_report_writer import render_stix_report
 from utilities.cti_defend_enricher import enrich_stix_bundle_with_defend
-from utilities.cti_relationships import canonicalize_verb
-
 
 # -----------------------------------------------------------
 # Directories
@@ -61,7 +59,7 @@ from utilities.cti_relationships import canonicalize_verb
 HERE = Path(__file__).resolve().parent
 DEFAULT_BASE_DIR = HERE.parent / "data"
 
-OUTPUTS_IR_DIR   = "outputs_ir"
+OUTPUTS_IR_DIR   = "outputs_ir/complete"
 OUTPUTS_STIX_DIR = "outputs_stix"
 DEBUG_DIR        = "debug"
 OUTPUTS_CAD_DIR  = "outputs_cad"

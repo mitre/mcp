@@ -83,7 +83,7 @@ def infer_killchain(text: str) -> str:
 
     return "unknown"
 
-def clean_ir_nlp_layer3(ir: dict, taxonomy: dict) -> dict:
+def clean_ir_nlp_layer2(ir: dict, taxonomy: dict) -> dict:
     """
     Layer-3 transforms behaviors into:
         - normalized form
