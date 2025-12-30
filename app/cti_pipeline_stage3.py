@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Dict, List
 
 from utilities.cti_stix_builders import new_stix_id, now
-from utilities.cti_parsing import ollama_generate_async
+from utilities.cti_llm_client import llm_generate
 from utilities.cti_infra_aggregation import aggregate_infrastructure_hypotheses
 
 
@@ -183,12 +183,12 @@ def extract_reasoning_facts(bundle: dict) -> Dict[str, List[dict]]:
 # ============================================================
 
 def infer_infrastructure_reasoning(
-    *,
-    bundle: dict,
-    clean_text: str,
-    source_stix_file: str,
-    use_llm: bool,
-) -> dict:
+        *,
+        bundle: dict,
+        clean_text: str,
+        source_stix_file: str,
+        use_llm: bool,
+    ) -> dict:
     """
     Produce a single infrastructure reasoning object.
     """
@@ -221,10 +221,10 @@ def infer_infrastructure_reasoning(
 # ============================================================
 
 def run_llm_infrastructure_reasoning(
-    *,
-    facts: dict,
-    clean_text: str,
-) -> List[dict]:
+        *,
+        facts: dict,
+        clean_text: str,
+    ) -> List[dict]:
     """
     Ask the LLM to reason about *required infrastructure*,
     not to extract or invent facts.
@@ -256,8 +256,8 @@ def run_llm_infrastructure_reasoning(
         },
     }
 
-    raw = ollama_generate_async(
-        json.dumps(prompt, ensure_ascii=False)
+    raw = llm_generate(
+        json.dumps(prompt, ensure_ascii=False, profile="cti")
     )
 
     try:

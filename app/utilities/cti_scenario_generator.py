@@ -19,7 +19,7 @@ import json
 import asyncio
 from pathlib import Path
 
-from utilities.cti_parsing import ollama_generate_async
+from utilities.cti_parsing import llm_generate_async
 
 
 # --------------------------------------------------------------------
@@ -62,7 +62,7 @@ async def generate_attack_scenario_async(ir: dict, raw_text: str) -> str:
         + "\n--- DATA END ---\n"
     )
 
-    response = await ollama_generate_async(prompt)
+    response = await llm_generate_async(prompt, profile="cti")
 
     if not response:
         return "[ERROR] Scenario LLM returned empty response."

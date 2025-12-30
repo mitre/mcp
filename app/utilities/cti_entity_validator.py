@@ -11,16 +11,8 @@ Responsibilities:
 
 import json
 import re
-import httpx
 from collections import defaultdict
-
-# ============================================================
-# LLM CONFIGURATION
-# ============================================================
-
-OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
-MODEL = "gemma3n:latest"
-
+from utilities.cti_llm_client import llm_generate
 
 # ============================================================
 # LOW-LEVEL LLM CLASSIFICATION
@@ -29,45 +21,36 @@ MODEL = "gemma3n:latest"
 async def classify_entity_llm(name: str, category: str) -> str:
     """
     Ask the LLM whether <name> is a valid CTI entity.
-
-    category ∈ {"threat_actor", "malware", "tool"}
     Returns: "yes" | "no" | "uncertain"
     """
 
     prompt = f"""
-You are validating Cyber Threat Intelligence (CTI) entities.
-Respond ONLY in JSON.
+    You are validating Cyber Threat Intelligence (CTI) entities.
+    Respond ONLY in JSON.
 
-Task:
-Determine if "{name}" is legitimately a {category.replace("_", " ")}.
+    Task:
+    Determine if "{name}" is legitimately a {category.replace("_", " ")}.
 
-Valid return values:
-- "yes"
-- "no"
-- "uncertain"
+    Valid return values:
+    - "yes"
+    - "no"
+    - "uncertain"
 
-Respond exactly:
-{{"valid": "yes" | "no" | "uncertain"}}
-""".strip()
+    Respond exactly:
+    {{"valid": "yes" | "no" | "uncertain"}}
+    """.strip()
 
-    async with httpx.AsyncClient(timeout=20.0) as client:
-        try:
-            r = await client.post(
-                OLLAMA_URL,
-                json={"model": MODEL, "prompt": prompt, "stream": False},
-            )
-            response = r.json()
-        except Exception as e:
-            print(f"[ENT][LLM][ERROR] HTTP failure for '{name}': {e}")
-            return "uncertain"
+    raw = await llm_generate(prompt, profile="cti")
+
+    if not isinstance(raw, str):
+        return "uncertain"
 
     try:
-        parsed = json.loads(response.get("response", ""))
+        parsed = json.loads(raw)
         return parsed.get("valid", "uncertain")
     except Exception:
         print(f"[ENT][LLM][WARN] Non-JSON response for '{name}'")
         return "uncertain"
-
 
 # ============================================================
 # ENTITY VALIDATION PIPELINE
@@ -183,8 +166,9 @@ def repair_entities(ir: dict) -> dict:
             return None
 
         return name
+    ENTITY_GROUPS = ("threat_actors", "malware", "tools", "infrastructure")
 
-    total_before = sum(len(ir.get(g, [])) for g in ir)
+    total_before = sum(len(ir.get(g, [])) for g in ENTITY_GROUPS)
 
     for group in ("threat_actors", "malware", "tools", "infrastructure"):
         cleaned = []
@@ -199,7 +183,7 @@ def repair_entities(ir: dict) -> dict:
 
         ir[group] = cleaned
 
-    total_after = sum(len(ir.get(g, [])) for g in ir)
+    total_after = sum(len(ir.get(g, [])) for g in ENTITY_GROUPS)
 
     print(f"[ENT] repair_before={total_before} repair_after={total_after}")
     return ir

@@ -14,41 +14,11 @@ This module:
 import json
 import re
 from pathlib import Path
-import httpx
 
-API_BASE = "http://127.0.0.1:11434"
-MODEL_NAME = "gemma3n:latest"
+from utilities.cti_llm_client import llm_generate
 
 # Give the repair engine more chances
 MAX_REPAIR_ATTEMPTS = 3
-
-# ---------------------------------------------------------
-# LLM CALL (with strong determinism + error handling)
-# ---------------------------------------------------------
-
-async def ollama_generate_async(prompt: str) -> str:
-    print("[LLM] Generating IR...")
-    print(prompt)
-    async with httpx.AsyncClient(timeout=300) as client:
-        try:
-            resp = await client.post(
-                f"{API_BASE}/api/generate",
-                json={
-                    "model": MODEL_NAME,
-                    "prompt": prompt,
-                    "stream": False,
-                    "options": {
-                        "temperature": 0,
-                        "top_p": 1.0,
-                        "repeat_penalty": 1.0
-                    }
-                }
-            )
-        except Exception as e:
-            print(f"[LLM][ERROR] {e}")
-            return ""
-
-        return resp.json().get("response", "")
 
 # ---------------------------------------------------------
 # Prompt builder — deterministic schema
@@ -77,9 +47,8 @@ def build_ir_prompt(cti_text: str) -> str:
         "behaviors": [
             {{"description": ""}}
         ],
-        "relationships": [
-            {{"source": "", "relationship": "", "target": ""}}
-        ]
+        "relationships": []
+
         }}
 
         STRICT RULES:
@@ -89,8 +58,7 @@ def build_ir_prompt(cti_text: str) -> str:
         - NEVER echo CTI text
         - NEVER add additional keys
         - ALWAYS use lists (even if empty)
-        - Relationship verbs MUST be short actions like:
-        ["uses", "deploys", "exploits", "targets", "communicates-with", "associated-with"]
+        
 
         CTI REPORT:
         \"\"\"{cti_text}\"\"\"
@@ -162,7 +130,8 @@ def enforce_ir_schema(ir: dict) -> dict:
                             filtered.append(item)
                     elif f == "attack_patterns":
                         # should be empty list anyway
-                        filtered.append(item)
+                        if isinstance(item, dict):
+                            filtered.append(item)
                     else:
                         if "name" in item:
                             filtered.append(item)
@@ -200,7 +169,7 @@ def enforce_ir_schema(ir: dict) -> dict:
 
 async def extract_ir(cti_text: str, debug_path: Path = None) -> dict:
     prompt = build_ir_prompt(cti_text)
-    raw = await ollama_generate_async(prompt)
+    raw = await llm_generate(prompt, profile="cti")
 
     if debug_path:
         with debug_path.open("a", encoding="utf-8") as f:
@@ -249,7 +218,7 @@ async def extract_ir(cti_text: str, debug_path: Path = None) -> dict:
         Bad JSON:
         \"\"\"{orig_raw}\"\"\"
         """
-        raw = await ollama_generate_async(repair_prompt)
+        raw = await llm_generate(repair_prompt, profile="cti")
         ir = clean_raw_to_json(raw)
 
         if ir is not None:
@@ -300,36 +269,3 @@ def render_ir_summary(ir: dict) -> str:
     )
 
     return "\n".join(lines)
-
-
-async def extract_relationships_llm(ir, text):
-    prompt = f"""
-    Extract CTI relationships ONLY between entities already identified.
-
-    ENTITIES:
-    {json.dumps({
-        "threat_actors": [x["name"] for x in ir.get("threat_actors",[])],
-        "malware": [x["name"] for x in ir.get("malware",[])],
-        "tools": [x["name"] for x in ir.get("tools",[])],
-        "infrastructure": [x["name"] for x in ir.get("infrastructure",[])],
-    }, indent=2)}
-
-    Use canonical verbs:
-    uses, deploys, drops, executes, loads, communicates-with,
-    associated-with, exfiltrates, encrypts, installs, runs,
-    scans, enumerates, injects, moves, harvests.
-
-    Format:
-    [
-      {"source": "...", "relationship": "...", "target": "..."}
-    ]
-
-    CTI TEXT:
-    {text}
-    """
-
-    response = await ollama_generate_async(prompt)
-    try:
-        return json.loads(response)
-    except:
-        return []

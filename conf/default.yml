@@ -20,4 +20,4 @@ cti:
   offline: false
   use_mock: false
   temperature: 0.1
-  stix_dir: plugins/mcp/data/stix_cti  # where we’ll save bundles
+ 

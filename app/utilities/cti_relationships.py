@@ -16,9 +16,7 @@ from functools import lru_cache
 from nltk.corpus import wordnet as wn
 
 from utilities.cti_mitre_extract import cosine_sim
-from utilities.cti_parsing import ollama_generate_async
 from utilities.cti_linguistics import normalize_behavior_text, canonicalize_relationship_endpoints
-
 
 # ============================================================
 # NLP MODEL (GLOBAL, SINGLE LOAD)
