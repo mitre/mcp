@@ -1,6 +1,0 @@
-Object 50 ID 'artifact--abstract-unknown-ransomware deployment' does not match artifact--<uuid4>.
-Unknown STIX type 'artifact' in object 50.
-Object 52 ID 'artifact--abstract-unknown-sftp' does not match artifact--<uuid4>.
-Unknown STIX type 'artifact' in object 52.
-Object 54 ID 'artifact--abstract-unknown-webdav' does not match artifact--<uuid4>.
-Unknown STIX type 'artifact' in object 54.
