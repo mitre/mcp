@@ -16,6 +16,6 @@ data/clean
 data/images
 data/outputs_cad
 data/outputs_ir
-data/ouputs_stix
+data/outputs_stix
 data/scenario
 app/debug_mitre.log
