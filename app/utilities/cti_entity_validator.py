@@ -13,36 +13,61 @@ import json
 import re
 from collections import defaultdict
 from utilities.cti_llm_client import llm_generate
+from functools import lru_cache
+from utilities.cti_taxonomy_loader import load_mitre_taxonomy
+
 
 # ============================================================
 # LOW-LEVEL LLM CLASSIFICATION
 # ============================================================
-
+@lru_cache(maxsize=1)
+def _mitre_name_sets():
+    tax = load_mitre_taxonomy()
+    groups = {o.get("name","").strip().lower() for o in tax.get("groups", {}).values()}
+    malware = {o.get("name","").strip().lower() for o in tax.get("malware", {}).values()}
+    tools = {o.get("name","").strip().lower() for o in tax.get("tools", {}).values()}
+    return groups, malware, tools
 async def classify_entity_llm(name: str, category: str) -> str:
     """
     Ask the LLM whether <name> is a valid CTI entity.
     Returns: "yes" | "no" | "uncertain"
     """
 
+    # -----------------------------
+    # Deterministic fast-path (MITRE)
+    # -----------------------------
+    n = (name or "").strip().lower()
+    groups, malware, tools = _mitre_name_sets()
+
+    if category == "threat_actor" and n in groups:
+        return "yes"
+    if category == "malware" and n in malware:
+        return "yes"
+    if category == "tool" and n in tools:
+        return "yes"
+
+    # -----------------------------
+    # LLM validation via central client
+    # -----------------------------
     prompt = f"""
-    You are validating Cyber Threat Intelligence (CTI) entities.
-    Respond ONLY in JSON.
+        You are validating Cyber Threat Intelligence (CTI) entities.
+        Respond ONLY in JSON.
 
-    Task:
-    Determine if "{name}" is legitimately a {category.replace("_", " ")}.
+        Task:
+        Determine if "{name}" is legitimately a {category.replace("_", " ")}.
 
-    Valid return values:
-    - "yes"
-    - "no"
-    - "uncertain"
+        Valid return values:
+        - "yes"
+        - "no"
+        - "uncertain"
 
-    Respond exactly:
-    {{"valid": "yes" | "no" | "uncertain"}}
-    """.strip()
+        Respond exactly:
+        {{"valid": "yes" | "no" | "uncertain"}}
+        """.strip()
 
     raw = await llm_generate(prompt, profile="cti")
-
-    if not isinstance(raw, str):
+    if not raw:
+        print(f"[ENT][LLM][WARN] empty response for '{name}'")
         return "uncertain"
 
     try:

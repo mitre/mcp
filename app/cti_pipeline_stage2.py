@@ -24,6 +24,7 @@ Debug / Observability:
 import argparse
 import json
 from pathlib import Path
+import uuid
 
 import datetime
 from nltk.corpus import wordnet as wn
@@ -313,14 +314,15 @@ def convert_ir_to_stix(ir: dict, debug: dict, taxonomy: dict) -> dict:
                     })
                     if target_role == "infrastructure"
                     else {
-                        "type": "artifact",
+                        "type": "x-cti-artifact",
                         "spec_version": "2.1",
-                        "id": f"artifact--{placeholder_name}",
+                        "id": new_stix_id("x-cti-artifact"),
                         "name": placeholder_name,
                         "confidence": confidence,
                         "x_cti_status": status,
                         "x_cti_evidence": evidence,
                         "x_cti_target_role": target_role,
+                        "x_cti_artifact_kind": "configuration-object",
                     }
                 )
 
@@ -543,3 +545,8 @@ def is_physical_or_protocol(noun: str) -> bool:
     synsets = wn.synsets(noun, pos=wn.NOUN)
     return any(s.lexname() in {"noun.artifact", "noun.communication"} for s in synsets)
 
+def new_stix_id(stix_type: str) -> str:
+    """
+    Generate a valid STIX 2.1 ID using UUIDv4.
+    """
+    return f"{stix_type}--{uuid.uuid4()}"

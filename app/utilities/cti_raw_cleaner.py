@@ -20,7 +20,7 @@ import aiofiles.ospath
 import math
 import spacy
 
-_nlp = spacy.load("en_core_web_sm")
+_nlp = spacy.load("en_core_web_lg")
 
 # Limit async concurrency
 SEMAPHORE = asyncio.Semaphore(8)

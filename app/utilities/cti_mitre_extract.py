@@ -165,7 +165,18 @@ def map_behaviors_to_techniques(
             continue
 
         ev_tokens = re.findall(r"[a-z0-9]+", evidence.lower())
-
+        d = nlp(evidence)
+        has_vo = False
+        for tok in d:
+            if tok.pos_ == "VERB" and any(c.dep_ in ("dobj", "pobj", "attr") for c in tok.children):
+                has_vo = True
+                break
+        if not has_vo:
+            MITRE_DROPPED.append({
+                "reason": "missing_verb_object_anchor",
+                "behavior": evidence[:160],
+            })
+            continue
         if len(ev_tokens) < 4:
             MITRE_DROPPED.append({
                 "reason": "evidence_too_short_for_mitre",
@@ -192,7 +203,7 @@ def map_behaviors_to_techniques(
             t for t in ev_tokens
             if t not in {"analyze", "observe", "identify", "report", "highlight", "find"}
         }
-
+        
         scored: list[tuple[float, dict]] = []
 
         for tech in techniques:
@@ -215,18 +226,11 @@ def map_behaviors_to_techniques(
                 if not any(p in t.lower() for p in b_phases for t in tactics):
                     s *= 0.5
 
-            if s >= 3.0:
-                scored.append((
-                    s,
-                    {
-                        "id": tech.get("id"),
-                        "name": tech.get("name"),
-                        "confidence": round(min(s / 10.0, 1.0), 2),
-                        "evidence": evidence,
-                        "mapping_type": "activity" if "execut" in evidence.lower() else "capability",
+            spec_penalty = evidence_specificity_score(evidence)
+            s *= spec_penalty
 
-                    }
-                ))
+            if s >= 3.0:
+                scored.append((s, tech))
 
         scored.sort(key=lambda x: x[0], reverse=True)
         all_scored.extend(scored[:MAX_TECHNIQUES_PER_BEHAVIOR])
@@ -325,3 +329,41 @@ def hashes_to_stix_observed_data(hashes, source_name="cti-report"):
         objects.append(observed)
 
     return objects
+
+def evidence_specificity_score(text: str) -> float:
+    """
+    Returns a multiplier in [0.6, 1.0]
+    Penalizes abstract / generic evidence structurally, not lexically.
+    """
+    doc = nlp(text)
+
+    verbs = [t for t in doc if t.pos_ == "VERB"]
+    nouns = [t for t in doc if t.pos_ in ("NOUN", "PROPN")]
+    concrete_objs = [
+        c for v in verbs
+        for c in v.children
+        if c.dep_ in ("dobj", "pobj", "attr")
+    ]
+
+    score = 1.0
+
+    # No verb-object relation → very generic
+    if not concrete_objs:
+        score -= 0.25
+
+    # Too many abstract nouns vs concrete ones
+    abstract_nouns = [
+        n for n in nouns
+        if n.lemma_.endswith(("ity", "ness", "tion", "ment"))
+    ]
+
+    if abstract_nouns and len(abstract_nouns) >= len(nouns) / 2:
+        score -= 0.15
+
+    # Single vague verb (e.g., "weaken", "affect", "impact") with no modifiers
+    if len(verbs) == 1:
+        v = verbs[0]
+        if not any(c.dep_ in ("dobj", "pobj") for c in v.children):
+            score -= 0.15
+
+    return max(0.6, score)

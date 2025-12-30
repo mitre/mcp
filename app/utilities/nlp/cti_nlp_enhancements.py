@@ -17,7 +17,7 @@ import spacy
 import re
 from rapidfuzz import fuzz
 
-nlp = spacy.load("en_core_web_sm")
+nlp = spacy.load("en_core_web_lg")
 
 def _log(msg: str):
     """Simple stdout logger for tee-based debugging."""
@@ -125,10 +125,10 @@ def clean_ir_nlp_layer1(ir: dict, original_text: str) -> dict:
             existing.append(str(b))
 
     merged = existing + expanded
-    merged = [m.strip().lower() for m in merged if len(m.strip()) > 3]
+    merged = [normalize_behavior_text(m) for m in merged if len(str(m).strip()) > 3]
 
-    # Deduplicate
-    merged = list({m: m for m in merged}.values())
+    # Vector dedupe (must happen BEFORE relationship extraction)
+    merged = dedupe_behaviors_by_vector(merged, threshold=0.92)
 
     # ------------------------
     # Structural Behavior Filtering (Senior-grade)
@@ -222,4 +222,39 @@ def _canonicalize_list(items):
             })
     return out
 
+def normalize_behavior_text(text: str) -> str:
+    if not text:
+        return text
+    t = text.strip().lower()
+
+    CANON = {
+        "tampering with group policy objects": "modify domain policy configuration",
+        "tamper with group policy objects": "modify domain policy configuration",
+        "weaken organizational security posture": "degrade security controls",
+    }
+
+    for k, v in CANON.items():
+        if k in t:
+            return v
+    return t
+
+def _cosine(a, b) -> float:
+    na = float((a*a).sum()) ** 0.5
+    nb = float((b*b).sum()) ** 0.5
+    if na == 0.0 or nb == 0.0:
+        return 0.0
+    return float((a*b).sum() / (na * nb))
+
+def dedupe_behaviors_by_vector(texts: list[str], threshold: float = 0.92) -> list[str]:
+    kept: list[tuple[str, any]] = []
+    for t in texts:
+        v = nlp(t).vector
+        merged = False
+        for i, (kt, kv) in enumerate(kept):
+            if _cosine(v, kv) >= threshold:
+                merged = True
+                break
+        if not merged:
+            kept.append((t, v))
+    return [t for t, _ in kept]
 

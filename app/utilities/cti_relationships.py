@@ -446,6 +446,7 @@ def _extract_relationships_from_doc(doc, ir, source_label):
                 status = None
                 if conf < threshold:
                     status = "abstract-nominal"
+                    candidate["x_cti_resolution_status"] = "pending"
                     
                 candidate = {
                     "source": src,
@@ -466,7 +467,6 @@ def _extract_relationships_from_doc(doc, ir, source_label):
                     })
                     continue
 
-                results.append(candidate)
                 results.append(candidate)
 
     return results
@@ -780,7 +780,9 @@ def is_actionable_relationship(rel: dict) -> bool:
 
     # 2️⃣ Abstract noun targets (dynamic)
     if is_abstract_noun(tgt):
-        return False
+        rel["x_cti_resolution_status"] = "pending"
+        rel["x_cti_target_kind"] = "abstract"
+        return True
 
     # 3️⃣ Must originate from defensible context
     # if ctx not in {"behavior", "sentence"}:

@@ -10,7 +10,7 @@ from functools import lru_cache
 
 @lru_cache(maxsize=1)
 def load_config() -> dict:
-    cfg_path = Path(__file__).resolve().parents[2] / "conf" / "default.yml"
+    cfg_path = Path(__file__).resolve().parents[2] / "conf" / "local.yml"
     if not cfg_path.exists():
         raise FileNotFoundError(f"Missing config: {cfg_path}")
     with cfg_path.open("r", encoding="utf-8") as f:
