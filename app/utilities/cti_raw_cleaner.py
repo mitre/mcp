@@ -17,6 +17,10 @@ from bs4 import BeautifulSoup
 import aiofiles
 import aiofiles.os
 import aiofiles.ospath
+import math
+import spacy
+
+_nlp = spacy.load("en_core_web_sm")
 
 # Limit async concurrency
 SEMAPHORE = asyncio.Semaphore(8)
@@ -131,11 +135,25 @@ async def process_raw_file(path: Path, clean_dir: Path, images_dir: Path):
         if not txt.strip():
             return f"[SKIP] Empty TXT: {path.name}"
 
+        # -------------------------------------------------
+        # Linguistic dominance gate
+        # -------------------------------------------------
+        if _is_code_blob(txt) and not _is_linguistically_dominant(txt):
+            return f"[SKIP] Code-dominant TXT: {path.name}"
+
+        # -------------------------------------------------
+        # Filename sanity gate
+        # -------------------------------------------------
+        stem = path.stem.strip()
+        if not re.search(r"[a-zA-Z]{3,}", stem):
+            return f"[SKIP] Non-document filename: {path.name}"
+
         out = clean_dir / path.name
         async with aiofiles.open(out, "w", encoding="utf-8") as f:
             await f.write(txt)
 
         return f"[TXT] Copied {path.name}"
+
 
     return f"[SKIP] Unsupported type: {path.name}"
 
@@ -170,3 +188,75 @@ def clean_raw_directory(base_dir: Path, raw_dir: Path, clean_dir: Path, images_d
     Stage1-compatible wrapper.
     """
     return asyncio.run(clean_raw_directory_async(raw_dir, clean_dir, images_dir))
+
+def _shannon_entropy(s: str) -> float:
+    if not s:
+        return 0.0
+    freq = {}
+    for c in s:
+        freq[c] = freq.get(c, 0) + 1
+    probs = [v / len(s) for v in freq.values()]
+    return -sum(p * math.log2(p) for p in probs)
+
+
+def _is_linguistically_dominant(text: str) -> bool:
+    """
+    Returns True if prose dominates over code.
+
+    Allows:
+    - CTI reports with embedded code
+    Rejects:
+    - Code-only or minified blobs
+    """
+    doc = _nlp(text)
+
+    word_tokens = [t for t in doc if t.is_alpha]
+    verb_tokens = [t for t in doc if t.pos_ == "VERB"]
+    sentence_count = len(list(doc.sents))
+
+    # No linguistic structure
+    if sentence_count < 2:
+        return False
+
+    # Too few verbs → not explanatory prose
+    if len(verb_tokens) < 2:
+        return False
+
+    # Extremely low word ratio = code dominant
+    if len(word_tokens) / max(len(doc), 1) < 0.25:
+        return False
+
+    return True
+
+
+def _is_code_blob(text: str) -> bool:
+    """
+    Detects minified / executable-dominant content using entropy.
+    """
+    entropy = _shannon_entropy(text)
+
+    # Minified JS / packed code is very high entropy
+    if entropy > 4.8:
+        return True
+
+    return False
+
+def _is_valid_cti_text(text: str) -> bool:
+    if not text:
+        return False
+
+    t = text.strip()
+
+    # Too short to be analyst-usable
+    if len(t) < 200:
+        return False
+
+    # Must be linguistically dominant
+    if not _is_linguistically_dominant(t):
+        return False
+
+    # Reject only if code-dominant (not code-containing)
+    if _is_code_blob(t):
+        return False
+
+    return True

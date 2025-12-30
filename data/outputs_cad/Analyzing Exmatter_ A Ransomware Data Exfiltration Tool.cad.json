@@ -1,0 +1,1525 @@
+{
+  "nodes": [
+    {
+      "id": "attack-pattern--428ca9f8-0e33-442a-be87-f869cb4cf73e",
+      "nodeType": "Attack",
+      "label": "Multilayer Encryption",
+      "properties": {
+        "attack_id": "T1079",
+        "description": "An adversary performs C2 communications using multiple layers of encryption, typically (but not exclusively) tunneling a custom encryption scheme within a protocol encryption scheme such as HTTPS or SMTPS."
+      }
+    },
+    {
+      "id": "attack-pattern--c23b740b-a42b-47a1-aec2-9d48ddd547ff",
+      "nodeType": "Attack",
+      "label": "Pass the Hash",
+      "properties": {
+        "attack_id": "CAPEC-644",
+        "description": "Pass the hash (PtH) is a method of authenticating as a user without having access to the user's cleartext password. This method bypasses standard authentication steps that require a cleartext password, moving directly into the portion of the authentication that uses the password hash. In this technique, valid password hashes for the account being used are captured using a Credential Access technique. Captured hashes are used with PtH to authenticate as that user. Once authenticated, PtH may be used to perform actions on local or remote systems. \n\nWindows 7 and higher with KB2871997 require valid domain user credentials or RID 500 administrator hashes. (Citation: NSA Spotting)"
+      }
+    },
+    {
+      "id": "attack-pattern--28abec6c-4443-4b03-8206-07f2e264a6b4",
+      "nodeType": "Attack",
+      "label": "TFTP Boot",
+      "properties": {
+        "attack_id": "T1542.005",
+        "description": "Adversaries may abuse netbooting to load an unauthorized network device operating system from a Trivial File Transfer Protocol (TFTP) server. TFTP boot (netbooting) is commonly used by network administrators to load configuration-controlled network device images from a centralized management server. Netbooting is one option in the boot sequence and can be used to centralize, manage, and control device images.\n\nAdversaries may manipulate the configuration on the network device specifying use of a malicious TFTP server, which may be used in conjunction with [Modify System Image](https://attack.mitre.org/techniques/T1601) to load a modified image on device startup or reset. The unauthorized image allows adversaries to modify device configuration, add malicious capabilities to the device, and introduce backdoors to maintain control of the network device while minimizing detection through use of a standard functionality. This technique is similar to [ROMMONkit](https://attack.mitre.org/techniques/T1542/004) and may result in the network device running a modified image. (Citation: Cisco Blog Legacy Device Attacks)"
+      }
+    },
+    {
+      "id": "attack-pattern--e49ee9d2-0d98-44ef-85e5-5d3100065744",
+      "nodeType": "Attack",
+      "label": "Thread Local Storage",
+      "properties": {
+        "attack_id": "T1055.005",
+        "description": "Adversaries may inject malicious code into processes via thread local storage (TLS) callbacks in order to evade process-based defenses as well as possibly elevate privileges. TLS callback injection is a method of executing arbitrary code in the address space of a separate live process. \n\nTLS callback injection involves manipulating pointers inside a portable executable (PE) to redirect a process to malicious code before reaching the code's legitimate entry point. TLS callbacks are normally used by the OS to setup and/or cleanup data used by threads. Manipulating TLS callbacks may be performed by allocating and writing to specific offsets within a process\u2019 memory space using other [Process Injection](https://attack.mitre.org/techniques/T1055) techniques such as [Process Hollowing](https://attack.mitre.org/techniques/T1055/012).(Citation: FireEye TLS Nov 2017)\n\nRunning code in the context of another process may allow access to the process's memory, system/network resources, and possibly elevated privileges. Execution via TLS callback injection may also evade detection from security products since the execution is masked under a legitimate process. "
+      }
+    },
+    {
+      "id": "attack-pattern--143c0cbb-a297-4142-9624-87ffc778980b",
+      "nodeType": "Attack",
+      "label": "Archive via Custom Method",
+      "properties": {
+        "attack_id": "T1560.003",
+        "description": "An adversary may compress or encrypt data that is collected prior to exfiltration using a custom method. Adversaries may choose to use custom archival methods, such as encryption with XOR or stream ciphers implemented with no external library or utility references. Custom implementations of well-known compression algorithms have also been used.(Citation: ESET Sednit Part 2)"
+      }
+    },
+    {
+      "id": "attack-pattern--d4b96d2c-1032-4b22-9235-2b5b649d0605",
+      "nodeType": "Attack",
+      "label": "Domain Controller Authentication",
+      "properties": {
+        "attack_id": "T1556.001",
+        "description": "Adversaries may patch the authentication process on a domain controller to bypass the typical authentication mechanisms and enable access to accounts. \n\nMalware may be used to inject false credentials into the authentication process on a domain controller with the intent of creating a backdoor used to access any user\u2019s account and/or credentials (ex: [Skeleton Key](https://attack.mitre.org/software/S0007)). Skeleton key works through a patch on an enterprise domain controller authentication process (LSASS) with credentials that adversaries may use to bypass the standard authentication system. Once patched, an adversary can use the injected password to successfully authenticate as any domain user account (until the the skeleton key is erased from memory by a reboot of the domain controller). Authenticated access may enable unfettered access to hosts and/or resources within single-factor authentication environments.(Citation: Dell Skeleton)"
+      }
+    },
+    {
+      "id": "attack-pattern--c16e5409-ee53-4d79-afdc-4099dc9292df",
+      "nodeType": "Attack",
+      "label": "Web Shell",
+      "properties": {
+        "attack_id": "CAPEC-650",
+        "description": "A Web shell is a Web script that is placed on an openly accessible Web server to allow an adversary to use the Web server as a gateway into a network. A Web shell may provide a set of functions to execute or a command-line interface on the system that hosts the Web server. In addition to a server-side script, a Web shell may have a client interface program that is used to talk to the Web server (see, for example, China Chopper Web shell client). (Citation: Lee 2013)\n\nWeb shells may serve as [Redundant Access](https://attack.mitre.org/techniques/T1108) or as a persistence mechanism in case an adversary's primary access methods are detected and removed."
+      }
+    },
+    {
+      "id": "attack-pattern--e624264c-033a-424d-9fd7-fc9c3bbdb03e",
+      "nodeType": "Attack",
+      "label": "Pass the Hash",
+      "properties": {
+        "attack_id": "T1550.002",
+        "description": "Adversaries may \u201cpass the hash\u201d using stolen password hashes to move laterally within an environment, bypassing normal system access controls. Pass the hash (PtH) is a method of authenticating as a user without having access to the user's cleartext password. This method bypasses standard authentication steps that require a cleartext password, moving directly into the portion of the authentication that uses the password hash.\n\nWhen performing PtH, valid password hashes for the account being used are captured using a [Credential Access](https://attack.mitre.org/tactics/TA0006) technique. Captured hashes are used with PtH to authenticate as that user. Once authenticated, PtH may be used to perform actions on local or remote systems.\n\nAdversaries may also use stolen password hashes to \"overpass the hash.\" Similar to PtH, this involves using a password hash to authenticate as a user but also uses the password hash to create a valid Kerberos ticket. This ticket can then be used to perform [Pass the Ticket](https://attack.mitre.org/techniques/T1550/003) attacks.(Citation: Stealthbits Overpass-the-Hash)"
+      }
+    },
+    {
+      "id": "attack-pattern--4b74a1d4-b0e9-4ef1-93f1-14ecc6e2f5b5",
+      "nodeType": "Attack",
+      "label": "Standard Cryptographic Protocol",
+      "properties": {
+        "attack_id": "T1032",
+        "description": "Adversaries may explicitly employ a known encryption algorithm to conceal command and control traffic rather than relying on any inherent protections provided by a communication protocol. Despite the use of a secure algorithm, these implementations may be vulnerable to reverse engineering if necessary secret keys are encoded and/or generated within malware samples/configuration files."
+      }
+    },
+    {
+      "id": "attack-pattern--4d2a5b3e-340d-4600-9123-309dd63c9bf8",
+      "nodeType": "Attack",
+      "label": "SSH Hijacking",
+      "properties": {
+        "attack_id": "T1563.001",
+        "description": "Adversaries may hijack a legitimate user's SSH session to move laterally within an environment. Secure Shell (SSH) is a standard means of remote access on Linux and macOS systems. It allows a user to connect to another system via an encrypted tunnel, commonly authenticating through a password, certificate or the use of an asymmetric encryption key pair.\n\nIn order to move laterally from a compromised host, adversaries may take advantage of trust relationships established with other systems via public key authentication in active SSH sessions by hijacking an existing connection to another system. This may occur through compromising the SSH agent itself or by having access to the agent's socket. If an adversary is able to obtain root access, then hijacking SSH sessions is likely trivial.(Citation: Slideshare Abusing SSH)(Citation: SSHjack Blackhat)(Citation: Clockwork SSH Agent Hijacking)(Citation: Breach Post-mortem SSH Hijack)\n\n[SSH Hijacking](https://attack.mitre.org/techniques/T1563/001) differs from use of [SSH](https://attack.mitre.org/techniques/T1021/004) because it hijacks an existing SSH session rather than creating a new session using [Valid Accounts](https://attack.mitre.org/techniques/T1078)."
+      }
+    },
+    {
+      "id": "attack-pattern--5d0d3609-d06d-49e1-b9c9-b544e0c618cb",
+      "nodeType": "Attack",
+      "label": "Web Shell",
+      "properties": {
+        "attack_id": "T1505.003",
+        "description": "Adversaries may backdoor web servers with web shells to establish persistent access to systems. A Web shell is a Web script that is placed on an openly accessible Web server to allow an adversary to access the Web server as a gateway into a network. A Web shell may provide a set of functions to execute or a command-line interface on the system that hosts the Web server.(Citation: volexity_0day_sophos_FW)\n\nIn addition to a server-side script, a Web shell may have a client interface program that is used to talk to the Web server (e.g. [China Chopper](https://attack.mitre.org/software/S0020) Web shell client).(Citation: Lee 2013)"
+      }
+    },
+    {
+      "id": "attack-pattern--b8902400-e6c5-4ba2-95aa-2d35b442b118",
+      "nodeType": "Attack",
+      "label": "Encrypted Channel",
+      "properties": {
+        "attack_id": "T1573",
+        "description": "Adversaries may employ an encryption algorithm to conceal command and control traffic rather than relying on any inherent protections provided by a communication protocol. Despite the use of a secure algorithm, these implementations may be vulnerable to reverse engineering if secret keys are encoded and/or generated within malware samples/configuration files."
+      }
+    },
+    {
+      "id": "attack-pattern--c1b11bf7-c68e-4fbf-a95b-28efbe7953bb",
+      "nodeType": "Attack",
+      "label": "SSH Hijacking",
+      "properties": {
+        "attack_id": "T1184",
+        "description": "Secure Shell (SSH) is a standard means of remote access on Linux and macOS systems. It allows a user to connect to another system via an encrypted tunnel, commonly authenticating through a password, certificate or the use of an asymmetric encryption key pair.\n\nIn order to move laterally from a compromised host, adversaries may take advantage of trust relationships established with other systems via public key authentication in active SSH sessions by hijacking an existing connection to another system. This may occur through compromising the SSH agent itself or by having access to the agent's socket. If an adversary is able to obtain root access, then hijacking SSH sessions is likely trivial. (Citation: Slideshare Abusing SSH) (Citation: SSHjack Blackhat) (Citation: Clockwork SSH Agent Hijacking) Compromising the SSH agent also provides access to intercept SSH credentials. (Citation: Welivesecurity Ebury SSH)\n\n[SSH Hijacking](https://attack.mitre.org/techniques/T1184) differs from use of [Remote Services](https://attack.mitre.org/techniques/T1021) because it injects into an existing SSH session rather than creating a new session using [Valid Accounts](https://attack.mitre.org/techniques/T1078)."
+      }
+    },
+    {
+      "id": "attack-pattern--98be40f2-c86b-4ade-b6fc-4964932040e5",
+      "nodeType": "Attack",
+      "label": "VDSO Hijacking",
+      "properties": {
+        "attack_id": "T1055.014",
+        "description": "Adversaries may inject malicious code into processes via VDSO hijacking in order to evade process-based defenses as well as possibly elevate privileges. Virtual dynamic shared object (vdso) hijacking is a method of executing arbitrary code in the address space of a separate live process. \n\nVDSO hijacking involves redirecting calls to dynamically linked shared libraries. Memory protections may prevent writing executable code to a process via [Ptrace System Calls](https://attack.mitre.org/techniques/T1055/008). However, an adversary may hijack the syscall interface code stubs mapped into a process from the vdso shared object to execute syscalls to open and map a malicious shared object. This code can then be invoked by redirecting the execution flow of the process via patched memory address references stored in a process' global offset table (which store absolute addresses of mapped library functions).(Citation: ELF Injection May 2009)(Citation: Backtrace VDSO)(Citation: VDSO Aug 2005)(Citation: Syscall 2014)\n\nRunning code in the context of another process may allow access to the process's memory, system/network resources, and possibly elevated privileges. Execution via VDSO hijacking may also evade detection from security products since the execution is masked under a legitimate process.  "
+      }
+    },
+    {
+      "id": "attack-pattern--52759bf1-fe12-4052-ace6-c5b0cf7dd7fd",
+      "nodeType": "Attack",
+      "label": "Network Device Configuration Dump",
+      "properties": {
+        "attack_id": "T1602.002",
+        "description": "Adversaries may access network configuration files to collect sensitive data about the device and the network. The network configuration is a file containing parameters that determine the operation of the device. The device typically stores an in-memory copy of the configuration while operating, and a separate configuration on non-volatile storage to load after device reset. Adversaries can inspect the configuration files to reveal information about the target network and its layout, the network device and its software, or identifying legitimate accounts and credentials for later use.\n\nAdversaries can use common management tools and protocols, such as Simple Network Management Protocol (SNMP) and Smart Install (SMI), to access network configuration files.(Citation: US-CERT TA18-106A Network Infrastructure Devices 2018)(Citation: Cisco Blog Legacy Device Attacks) These tools may be used to query specific data from a configuration repository or configure the device to export the configuration for later analysis. "
+      }
+    },
+    {
+      "id": "attack-pattern--b77cf5f3-6060-475d-bd60-40ccbf28fdc2",
+      "nodeType": "Attack",
+      "label": "Forced Authentication",
+      "properties": {
+        "attack_id": "T1187",
+        "description": "Adversaries may gather credential material by invoking or forcing a user to automatically provide authentication information through a mechanism in which they can intercept.\n\nThe Server Message Block (SMB) protocol is commonly used in Windows networks for authentication and communication between systems for access to resources and file sharing. When a Windows system attempts to connect to an SMB resource it will automatically attempt to authenticate and send credential information for the current user to the remote system.(Citation: Wikipedia Server Message Block) This behavior is typical in enterprise environments so that users do not need to enter credentials to access network resources.\n\nWeb Distributed Authoring and Versioning (WebDAV) is also typically used by Windows systems as a backup protocol when SMB is blocked or fails. WebDAV is an extension of HTTP and will typically operate over TCP ports 80 and 443.(Citation: Didier Stevens WebDAV Traffic)(Citation: Microsoft Managing WebDAV Security)\n\nAdversaries may take advantage of this behavior to gain access to user account hashes through forced SMB/WebDAV authentication. An adversary can send an attachment to a user through spearphishing that contains a resource link to an external server controlled by the adversary  (i.e. [Template Injection](https://attack.mitre.org/techniques/T1221)), or place a specially crafted file on navigation path for privileged accounts (e.g. .SCF file placed on desktop) or on a publicly accessible share to be accessed by victim(s). When the user's system accesses the untrusted resource, it will attempt authentication and send information, including the user's hashed credentials, over SMB to the adversary-controlled server.(Citation: GitHub Hashjacking) With access to the credential hash, an adversary can perform off-line [Brute Force](https://attack.mitre.org/techniques/T1110) cracking to gain access to plaintext credentials.(Citation: Cylance Redirect to SMB)\n\nThere are several different ways this can occur.(Citation: Osanda Stealing NetNTLM Hashes) Some specifics from in-the-wild use include:\n\n* A spearphishing attachment containing a document with a resource that is automatically loaded when the document is opened (i.e. [Template Injection](https://attack.mitre.org/techniques/T1221)). The document can include, for example, a request similar to <code>file[:]//[remote address]/Normal.dotm</code> to trigger the SMB request.(Citation: US-CERT APT Energy Oct 2017)\n* A modified .LNK or .SCF file with the icon filename pointing to an external reference such as <code>\\\\[remote address]\\pic.png</code> that will force the system to load the resource when the icon is rendered to repeatedly gather credentials.(Citation: US-CERT APT Energy Oct 2017)\n\nAlternatively, by leveraging the <code>EfsRpcOpenFileRaw</code> function, an adversary can send SMB requests to a remote system's MS-EFSRPC interface and force the victim computer to initiate an authentication procedure and share its authentication details. The Encrypting File System Remote Protocol (EFSRPC) is a protocol used in Windows networks for maintenance and management operations on encrypted data that is stored remotely to be accessed over a network. Utilization of <code>EfsRpcOpenFileRaw</code> function in EFSRPC is used to open an encrypted object on the server for backup or restore. Adversaries can collect this data and abuse it as part of a NTLM relay attack to gain access to remote systems on the same internal network.(Citation: Rapid7)(Citation: GitHub)\n\n"
+      }
+    },
+    {
+      "id": "attack-pattern--f4599aa0-4f85-4a32-80ea-fc39dc965945",
+      "nodeType": "Attack",
+      "label": "Dynamic-link Library Injection",
+      "properties": {
+        "attack_id": "T1055.001",
+        "description": "Adversaries may inject dynamic-link libraries (DLLs) into processes in order to evade process-based defenses as well as possibly elevate privileges. DLL injection is a method of executing arbitrary code in the address space of a separate live process.  \n\nDLL injection is commonly performed by writing the path to a DLL in the virtual address space of the target process before loading the DLL by invoking a new thread. The write can be performed with native Windows API calls such as <code>VirtualAllocEx</code> and <code>WriteProcessMemory</code>, then invoked with <code>CreateRemoteThread</code> (which calls the <code>LoadLibrary</code> API responsible for loading the DLL). (Citation: Elastic Process Injection July 2017) \n\nVariations of this method such as reflective DLL injection (writing a self-mapping DLL into a process) and memory module (map DLL when writing into process) overcome the address relocation issue as well as the additional APIs to invoke execution (since these methods load and execute the files in memory by manually preforming the function of <code>LoadLibrary</code>).(Citation: Elastic HuntingNMemory June 2017)(Citation: Elastic Process Injection July 2017) \n\nAnother variation of this method, often referred to as Module Stomping/Overloading or DLL Hollowing, may be leveraged to conceal injected code within a process. This method involves loading a legitimate DLL into a remote process then manually overwriting the module's <code>AddressOfEntryPoint</code> before starting a new thread in the target process.(Citation: Module Stomping for Shellcode Injection) This variation allows attackers to hide malicious injected code by potentially backing its execution with a legitimate DLL file on disk.(Citation: Hiding Malicious Code with Module Stomping) \n\nRunning code in the context of another process may allow access to the process's memory, system/network resources, and possibly elevated privileges. Execution via DLL injection may also evade detection from security products since the execution is masked under a legitimate process. "
+      }
+    },
+    {
+      "id": "attack-pattern--3b3cbbe0-6ed3-4334-b543-3ddfd8c5642d",
+      "nodeType": "Attack",
+      "label": "Custom Cryptographic Protocol",
+      "properties": {
+        "attack_id": "T1024",
+        "description": "Adversaries may use a custom cryptographic protocol or algorithm to hide command and control traffic. A simple scheme, such as XOR-ing the plaintext with a fixed key, will produce a very weak ciphertext.\n\nCustom encryption schemes may vary in sophistication. Analysis and reverse engineering of malware samples may be enough to discover the algorithm and encryption key used.\n\nSome adversaries may also attempt to implement their own version of a well-known cryptographic algorithm instead of using a known implementation library, which may lead to unintentional errors. (Citation: F-Secure Cosmicduke)"
+      }
+    },
+    {
+      "id": "attack-pattern--bb0e0cb5-f3e4-4118-a4cb-6bf13bfbc9f2",
+      "nodeType": "Attack",
+      "label": "Netsh Helper DLL",
+      "properties": {
+        "attack_id": "T1128",
+        "description": "Netsh.exe (also referred to as Netshell) is a command-line scripting utility used to interact with the network configuration of a system. It contains functionality to add helper DLLs for extending functionality of the utility. (Citation: TechNet Netsh) The paths to registered netsh.exe helper DLLs are entered into the Windows Registry at <code>HKLM\\SOFTWARE\\Microsoft\\Netsh</code>.\n\nAdversaries can use netsh.exe with helper DLLs to proxy execution of arbitrary code in a persistent manner when netsh.exe is executed automatically with another Persistence technique or if other persistent software is present on the system that executes netsh.exe as part of its normal functionality. Examples include some VPN software that invoke netsh.exe. (Citation: Demaske Netsh Persistence)\n\nProof of concept code exists to load Cobalt Strike's payload using netsh.exe helper DLLs. (Citation: Github Netsh Helper CS Beacon)"
+      }
+    },
+    {
+      "id": "attack-pattern--68f7e3a1-f09f-4164-9a62-16b648a0dd5a",
+      "nodeType": "Attack",
+      "label": "Regsvr32",
+      "properties": {
+        "attack_id": "T1117",
+        "description": "Regsvr32.exe is a command-line program used to register and unregister object linking and embedding controls, including dynamic link libraries (DLLs), on Windows systems. Regsvr32.exe can be used to execute arbitrary binaries. (Citation: Microsoft Regsvr32)\n\nAdversaries may take advantage of this functionality to proxy execution of code to avoid triggering security tools that may not monitor execution of, and modules loaded by, the regsvr32.exe process because of whitelists or false positives from Windows using regsvr32.exe for normal operations. Regsvr32.exe is also a Microsoft signed binary.\n\nRegsvr32.exe can also be used to specifically bypass process whitelisting using functionality to load COM scriptlets to execute DLLs under user permissions. Since regsvr32.exe is network and proxy aware, the scripts can be loaded by passing a uniform resource locator (URL) to file on an external Web server as an argument during invocation. This method makes no changes to the Registry as the COM object is not actually registered, only executed. (Citation: LOLBAS Regsvr32) This variation of the technique is often referred to as a \"Squiblydoo\" attack and has been used in campaigns targeting governments. (Citation: Carbon Black Squiblydoo Apr 2016) (Citation: FireEye Regsvr32 Targeting Mongolian Gov)\n\nRegsvr32.exe can also be leveraged to register a COM Object used to establish Persistence via [Component Object Model Hijacking](https://attack.mitre.org/techniques/T1122). (Citation: Carbon Black Squiblydoo Apr 2016)"
+      }
+    },
+    {
+      "id": "attack-pattern--04fd5427-79c7-44ea-ae13-11b24778ff1c",
+      "nodeType": "Attack",
+      "label": "Standard Encoding",
+      "properties": {
+        "attack_id": "T1132.001",
+        "description": "Adversaries may encode data with a standard data encoding system to make the content of command and control traffic more difficult to detect. Command and control (C2) information can be encoded using a standard data encoding system that adheres to existing protocol specifications. Common data encoding schemes include ASCII, Unicode, hexadecimal, Base64, and MIME.(Citation: Wikipedia Binary-to-text Encoding)(Citation: Wikipedia Character Encoding) Some data encoding systems may also result in data compression, such as gzip."
+      }
+    },
+    {
+      "id": "attack-pattern--7bd9c723-2f78-4309-82c5-47cad406572b",
+      "nodeType": "Attack",
+      "label": "Dynamic Resolution",
+      "properties": {
+        "attack_id": "T1568",
+        "description": "Adversaries may dynamically establish connections to command and control infrastructure to evade common detections and remediations. This may be achieved by using malware that shares a common algorithm with the infrastructure the adversary uses to receive the malware's communications. These calculations can be used to dynamically adjust parameters such as the domain name, IP address, or port number the malware uses for command and control.\n\nAdversaries may use dynamic resolution for the purpose of [Fallback Channels](https://attack.mitre.org/techniques/T1008). When contact is lost with the primary command and control server malware may employ dynamic resolution as a means to reestablishing command and control.(Citation: Talos CCleanup 2017)(Citation: FireEye POSHSPY April 2017)(Citation: ESET Sednit 2017 Activity)"
+      }
+    },
+    {
+      "id": "attack-pattern--544b0346-29ad-41e1-a808-501bb4193f47",
+      "nodeType": "Attack",
+      "label": "Browser Session Hijacking",
+      "properties": {
+        "attack_id": "T1185",
+        "description": "Adversaries may take advantage of security vulnerabilities and inherent functionality in browser software to change content, modify user-behaviors, and intercept information as part of various browser session hijacking techniques.(Citation: Wikipedia Man in the Browser)\n\nA specific example is when an adversary injects software into a browser that allows them to inherit cookies, HTTP sessions, and SSL client certificates of a user then use the browser as a way to pivot into an authenticated intranet.(Citation: Cobalt Strike Browser Pivot)(Citation: ICEBRG Chrome Extensions) Executing browser-based behaviors such as pivoting may require specific process permissions, such as <code>SeDebugPrivilege</code> and/or high-integrity/administrator rights.\n\nAnother example involves pivoting browser traffic from the adversary's browser through the user's browser by setting up a proxy which will redirect web traffic. This does not alter the user's traffic in any way, and the proxy connection can be severed as soon as the browser is closed. The adversary assumes the security context of whichever browser process the proxy is injected into. Browsers typically create a new process for each tab that is opened and permissions and certificates are separated accordingly. With these permissions, an adversary could potentially browse to any resource on an intranet, such as [Sharepoint](https://attack.mitre.org/techniques/T1213/002) or webmail, that is accessible through the browser and which the browser has sufficient permissions. Browser pivoting may also bypass security provided by 2-factor authentication.(Citation: cobaltstrike manual)"
+      }
+    },
+    {
+      "id": "attack-pattern--eb062747-2193-45de-8fa2-e62549c37ddf",
+      "nodeType": "Attack",
+      "label": "Remote Desktop Protocol",
+      "properties": {
+        "attack_id": "T1021.001",
+        "description": "Adversaries may use [Valid Accounts](https://attack.mitre.org/techniques/T1078) to log into a computer using the Remote Desktop Protocol (RDP). The adversary may then perform actions as the logged-on user.\n\nRemote desktop is a common feature in operating systems. It allows a user to log into an interactive session with a system desktop graphical user interface on a remote system. Microsoft refers to its implementation of the Remote Desktop Protocol (RDP) as Remote Desktop Services (RDS).(Citation: TechNet Remote Desktop Services) \n\nAdversaries may connect to a remote system over RDP/RDS to expand access if the service is enabled and allows access to accounts with known credentials. Adversaries will likely use Credential Access techniques to acquire credentials to use with RDP. Adversaries may also use RDP in conjunction with the [Accessibility Features](https://attack.mitre.org/techniques/T1546/008) or [Terminal Services DLL](https://attack.mitre.org/techniques/T1505/005) for Persistence.(Citation: Alperovitch Malware)"
+      }
+    },
+    {
+      "id": "attack-pattern--01327cde-66c4-4123-bf34-5f258d59457b",
+      "nodeType": "Attack",
+      "label": "VNC",
+      "properties": {
+        "attack_id": "T1021.005",
+        "description": "Adversaries may use [Valid Accounts](https://attack.mitre.org/techniques/T1078) to remotely control machines using Virtual Network Computing (VNC).  VNC is a platform-independent desktop sharing system that uses the RFB (\u201cremote framebuffer\u201d) protocol to enable users to remotely control another computer\u2019s display by relaying the screen, mouse, and keyboard inputs over the network.(Citation: The Remote Framebuffer Protocol)\n\nVNC differs from [Remote Desktop Protocol](https://attack.mitre.org/techniques/T1021/001) as VNC is screen-sharing software rather than resource-sharing software. By default, VNC uses the system's authentication, but it can be configured to use credentials specific to VNC.(Citation: MacOS VNC software for Remote Desktop)(Citation: VNC Authentication)\n\nAdversaries may abuse VNC to perform malicious actions as the logged-on user such as opening documents, downloading files, and running arbitrary commands. An adversary could use VNC to remotely control and monitor a system to collect data and information to pivot to other systems within the network. Specific VNC libraries/implementations have also been susceptible to brute force attacks and memory usage exploitation.(Citation: Hijacking VNC)(Citation: macOS root VNC login without authentication)(Citation: VNC Vulnerabilities)(Citation: Offensive Security VNC Authentication Check)(Citation: Attacking VNC Servers PentestLab)(Citation: Havana authentication bug)"
+      }
+    },
+    {
+      "id": "attack-pattern--837f9164-50af-4ac0-8219-379d8a74cefc",
+      "nodeType": "Attack",
+      "label": "Credentials In Files",
+      "properties": {
+        "attack_id": "T1552.001",
+        "description": "Adversaries may search local file systems and remote file shares for files containing insecurely stored credentials. These can be files created by users to store their own credentials, shared credential stores for a group of individuals, configuration files containing passwords for a system or service, or source code/binary files containing embedded passwords.\n\nIt is possible to extract passwords from backups or saved virtual machines through [OS Credential Dumping](https://attack.mitre.org/techniques/T1003).(Citation: CG 2014) Passwords may also be obtained from Group Policy Preferences stored on the Windows Domain Controller.(Citation: SRD GPP)\n\nIn cloud and/or containerized environments, authenticated user and service account credentials are often stored in local configuration and credential files.(Citation: Unit 42 Hildegard Malware) They may also be found as parameters to deployment commands in container logs.(Citation: Unit 42 Unsecured Docker Daemons) In some cases, these files can be copied and reused on another machine or the contents can be read and then used to authenticate without needing to copy any files.(Citation: Specter Ops - Cloud Credential Storage)"
+      }
+    },
+    {
+      "id": "attack-pattern--ba8e391f-14b5-496f-81f2-2d5ecd646c1c",
+      "nodeType": "Attack",
+      "label": "Credentials in Files",
+      "properties": {
+        "attack_id": "CAPEC-639",
+        "description": "Adversaries may search local file systems and remote file shares for files containing passwords. These can be files created by users to store their own credentials, shared credential stores for a group of individuals, configuration files containing passwords for a system or service, or source code/binary files containing embedded passwords.\n\nIt is possible to extract passwords from backups or saved virtual machines through [OS Credential Dumping](https://attack.mitre.org/techniques/T1003). (Citation: CG 2014) Passwords may also be obtained from Group Policy Preferences stored on the Windows Domain Controller. (Citation: SRD GPP)\n\nIn cloud environments, authenticated user credentials are often stored in local configuration and credential files. In some cases, these files can be copied and reused on another machine or the contents can be read and then used to authenticate without needing to copy any files. (Citation: Specter Ops - Cloud Credential Storage)\n\n"
+      }
+    },
+    {
+      "id": "attack-pattern--53ac20cd-aca3-406e-9aa0-9fc7fdc60a5a",
+      "nodeType": "Attack",
+      "label": "Archive Collected Data",
+      "properties": {
+        "attack_id": "T1560",
+        "description": "An adversary may compress and/or encrypt data that is collected prior to exfiltration. Compressing the data can help to obfuscate the collected data and minimize the amount of data sent over the network.(Citation: DOJ GRU Indictment Jul 2018) Encryption can be used to hide information that is being exfiltrated from detection or make exfiltration less conspicuous upon inspection by a defender.\n\nBoth compression and encryption are done prior to exfiltration, and can be performed using a utility, 3rd party library, or custom method."
+      }
+    },
+    {
+      "id": "attack-pattern--a3e1e6c5-9c74-4fc0-a16c-a9d228c17829",
+      "nodeType": "Attack",
+      "label": "Exfiltration over USB",
+      "properties": {
+        "attack_id": "T1052.001",
+        "description": "Adversaries may attempt to exfiltrate data over a USB connected physical device. In certain circumstances, such as an air-gapped network compromise, exfiltration could occur via a USB device introduced by a user. The USB device could be used as the final exfiltration point or to hop between otherwise disconnected systems."
+      }
+    },
+    {
+      "id": "attack-pattern--d54416bd-0803-41ca-870a-ce1af7c05638",
+      "nodeType": "Attack",
+      "label": "Data Encrypted",
+      "properties": {
+        "attack_id": "T1022",
+        "description": "Data is encrypted before being exfiltrated in order to hide the information that is being exfiltrated from detection or to make the exfiltration less conspicuous upon inspection by a defender. The encryption is performed by a utility, programming library, or custom algorithm on the data itself and is considered separate from any encryption performed by the command and control or file transfer protocol. Common file archive formats that can encrypt files are RAR and zip.\n\nOther exfiltration techniques likely apply as well to transfer the information out of the network, such as [Exfiltration Over C2 Channel](https://attack.mitre.org/techniques/T1041) and [Exfiltration Over Alternative Protocol](https://attack.mitre.org/techniques/T1048)"
+      }
+    },
+    {
+      "id": "attack-pattern--cc7b8c4e-9be0-47ca-b0bb-83915ec3ee2f",
+      "nodeType": "Attack",
+      "label": "Data Encoding",
+      "properties": {
+        "attack_id": "T1132",
+        "description": "Adversaries may encode data to make the content of command and control traffic more difficult to detect. Command and control (C2) information can be encoded using a standard data encoding system. Use of data encoding may adhere to existing protocol specifications and includes use of ASCII, Unicode, Base64, MIME, or other binary-to-text and character encoding systems.(Citation: Wikipedia Binary-to-text Encoding) (Citation: Wikipedia Character Encoding) Some data encoding systems may also result in data compression, such as gzip."
+      }
+    },
+    {
+      "id": "attack-pattern--f6fe9070-7a65-49ea-ae72-76292f42cebe",
+      "nodeType": "Attack",
+      "label": "System Script Proxy Execution",
+      "properties": {
+        "attack_id": "T1216",
+        "description": "Adversaries may use trusted scripts, often signed with certificates, to proxy the execution of malicious files. Several Microsoft signed scripts that have been downloaded from Microsoft or are default on Windows installations can be used to proxy execution of other files.(Citation: LOLBAS Project) This behavior may be abused by adversaries to execute malicious files that could bypass application control and signature validation on systems.(Citation: GitHub Ultimate AppLocker Bypass List)"
+      }
+    },
+    {
+      "id": "attack-pattern--731f4f55-b6d0-41d1-a7a9-072a66389aea",
+      "nodeType": "Attack",
+      "label": "Proxy",
+      "properties": {
+        "attack_id": "T1090",
+        "description": "Adversaries may use a connection proxy to direct network traffic between systems or act as an intermediary for network communications to a command and control server to avoid direct connections to their infrastructure. Many tools exist that enable traffic redirection through proxies or port redirection, including [HTRAN](https://attack.mitre.org/software/S0040), ZXProxy, and ZXPortMap. (Citation: Trend Micro APT Attack Tools) Adversaries use these types of proxies to manage command and control communications, reduce the number of simultaneous outbound network connections, provide resiliency in the face of connection loss, or to ride over existing trusted communications paths between victims to avoid suspicion. Adversaries may chain together multiple proxies to further disguise the source of malicious traffic.\n\nAdversaries can also take advantage of routing schemes in Content Delivery Networks (CDNs) to proxy command and control traffic."
+      }
+    },
+    {
+      "id": "malware--7adf3cc3-bb86-4901-b331-3ced60a5b9a5",
+      "nodeType": "Agent",
+      "label": "Exmatter",
+      "properties": {}
+    },
+    {
+      "id": "malware--d05fe19b-ddf3-4c9f-861b-55051298ef31",
+      "nodeType": "Agent",
+      "label": "Ryuk Infostealer",
+      "properties": {}
+    },
+    {
+      "id": "malware--77d95314-3f28-46aa-b652-cba77e1a4166",
+      "nodeType": "Agent",
+      "label": "StealBit",
+      "properties": {}
+    },
+    {
+      "id": "malware--7bbb2a4e-fe22-4e50-94a6-ce552951e998",
+      "nodeType": "Agent",
+      "label": "Conti Ransomware",
+      "properties": {}
+    },
+    {
+      "id": "tool--0525e385-c26e-490c-a35f-783df2d4ac51",
+      "nodeType": "Agent",
+      "label": "Exmatter",
+      "properties": {}
+    },
+    {
+      "id": "tool--023c4a82-a371-417f-ad8f-42d6ddd3afbb",
+      "nodeType": "Agent",
+      "label": "PowerShell",
+      "properties": {}
+    },
+    {
+      "id": "tool--59311a17-2bda-43a1-b3f5-a2aadac8b13e",
+      "nodeType": "Agent",
+      "label": "ADFind",
+      "properties": {}
+    },
+    {
+      "id": "tool--aca67e75-4ea9-472d-87a9-6d95dff6a552",
+      "nodeType": "Agent",
+      "label": "Advanced IP Scanner",
+      "properties": {}
+    },
+    {
+      "id": "tool--16ab7e9f-5474-4cc8-9619-1a84083bf614",
+      "nodeType": "Agent",
+      "label": "Windows Sysinternals suite",
+      "properties": {}
+    },
+    {
+      "id": "tool--1514344c-b33c-4365-9cfe-178c2ca40524",
+      "nodeType": "Agent",
+      "label": "Themida",
+      "properties": {}
+    },
+    {
+      "id": "threat-actor--474d6031-5ad9-45b5-938d-9ec173ccee77",
+      "nodeType": "Agent",
+      "label": "BlackMatter",
+      "properties": {}
+    },
+    {
+      "id": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "nodeType": "Event",
+      "label": "Observed Behavior",
+      "properties": {
+        "type": "observed-data",
+        "id": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+        "created": "2025-12-30T18:16:27.757043Z",
+        "modified": "2025-12-30T18:16:27.757054Z",
+        "first_observed": "2025-12-30T18:16:27.757064Z",
+        "last_observed": "2025-12-30T18:16:27.757073Z",
+        "number_observed": 1,
+        "objects": {
+          "0": {
+            "type": "x-observable",
+            "spec_version": "2.1",
+            "x_behavior": "data exfiltration is performed shortly before ransomware deployment."
+          }
+        },
+        "x_cti_confidence": 0.6,
+        "labels": [
+          "d3f:observed-data"
+        ],
+        "x_d3fend_class": "d3f:observed-data",
+        "x_cad_schema": {
+          "analytic_id": "cad:analytic:observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+          "analytic_type": "observed-data",
+          "references": []
+        }
+      }
+    },
+    {
+      "id": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "nodeType": "Event",
+      "label": "Observed Behavior",
+      "properties": {
+        "type": "observed-data",
+        "id": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+        "created": "2025-12-30T18:16:27.757124Z",
+        "modified": "2025-12-30T18:16:27.757133Z",
+        "first_observed": "2025-12-30T18:16:27.757143Z",
+        "last_observed": "2025-12-30T18:16:27.757152Z",
+        "number_observed": 1,
+        "objects": {
+          "0": {
+            "type": "x-observable",
+            "spec_version": "2.1",
+            "x_behavior": "the tool prioritizes recently modified files for exfiltration."
+          }
+        },
+        "x_cti_confidence": 0.6,
+        "labels": [
+          "d3f:observed-data"
+        ],
+        "x_d3fend_class": "d3f:observed-data",
+        "x_cad_schema": {
+          "analytic_id": "cad:analytic:observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+          "analytic_type": "observed-data",
+          "references": []
+        }
+      }
+    },
+    {
+      "id": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "nodeType": "Event",
+      "label": "Observed Behavior",
+      "properties": {
+        "type": "observed-data",
+        "id": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+        "created": "2025-12-30T18:16:27.757184Z",
+        "modified": "2025-12-30T18:16:27.757193Z",
+        "first_observed": "2025-12-30T18:16:27.757202Z",
+        "last_observed": "2025-12-30T18:16:27.757212Z",
+        "number_observed": 1,
+        "objects": {
+          "0": {
+            "type": "x-observable",
+            "spec_version": "2.1",
+            "x_behavior": "uses sftp to exfiltrate data."
+          }
+        },
+        "x_cti_confidence": 0.6,
+        "labels": [
+          "d3f:observed-data"
+        ],
+        "x_d3fend_class": "d3f:observed-data",
+        "x_cad_schema": {
+          "analytic_id": "cad:analytic:observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+          "analytic_type": "observed-data",
+          "references": []
+        }
+      }
+    },
+    {
+      "id": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "nodeType": "Event",
+      "label": "Observed Behavior",
+      "properties": {
+        "type": "observed-data",
+        "id": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+        "created": "2025-12-30T18:16:27.757244Z",
+        "modified": "2025-12-30T18:16:27.757253Z",
+        "first_observed": "2025-12-30T18:16:27.757262Z",
+        "last_observed": "2025-12-30T18:16:27.757271Z",
+        "number_observed": 1,
+        "objects": {
+          "0": {
+            "type": "x-observable",
+            "spec_version": "2.1",
+            "x_behavior": "uses webdav as a secondary exfiltration method."
+          }
+        },
+        "x_cti_confidence": 0.6,
+        "labels": [
+          "d3f:observed-data"
+        ],
+        "x_d3fend_class": "d3f:observed-data",
+        "x_cad_schema": {
+          "analytic_id": "cad:analytic:observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+          "analytic_type": "observed-data",
+          "references": []
+        }
+      }
+    },
+    {
+      "id": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "nodeType": "Event",
+      "label": "Observed Behavior",
+      "properties": {
+        "type": "observed-data",
+        "id": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+        "created": "2025-12-30T18:16:27.757300Z",
+        "modified": "2025-12-30T18:16:27.757309Z",
+        "first_observed": "2025-12-30T18:16:27.757318Z",
+        "last_observed": "2025-12-30T18:16:27.757327Z",
+        "number_observed": 1,
+        "objects": {
+          "0": {
+            "type": "x-observable",
+            "spec_version": "2.1",
+            "x_behavior": "uses a socks5 proxy."
+          }
+        },
+        "x_cti_confidence": 0.6,
+        "labels": [
+          "d3f:observed-data"
+        ],
+        "x_d3fend_class": "d3f:observed-data",
+        "x_cad_schema": {
+          "analytic_id": "cad:analytic:observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+          "analytic_type": "observed-data",
+          "references": []
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "obs-attack-pattern--c16e5409-ee53-4d79-afdc-4099dc9292df-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--c16e5409-ee53-4d79-afdc-4099dc9292df",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--c16e5409-ee53-4d79-afdc-4099dc9292df-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--c16e5409-ee53-4d79-afdc-4099dc9292df",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--c16e5409-ee53-4d79-afdc-4099dc9292df-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--c16e5409-ee53-4d79-afdc-4099dc9292df",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--c16e5409-ee53-4d79-afdc-4099dc9292df-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--c16e5409-ee53-4d79-afdc-4099dc9292df",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--c16e5409-ee53-4d79-afdc-4099dc9292df-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--c16e5409-ee53-4d79-afdc-4099dc9292df",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--4b74a1d4-b0e9-4ef1-93f1-14ecc6e2f5b5-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--4b74a1d4-b0e9-4ef1-93f1-14ecc6e2f5b5",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--4b74a1d4-b0e9-4ef1-93f1-14ecc6e2f5b5-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--4b74a1d4-b0e9-4ef1-93f1-14ecc6e2f5b5",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--4b74a1d4-b0e9-4ef1-93f1-14ecc6e2f5b5-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--4b74a1d4-b0e9-4ef1-93f1-14ecc6e2f5b5",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--4b74a1d4-b0e9-4ef1-93f1-14ecc6e2f5b5-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--4b74a1d4-b0e9-4ef1-93f1-14ecc6e2f5b5",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--4b74a1d4-b0e9-4ef1-93f1-14ecc6e2f5b5-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--4b74a1d4-b0e9-4ef1-93f1-14ecc6e2f5b5",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--4d2a5b3e-340d-4600-9123-309dd63c9bf8-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--4d2a5b3e-340d-4600-9123-309dd63c9bf8",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--4d2a5b3e-340d-4600-9123-309dd63c9bf8-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--4d2a5b3e-340d-4600-9123-309dd63c9bf8",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--4d2a5b3e-340d-4600-9123-309dd63c9bf8-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--4d2a5b3e-340d-4600-9123-309dd63c9bf8",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--4d2a5b3e-340d-4600-9123-309dd63c9bf8-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--4d2a5b3e-340d-4600-9123-309dd63c9bf8",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--4d2a5b3e-340d-4600-9123-309dd63c9bf8-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--4d2a5b3e-340d-4600-9123-309dd63c9bf8",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--98be40f2-c86b-4ade-b6fc-4964932040e5-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--98be40f2-c86b-4ade-b6fc-4964932040e5",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--98be40f2-c86b-4ade-b6fc-4964932040e5-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--98be40f2-c86b-4ade-b6fc-4964932040e5",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--98be40f2-c86b-4ade-b6fc-4964932040e5-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--98be40f2-c86b-4ade-b6fc-4964932040e5",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--98be40f2-c86b-4ade-b6fc-4964932040e5-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--98be40f2-c86b-4ade-b6fc-4964932040e5",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--98be40f2-c86b-4ade-b6fc-4964932040e5-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--98be40f2-c86b-4ade-b6fc-4964932040e5",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--e49ee9d2-0d98-44ef-85e5-5d3100065744-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--e49ee9d2-0d98-44ef-85e5-5d3100065744",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--e49ee9d2-0d98-44ef-85e5-5d3100065744-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--e49ee9d2-0d98-44ef-85e5-5d3100065744",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--e49ee9d2-0d98-44ef-85e5-5d3100065744-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--e49ee9d2-0d98-44ef-85e5-5d3100065744",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--e49ee9d2-0d98-44ef-85e5-5d3100065744-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--e49ee9d2-0d98-44ef-85e5-5d3100065744",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--e49ee9d2-0d98-44ef-85e5-5d3100065744-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--e49ee9d2-0d98-44ef-85e5-5d3100065744",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--01327cde-66c4-4123-bf34-5f258d59457b-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--01327cde-66c4-4123-bf34-5f258d59457b",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--01327cde-66c4-4123-bf34-5f258d59457b-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--01327cde-66c4-4123-bf34-5f258d59457b",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--01327cde-66c4-4123-bf34-5f258d59457b-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--01327cde-66c4-4123-bf34-5f258d59457b",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--01327cde-66c4-4123-bf34-5f258d59457b-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--01327cde-66c4-4123-bf34-5f258d59457b",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--01327cde-66c4-4123-bf34-5f258d59457b-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--01327cde-66c4-4123-bf34-5f258d59457b",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--d4b96d2c-1032-4b22-9235-2b5b649d0605-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--d4b96d2c-1032-4b22-9235-2b5b649d0605",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--d4b96d2c-1032-4b22-9235-2b5b649d0605-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--d4b96d2c-1032-4b22-9235-2b5b649d0605",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--d4b96d2c-1032-4b22-9235-2b5b649d0605-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--d4b96d2c-1032-4b22-9235-2b5b649d0605",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--d4b96d2c-1032-4b22-9235-2b5b649d0605-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--d4b96d2c-1032-4b22-9235-2b5b649d0605",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--d4b96d2c-1032-4b22-9235-2b5b649d0605-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--d4b96d2c-1032-4b22-9235-2b5b649d0605",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--544b0346-29ad-41e1-a808-501bb4193f47-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--544b0346-29ad-41e1-a808-501bb4193f47",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--544b0346-29ad-41e1-a808-501bb4193f47-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--544b0346-29ad-41e1-a808-501bb4193f47",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--544b0346-29ad-41e1-a808-501bb4193f47-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--544b0346-29ad-41e1-a808-501bb4193f47",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--544b0346-29ad-41e1-a808-501bb4193f47-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--544b0346-29ad-41e1-a808-501bb4193f47",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--544b0346-29ad-41e1-a808-501bb4193f47-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--544b0346-29ad-41e1-a808-501bb4193f47",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--5d0d3609-d06d-49e1-b9c9-b544e0c618cb-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--5d0d3609-d06d-49e1-b9c9-b544e0c618cb",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--5d0d3609-d06d-49e1-b9c9-b544e0c618cb-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--5d0d3609-d06d-49e1-b9c9-b544e0c618cb",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--5d0d3609-d06d-49e1-b9c9-b544e0c618cb-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--5d0d3609-d06d-49e1-b9c9-b544e0c618cb",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--5d0d3609-d06d-49e1-b9c9-b544e0c618cb-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--5d0d3609-d06d-49e1-b9c9-b544e0c618cb",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--5d0d3609-d06d-49e1-b9c9-b544e0c618cb-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--5d0d3609-d06d-49e1-b9c9-b544e0c618cb",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--b8902400-e6c5-4ba2-95aa-2d35b442b118-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--b8902400-e6c5-4ba2-95aa-2d35b442b118",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--b8902400-e6c5-4ba2-95aa-2d35b442b118-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--b8902400-e6c5-4ba2-95aa-2d35b442b118",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--b8902400-e6c5-4ba2-95aa-2d35b442b118-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--b8902400-e6c5-4ba2-95aa-2d35b442b118",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--b8902400-e6c5-4ba2-95aa-2d35b442b118-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--b8902400-e6c5-4ba2-95aa-2d35b442b118",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--b8902400-e6c5-4ba2-95aa-2d35b442b118-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--b8902400-e6c5-4ba2-95aa-2d35b442b118",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--f4599aa0-4f85-4a32-80ea-fc39dc965945-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--f4599aa0-4f85-4a32-80ea-fc39dc965945",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--f4599aa0-4f85-4a32-80ea-fc39dc965945-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--f4599aa0-4f85-4a32-80ea-fc39dc965945",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--f4599aa0-4f85-4a32-80ea-fc39dc965945-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--f4599aa0-4f85-4a32-80ea-fc39dc965945",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--f4599aa0-4f85-4a32-80ea-fc39dc965945-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--f4599aa0-4f85-4a32-80ea-fc39dc965945",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--f4599aa0-4f85-4a32-80ea-fc39dc965945-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--f4599aa0-4f85-4a32-80ea-fc39dc965945",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--ba8e391f-14b5-496f-81f2-2d5ecd646c1c-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--ba8e391f-14b5-496f-81f2-2d5ecd646c1c",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--ba8e391f-14b5-496f-81f2-2d5ecd646c1c-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--ba8e391f-14b5-496f-81f2-2d5ecd646c1c",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--ba8e391f-14b5-496f-81f2-2d5ecd646c1c-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--ba8e391f-14b5-496f-81f2-2d5ecd646c1c",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--ba8e391f-14b5-496f-81f2-2d5ecd646c1c-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--ba8e391f-14b5-496f-81f2-2d5ecd646c1c",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--ba8e391f-14b5-496f-81f2-2d5ecd646c1c-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--ba8e391f-14b5-496f-81f2-2d5ecd646c1c",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--04fd5427-79c7-44ea-ae13-11b24778ff1c-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--04fd5427-79c7-44ea-ae13-11b24778ff1c",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--04fd5427-79c7-44ea-ae13-11b24778ff1c-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--04fd5427-79c7-44ea-ae13-11b24778ff1c",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--04fd5427-79c7-44ea-ae13-11b24778ff1c-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--04fd5427-79c7-44ea-ae13-11b24778ff1c",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--04fd5427-79c7-44ea-ae13-11b24778ff1c-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--04fd5427-79c7-44ea-ae13-11b24778ff1c",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--04fd5427-79c7-44ea-ae13-11b24778ff1c-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--04fd5427-79c7-44ea-ae13-11b24778ff1c",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--428ca9f8-0e33-442a-be87-f869cb4cf73e-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--428ca9f8-0e33-442a-be87-f869cb4cf73e",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--428ca9f8-0e33-442a-be87-f869cb4cf73e-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--428ca9f8-0e33-442a-be87-f869cb4cf73e",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--428ca9f8-0e33-442a-be87-f869cb4cf73e-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--428ca9f8-0e33-442a-be87-f869cb4cf73e",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--428ca9f8-0e33-442a-be87-f869cb4cf73e-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--428ca9f8-0e33-442a-be87-f869cb4cf73e",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--428ca9f8-0e33-442a-be87-f869cb4cf73e-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--428ca9f8-0e33-442a-be87-f869cb4cf73e",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--731f4f55-b6d0-41d1-a7a9-072a66389aea-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--731f4f55-b6d0-41d1-a7a9-072a66389aea",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--731f4f55-b6d0-41d1-a7a9-072a66389aea-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--731f4f55-b6d0-41d1-a7a9-072a66389aea",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--731f4f55-b6d0-41d1-a7a9-072a66389aea-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--731f4f55-b6d0-41d1-a7a9-072a66389aea",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--731f4f55-b6d0-41d1-a7a9-072a66389aea-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--731f4f55-b6d0-41d1-a7a9-072a66389aea",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--731f4f55-b6d0-41d1-a7a9-072a66389aea-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--731f4f55-b6d0-41d1-a7a9-072a66389aea",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--bb0e0cb5-f3e4-4118-a4cb-6bf13bfbc9f2-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--bb0e0cb5-f3e4-4118-a4cb-6bf13bfbc9f2",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--bb0e0cb5-f3e4-4118-a4cb-6bf13bfbc9f2-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--bb0e0cb5-f3e4-4118-a4cb-6bf13bfbc9f2",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--bb0e0cb5-f3e4-4118-a4cb-6bf13bfbc9f2-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--bb0e0cb5-f3e4-4118-a4cb-6bf13bfbc9f2",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--bb0e0cb5-f3e4-4118-a4cb-6bf13bfbc9f2-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--bb0e0cb5-f3e4-4118-a4cb-6bf13bfbc9f2",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--bb0e0cb5-f3e4-4118-a4cb-6bf13bfbc9f2-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--bb0e0cb5-f3e4-4118-a4cb-6bf13bfbc9f2",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--c1b11bf7-c68e-4fbf-a95b-28efbe7953bb-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--c1b11bf7-c68e-4fbf-a95b-28efbe7953bb",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--c1b11bf7-c68e-4fbf-a95b-28efbe7953bb-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--c1b11bf7-c68e-4fbf-a95b-28efbe7953bb",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--c1b11bf7-c68e-4fbf-a95b-28efbe7953bb-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--c1b11bf7-c68e-4fbf-a95b-28efbe7953bb",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--c1b11bf7-c68e-4fbf-a95b-28efbe7953bb-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--c1b11bf7-c68e-4fbf-a95b-28efbe7953bb",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--c1b11bf7-c68e-4fbf-a95b-28efbe7953bb-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--c1b11bf7-c68e-4fbf-a95b-28efbe7953bb",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--143c0cbb-a297-4142-9624-87ffc778980b-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--143c0cbb-a297-4142-9624-87ffc778980b",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--143c0cbb-a297-4142-9624-87ffc778980b-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--143c0cbb-a297-4142-9624-87ffc778980b",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--143c0cbb-a297-4142-9624-87ffc778980b-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--143c0cbb-a297-4142-9624-87ffc778980b",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--143c0cbb-a297-4142-9624-87ffc778980b-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--143c0cbb-a297-4142-9624-87ffc778980b",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--143c0cbb-a297-4142-9624-87ffc778980b-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--143c0cbb-a297-4142-9624-87ffc778980b",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--c23b740b-a42b-47a1-aec2-9d48ddd547ff-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--c23b740b-a42b-47a1-aec2-9d48ddd547ff",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--c23b740b-a42b-47a1-aec2-9d48ddd547ff-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--c23b740b-a42b-47a1-aec2-9d48ddd547ff",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--c23b740b-a42b-47a1-aec2-9d48ddd547ff-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--c23b740b-a42b-47a1-aec2-9d48ddd547ff",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--c23b740b-a42b-47a1-aec2-9d48ddd547ff-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--c23b740b-a42b-47a1-aec2-9d48ddd547ff",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--c23b740b-a42b-47a1-aec2-9d48ddd547ff-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--c23b740b-a42b-47a1-aec2-9d48ddd547ff",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--e624264c-033a-424d-9fd7-fc9c3bbdb03e-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--e624264c-033a-424d-9fd7-fc9c3bbdb03e",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--e624264c-033a-424d-9fd7-fc9c3bbdb03e-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--e624264c-033a-424d-9fd7-fc9c3bbdb03e",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--e624264c-033a-424d-9fd7-fc9c3bbdb03e-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--e624264c-033a-424d-9fd7-fc9c3bbdb03e",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--e624264c-033a-424d-9fd7-fc9c3bbdb03e-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--e624264c-033a-424d-9fd7-fc9c3bbdb03e",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--e624264c-033a-424d-9fd7-fc9c3bbdb03e-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--e624264c-033a-424d-9fd7-fc9c3bbdb03e",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--53ac20cd-aca3-406e-9aa0-9fc7fdc60a5a-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--53ac20cd-aca3-406e-9aa0-9fc7fdc60a5a",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--53ac20cd-aca3-406e-9aa0-9fc7fdc60a5a-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--53ac20cd-aca3-406e-9aa0-9fc7fdc60a5a",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--53ac20cd-aca3-406e-9aa0-9fc7fdc60a5a-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--53ac20cd-aca3-406e-9aa0-9fc7fdc60a5a",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--53ac20cd-aca3-406e-9aa0-9fc7fdc60a5a-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--53ac20cd-aca3-406e-9aa0-9fc7fdc60a5a",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--53ac20cd-aca3-406e-9aa0-9fc7fdc60a5a-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--53ac20cd-aca3-406e-9aa0-9fc7fdc60a5a",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--cc7b8c4e-9be0-47ca-b0bb-83915ec3ee2f-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--cc7b8c4e-9be0-47ca-b0bb-83915ec3ee2f",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--cc7b8c4e-9be0-47ca-b0bb-83915ec3ee2f-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--cc7b8c4e-9be0-47ca-b0bb-83915ec3ee2f",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--cc7b8c4e-9be0-47ca-b0bb-83915ec3ee2f-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--cc7b8c4e-9be0-47ca-b0bb-83915ec3ee2f",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--cc7b8c4e-9be0-47ca-b0bb-83915ec3ee2f-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--cc7b8c4e-9be0-47ca-b0bb-83915ec3ee2f",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--cc7b8c4e-9be0-47ca-b0bb-83915ec3ee2f-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--cc7b8c4e-9be0-47ca-b0bb-83915ec3ee2f",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--f6fe9070-7a65-49ea-ae72-76292f42cebe-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--f6fe9070-7a65-49ea-ae72-76292f42cebe",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--f6fe9070-7a65-49ea-ae72-76292f42cebe-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--f6fe9070-7a65-49ea-ae72-76292f42cebe",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--f6fe9070-7a65-49ea-ae72-76292f42cebe-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--f6fe9070-7a65-49ea-ae72-76292f42cebe",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--f6fe9070-7a65-49ea-ae72-76292f42cebe-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--f6fe9070-7a65-49ea-ae72-76292f42cebe",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--f6fe9070-7a65-49ea-ae72-76292f42cebe-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--f6fe9070-7a65-49ea-ae72-76292f42cebe",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--52759bf1-fe12-4052-ace6-c5b0cf7dd7fd-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--52759bf1-fe12-4052-ace6-c5b0cf7dd7fd",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--52759bf1-fe12-4052-ace6-c5b0cf7dd7fd-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--52759bf1-fe12-4052-ace6-c5b0cf7dd7fd",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--52759bf1-fe12-4052-ace6-c5b0cf7dd7fd-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--52759bf1-fe12-4052-ace6-c5b0cf7dd7fd",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--52759bf1-fe12-4052-ace6-c5b0cf7dd7fd-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--52759bf1-fe12-4052-ace6-c5b0cf7dd7fd",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--52759bf1-fe12-4052-ace6-c5b0cf7dd7fd-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--52759bf1-fe12-4052-ace6-c5b0cf7dd7fd",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--28abec6c-4443-4b03-8206-07f2e264a6b4-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--28abec6c-4443-4b03-8206-07f2e264a6b4",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--28abec6c-4443-4b03-8206-07f2e264a6b4-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--28abec6c-4443-4b03-8206-07f2e264a6b4",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--28abec6c-4443-4b03-8206-07f2e264a6b4-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--28abec6c-4443-4b03-8206-07f2e264a6b4",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--28abec6c-4443-4b03-8206-07f2e264a6b4-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--28abec6c-4443-4b03-8206-07f2e264a6b4",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--28abec6c-4443-4b03-8206-07f2e264a6b4-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--28abec6c-4443-4b03-8206-07f2e264a6b4",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--a3e1e6c5-9c74-4fc0-a16c-a9d228c17829-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--a3e1e6c5-9c74-4fc0-a16c-a9d228c17829",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--a3e1e6c5-9c74-4fc0-a16c-a9d228c17829-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--a3e1e6c5-9c74-4fc0-a16c-a9d228c17829",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--a3e1e6c5-9c74-4fc0-a16c-a9d228c17829-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--a3e1e6c5-9c74-4fc0-a16c-a9d228c17829",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--a3e1e6c5-9c74-4fc0-a16c-a9d228c17829-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--a3e1e6c5-9c74-4fc0-a16c-a9d228c17829",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--a3e1e6c5-9c74-4fc0-a16c-a9d228c17829-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--a3e1e6c5-9c74-4fc0-a16c-a9d228c17829",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--3b3cbbe0-6ed3-4334-b543-3ddfd8c5642d-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--3b3cbbe0-6ed3-4334-b543-3ddfd8c5642d",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--3b3cbbe0-6ed3-4334-b543-3ddfd8c5642d-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--3b3cbbe0-6ed3-4334-b543-3ddfd8c5642d",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--3b3cbbe0-6ed3-4334-b543-3ddfd8c5642d-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--3b3cbbe0-6ed3-4334-b543-3ddfd8c5642d",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--3b3cbbe0-6ed3-4334-b543-3ddfd8c5642d-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--3b3cbbe0-6ed3-4334-b543-3ddfd8c5642d",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--3b3cbbe0-6ed3-4334-b543-3ddfd8c5642d-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--3b3cbbe0-6ed3-4334-b543-3ddfd8c5642d",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--837f9164-50af-4ac0-8219-379d8a74cefc-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--837f9164-50af-4ac0-8219-379d8a74cefc",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--837f9164-50af-4ac0-8219-379d8a74cefc-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--837f9164-50af-4ac0-8219-379d8a74cefc",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--837f9164-50af-4ac0-8219-379d8a74cefc-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--837f9164-50af-4ac0-8219-379d8a74cefc",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--837f9164-50af-4ac0-8219-379d8a74cefc-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--837f9164-50af-4ac0-8219-379d8a74cefc",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--837f9164-50af-4ac0-8219-379d8a74cefc-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--837f9164-50af-4ac0-8219-379d8a74cefc",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--d54416bd-0803-41ca-870a-ce1af7c05638-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--d54416bd-0803-41ca-870a-ce1af7c05638",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--d54416bd-0803-41ca-870a-ce1af7c05638-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--d54416bd-0803-41ca-870a-ce1af7c05638",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--d54416bd-0803-41ca-870a-ce1af7c05638-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--d54416bd-0803-41ca-870a-ce1af7c05638",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--d54416bd-0803-41ca-870a-ce1af7c05638-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--d54416bd-0803-41ca-870a-ce1af7c05638",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--d54416bd-0803-41ca-870a-ce1af7c05638-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--d54416bd-0803-41ca-870a-ce1af7c05638",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--b77cf5f3-6060-475d-bd60-40ccbf28fdc2-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--b77cf5f3-6060-475d-bd60-40ccbf28fdc2",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--b77cf5f3-6060-475d-bd60-40ccbf28fdc2-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--b77cf5f3-6060-475d-bd60-40ccbf28fdc2",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--b77cf5f3-6060-475d-bd60-40ccbf28fdc2-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--b77cf5f3-6060-475d-bd60-40ccbf28fdc2",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--b77cf5f3-6060-475d-bd60-40ccbf28fdc2-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--b77cf5f3-6060-475d-bd60-40ccbf28fdc2",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--b77cf5f3-6060-475d-bd60-40ccbf28fdc2-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--b77cf5f3-6060-475d-bd60-40ccbf28fdc2",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--7bd9c723-2f78-4309-82c5-47cad406572b-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--7bd9c723-2f78-4309-82c5-47cad406572b",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--7bd9c723-2f78-4309-82c5-47cad406572b-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--7bd9c723-2f78-4309-82c5-47cad406572b",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--7bd9c723-2f78-4309-82c5-47cad406572b-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--7bd9c723-2f78-4309-82c5-47cad406572b",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--7bd9c723-2f78-4309-82c5-47cad406572b-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--7bd9c723-2f78-4309-82c5-47cad406572b",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--7bd9c723-2f78-4309-82c5-47cad406572b-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--7bd9c723-2f78-4309-82c5-47cad406572b",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--eb062747-2193-45de-8fa2-e62549c37ddf-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--eb062747-2193-45de-8fa2-e62549c37ddf",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--eb062747-2193-45de-8fa2-e62549c37ddf-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--eb062747-2193-45de-8fa2-e62549c37ddf",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--eb062747-2193-45de-8fa2-e62549c37ddf-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--eb062747-2193-45de-8fa2-e62549c37ddf",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--eb062747-2193-45de-8fa2-e62549c37ddf-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--eb062747-2193-45de-8fa2-e62549c37ddf",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--eb062747-2193-45de-8fa2-e62549c37ddf-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--eb062747-2193-45de-8fa2-e62549c37ddf",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--68f7e3a1-f09f-4164-9a62-16b648a0dd5a-observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "source": "attack-pattern--68f7e3a1-f09f-4164-9a62-16b648a0dd5a",
+      "target": "observed-data--b5f2cbb3-6e91-46a2-858b-9ee9a4ad706f",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--68f7e3a1-f09f-4164-9a62-16b648a0dd5a-observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "source": "attack-pattern--68f7e3a1-f09f-4164-9a62-16b648a0dd5a",
+      "target": "observed-data--07f2995a-fecb-483d-b223-2756b7af7d5a",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--68f7e3a1-f09f-4164-9a62-16b648a0dd5a-observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "source": "attack-pattern--68f7e3a1-f09f-4164-9a62-16b648a0dd5a",
+      "target": "observed-data--fb8eb10d-69b0-4758-b88b-15c9cfc09972",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--68f7e3a1-f09f-4164-9a62-16b648a0dd5a-observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "source": "attack-pattern--68f7e3a1-f09f-4164-9a62-16b648a0dd5a",
+      "target": "observed-data--2aba78ba-4c14-4abb-b424-db3ea8a44440",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--68f7e3a1-f09f-4164-9a62-16b648a0dd5a-observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "source": "attack-pattern--68f7e3a1-f09f-4164-9a62-16b648a0dd5a",
+      "target": "observed-data--92eb115f-f14f-457e-bbab-68f67d345978",
+      "relationship": "observed-in"
+    }
+  ],
+  "metadata": {
+    "source": "blackcat_cti_pipeline",
+    "stix_bundle_id": "bundle--c5a5b5b7-51ba-4075-a581-5a977e8efefd",
+    "ontology_modules": [
+      "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/d3fend-protege.ttl",
+      "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/mappings/d3fend-cco.ttl",
+      "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/mappings/d3fend-ontology-mappings.ttl",
+      "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/initiatives/example-initiative.ttl",
+      "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/extensions/d3fend-catalog.ttl"
+    ]
+  }
+}

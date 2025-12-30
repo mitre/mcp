@@ -1,0 +1,670 @@
+{
+  "nodes": [
+    {
+      "id": "attack-pattern--f4c1826f-a322-41cd-9557-562100848c84",
+      "nodeType": "Attack",
+      "label": "Modify Authentication Process",
+      "properties": {
+        "attack_id": "T1556",
+        "description": "Adversaries may modify authentication mechanisms and processes to access user credentials or enable otherwise unwarranted access to accounts. The authentication process is handled by mechanisms, such as the Local Security Authentication Server (LSASS) process and the Security Accounts Manager (SAM) on Windows, pluggable authentication modules (PAM) on Unix-based systems, and authorization plugins on MacOS systems, responsible for gathering, storing, and validating credentials. By modifying an authentication process, an adversary may be able to authenticate to a service or system without using [Valid Accounts](https://attack.mitre.org/techniques/T1078).\n\nAdversaries may maliciously modify a part of this process to either reveal credentials or bypass authentication mechanisms. Compromised credentials or access may be used to bypass access controls placed on various resources on systems within the network and may even be used for persistent access to remote systems and externally available services, such as VPNs, Outlook Web Access and remote desktop."
+      }
+    },
+    {
+      "id": "attack-pattern--a0f84e1d-d25c-4dd1-bb26-3c0e68471530",
+      "nodeType": "Attack",
+      "label": "Disable or Modify Network Device Firewall",
+      "properties": {
+        "attack_id": "T1562.013",
+        "description": "Adversaries may disable network device-based firewall mechanisms entirely or add, delete, or modify particular rules in order to bypass controls limiting network usage. \n \nModifying or disabling a network firewall may enable adversary C2 communications, lateral movement, and/or data exfiltration that would otherwise not be allowed. For example, adversaries may add new network firewall rules to allow access to all internal network subnets without restrictions.(Citation: Exposed Fortinet Fortigate firewall interface leads to LockBit Ransomware)\n\nAdversaries may gain access to the firewall management console via [Valid Accounts](https://attack.mitre.org/techniques/T1078) or by exploiting a vulnerability. In some cases, threat actors may target firewalls that have been exposed to the internet [Exploit Public-Facing Application](https://attack.mitre.org/techniques/T1190).(Citation: CVE-2024-55591 Detail)"
+      }
+    },
+    {
+      "id": "attack-pattern--f0589bc3-a6ae-425a-a3d5-5659bfee07f4",
+      "nodeType": "Attack",
+      "label": "LSASS Driver",
+      "properties": {
+        "attack_id": "T1547.008",
+        "description": "Adversaries may modify or add LSASS drivers to obtain persistence on compromised systems. The Windows security subsystem is a set of components that manage and enforce the security policy for a computer or domain. The Local Security Authority (LSA) is the main component responsible for local security policy and user authentication. The LSA includes multiple dynamic link libraries (DLLs) associated with various other security functions, all of which run in the context of the LSA Subsystem Service (LSASS) lsass.exe process.(Citation: Microsoft Security Subsystem)\n\nAdversaries may target LSASS drivers to obtain persistence. By either replacing or adding illegitimate drivers (e.g., [Hijack Execution Flow](https://attack.mitre.org/techniques/T1574)), an adversary can use LSA operations to continuously execute malicious payloads."
+      }
+    },
+    {
+      "id": "attack-pattern--5372c5fe-f424-4def-bcd5-d3a8e770f07b",
+      "nodeType": "Attack",
+      "label": "Disable or Modify System Firewall",
+      "properties": {
+        "attack_id": "T1562.004",
+        "description": "Adversaries may disable or modify system firewalls in order to bypass controls limiting network usage. Changes could be disabling the entire mechanism as well as adding, deleting, or modifying particular rules. This can be done numerous ways depending on the operating system, including via command-line, editing Windows Registry keys, and Windows Control Panel.\n\nModifying or disabling a system firewall may enable adversary C2 communications, lateral movement, and/or data exfiltration that would otherwise not be allowed. For example, adversaries may add a new firewall rule for a well-known protocol (such as RDP) using a non-traditional and potentially less securitized port (i.e. [Non-Standard Port](https://attack.mitre.org/techniques/T1571)).(Citation: change_rdp_port_conti)\n\nAdversaries may also modify host networking settings that indirectly manipulate system firewalls, such as interface bandwidth or network connection request thresholds.(Citation: Huntress BlackCat) Settings related to enabling abuse of various [Remote Services](https://attack.mitre.org/techniques/T1021) may also indirectly modify firewall rules.\n\nIn ESXi, firewall rules may be modified directly via the esxcli command line interface (e.g., via `esxcli network firewall set`) or via the vCenter user interface.(Citation: Trellix Rnasomhouse 2024)(Citation: Broadcom ESXi Firewall)"
+      }
+    },
+    {
+      "id": "attack-pattern--a9fb6b3f-4a3c-4703-a4f1-f55f83d1e017",
+      "nodeType": "Attack",
+      "label": "Remote Access Hardware",
+      "properties": {
+        "attack_id": "T1219.003",
+        "description": "An adversary may use legitimate remote access hardware to establish an interactive command and control channel to target systems within networks. These services, including IP-based keyboard, video, or mouse (KVM) devices such as TinyPilot and PiKVM, are commonly used as legitimate tools and may be allowed by peripheral device policies within a target environment.  \n\nRemote access hardware may be physically installed and used post-compromise as an alternate communications channel for redundant access or as a way to establish an interactive remote session with the target system. Using hardware-based remote access tools may allow threat actors to bypass software security solutions and gain more control over the compromised device(s).(Citation: Palo Alto Unit 42 North Korean IT Workers 2024)(Citation: Google Cloud Threat Intelligence DPRK IT Workers 2024)"
+      }
+    },
+    {
+      "id": "attack-pattern--f24faf46-3b26-4dbb-98f2-63460498e433",
+      "nodeType": "Attack",
+      "label": "Fallback Channels",
+      "properties": {
+        "attack_id": "T1008",
+        "description": "Adversaries may use fallback or alternate communication channels if the primary channel is compromised or inaccessible in order to maintain reliable command and control and to avoid data transfer thresholds."
+      }
+    },
+    {
+      "id": "attack-pattern--77532a55-c283-4cd2-bc5d-2d0b65e9d88c",
+      "nodeType": "Attack",
+      "label": "Disable or Modify Cloud Firewall",
+      "properties": {
+        "attack_id": "T1562.007",
+        "description": "Adversaries may disable or modify a firewall within a cloud environment to bypass controls that limit access to cloud resources. Cloud firewalls are separate from system firewalls that are described in [Disable or Modify System Firewall](https://attack.mitre.org/techniques/T1562/004). \n\nCloud environments typically utilize restrictive security groups and firewall rules that only allow network activity from trusted IP addresses via expected ports and protocols. An adversary with appropriate permissions may introduce new firewall rules or policies to allow access into a victim cloud environment and/or move laterally from the cloud control plane to the data plane. For example, an adversary may use a script or utility that creates new ingress rules in existing security groups (or creates new security groups entirely) to allow any TCP/IP connectivity to a cloud-hosted instance.(Citation: Palo Alto Unit 42 Compromised Cloud Compute Credentials 2022) They may also remove networking limitations to support traffic associated with malicious activity (such as cryptomining).(Citation: Expel IO Evil in AWS)(Citation: Palo Alto Unit 42 Compromised Cloud Compute Credentials 2022)\n\nModifying or disabling a cloud firewall may enable adversary C2 communications, lateral movement, and/or data exfiltration that would otherwise not be allowed. It may also be used to open up resources for [Brute Force](https://attack.mitre.org/techniques/T1110) or [Endpoint Denial of Service](https://attack.mitre.org/techniques/T1499). "
+      }
+    },
+    {
+      "id": "attack-pattern--fe926152-f431-4baf-956c-4ad3cb0bf23b",
+      "nodeType": "Attack",
+      "label": "Exploitation for Defense Evasion",
+      "properties": {
+        "attack_id": "T1211",
+        "description": "Adversaries may exploit a system or application vulnerability to bypass security features. Exploitation of a vulnerability occurs when an adversary takes advantage of a programming error in a program, service, or within the operating system software or kernel itself to execute adversary-controlled code.\u00a0Vulnerabilities may exist in defensive security software that can be used to disable or circumvent them.\n\nAdversaries may have prior knowledge through reconnaissance that security software exists within an environment or they may perform checks during or shortly after the system is compromised for [Security Software Discovery](https://attack.mitre.org/techniques/T1518/001). The security software will likely be targeted directly for exploitation. There are examples of antivirus software being targeted by persistent threat groups to avoid detection.\n\nThere have also been examples of vulnerabilities in public cloud infrastructure of SaaS applications that may bypass defense boundaries (Citation: Salesforce zero-day in facebook phishing attack), evade security logs (Citation: Bypassing CloudTrail in AWS Service Catalog), or deploy hidden infrastructure.(Citation: GhostToken GCP flaw)"
+      }
+    },
+    {
+      "id": "attack-pattern--c848fcf7-6b62-4bde-8216-b6c157d48da0",
+      "nodeType": "Attack",
+      "label": "Uncommonly Used Port",
+      "properties": {
+        "attack_id": "T1065",
+        "description": "Adversaries may conduct C2 communications over a non-standard port to bypass proxies and firewalls that have been improperly configured."
+      }
+    },
+    {
+      "id": "attack-pattern--818302b2-d640-477b-bf88-873120ce85c4",
+      "nodeType": "Attack",
+      "label": "Network Device CLI",
+      "properties": {
+        "attack_id": "T1059.008",
+        "description": "Adversaries may abuse scripting or built-in command line interpreters (CLI) on network devices to execute malicious command and payloads. The CLI is the primary means through which users and administrators interact with the device in order to view system information, modify device operations, or perform diagnostic and administrative functions. CLIs typically contain various permission levels required for different commands. \n\nScripting interpreters automate tasks and extend functionality beyond the command set included in the network OS. The CLI and scripting interpreter are accessible through a direct console connection, or through remote means, such as telnet or [SSH](https://attack.mitre.org/techniques/T1021/004).\n\nAdversaries can use the network CLI to change how network devices behave and operate. The CLI may be used to manipulate traffic flows to intercept or manipulate data, modify startup configuration parameters to load malicious system software, or to disable security features or logging to avoid detection.(Citation: Cisco Synful Knock Evolution)"
+      }
+    },
+    {
+      "id": "attack-pattern--389735f1-f21c-4208-b8f0-f8031e7169b8",
+      "nodeType": "Attack",
+      "label": "Software Extensions",
+      "properties": {
+        "attack_id": "T1176",
+        "description": "Adversaries may abuse software extensions to establish persistent access to victim systems. Software extensions are modular components that enhance or customize the functionality of software applications, including web browsers, Integrated Development Environments (IDEs), and other platforms.(Citation: Chrome Extension C2 Malware)(Citation: Abramovsky VSCode Security) Extensions are typically installed via official marketplaces, app stores, or manually loaded by users, and they often inherit the permissions and access levels of the host application. \n\n  \nMalicious extensions can be introduced through various methods, including social engineering, compromised marketplaces, or direct installation by users or by adversaries who have already gained access to a system. Malicious extensions can be named similarly or identically to benign extensions in marketplaces. Security mechanisms in extension marketplaces may be insufficient to detect malicious components, allowing adversaries to bypass automated scanners or exploit trust established during the installation process. Adversaries may also abuse benign extensions to achieve their objectives, such as using legitimate functionality to tunnel data or bypass security controls. \n\nThe modular nature of extensions and their integration with host applications make them an attractive target for adversaries seeking to exploit trusted software ecosystems. Detection can be challenging due to the inherent trust placed in extensions during installation and their ability to blend into normal application workflows. "
+      }
+    },
+    {
+      "id": "attack-pattern--b8902400-e6c5-4ba2-95aa-2d35b442b118",
+      "nodeType": "Attack",
+      "label": "Encrypted Channel",
+      "properties": {
+        "attack_id": "T1573",
+        "description": "Adversaries may employ an encryption algorithm to conceal command and control traffic rather than relying on any inherent protections provided by a communication protocol. Despite the use of a secure algorithm, these implementations may be vulnerable to reverse engineering if secret keys are encoded and/or generated within malware samples/configuration files."
+      }
+    },
+    {
+      "id": "attack-pattern--4b74a1d4-b0e9-4ef1-93f1-14ecc6e2f5b5",
+      "nodeType": "Attack",
+      "label": "Standard Cryptographic Protocol",
+      "properties": {
+        "attack_id": "T1032",
+        "description": "Adversaries may explicitly employ a known encryption algorithm to conceal command and control traffic rather than relying on any inherent protections provided by a communication protocol. Despite the use of a secure algorithm, these implementations may be vulnerable to reverse engineering if necessary secret keys are encoded and/or generated within malware samples/configuration files."
+      }
+    },
+    {
+      "id": "attack-pattern--f6dacc85-b37d-458e-b58d-74fc4bbf5755",
+      "nodeType": "Attack",
+      "label": "Internal Proxy",
+      "properties": {
+        "attack_id": "T1090.001",
+        "description": "Adversaries may use an internal proxy to direct command and control traffic between two or more systems in a compromised environment. Many tools exist that enable traffic redirection through proxies or port redirection, including [HTRAN](https://attack.mitre.org/software/S0040), ZXProxy, and ZXPortMap. (Citation: Trend Micro APT Attack Tools) Adversaries use internal proxies to manage command and control communications inside a compromised environment, to reduce the number of simultaneous outbound network connections, to provide resiliency in the face of connection loss, or to ride over existing trusted communications paths between infected systems to avoid suspicion. Internal proxy connections may use common peer-to-peer (p2p) networking protocols, such as SMB, to better blend in with the environment.\n\nBy using a compromised internal system as a proxy, adversaries may conceal the true destination of C2 traffic while reducing the need for numerous connections to external systems."
+      }
+    },
+    {
+      "id": "attack-pattern--1f9012ef-1e10-4e48-915e-e03563435fe8",
+      "nodeType": "Attack",
+      "label": "Weaken Encryption",
+      "properties": {
+        "attack_id": "T1600",
+        "description": "Adversaries may compromise a network device\u2019s encryption capability in order to bypass encryption that would otherwise protect data communications. (Citation: Cisco Synful Knock Evolution)\n\nEncryption can be used to protect transmitted network traffic to maintain its confidentiality (protect against unauthorized disclosure) and integrity (protect against unauthorized changes). Encryption ciphers are used to convert a plaintext message to ciphertext and can be computationally intensive to decipher without the associated decryption key. Typically, longer keys increase the cost of cryptanalysis, or decryption without the key.\n\nAdversaries can compromise and manipulate devices that perform encryption of network traffic. For example, through behaviors such as [Modify System Image](https://attack.mitre.org/techniques/T1601), [Reduce Key Space](https://attack.mitre.org/techniques/T1600/001), and [Disable Crypto Hardware](https://attack.mitre.org/techniques/T1600/002), an adversary can negatively effect and/or eliminate a device\u2019s ability to securely encrypt network traffic. This poses a greater risk of unauthorized disclosure and may help facilitate data manipulation, Credential Access, or Collection efforts. (Citation: Cisco Blog Legacy Device Attacks)"
+      }
+    },
+    {
+      "id": "attack-pattern--6e6845c2-347a-4a6f-a2d1-b74a18ebd352",
+      "nodeType": "Attack",
+      "label": "LSASS Driver",
+      "properties": {
+        "attack_id": "T1177",
+        "description": "The Windows security subsystem is a set of components that manage and enforce the security policy for a computer or domain. The Local Security Authority (LSA) is the main component responsible for local security policy and user authentication. The LSA includes multiple dynamic link libraries (DLLs) associated with various other security functions, all of which run in the context of the LSA Subsystem Service (LSASS) lsass.exe process. (Citation: Microsoft Security Subsystem)\n\nAdversaries may target lsass.exe drivers to obtain execution and/or persistence. By either replacing or adding illegitimate drivers (e.g., [DLL Side-Loading](https://attack.mitre.org/techniques/T1073) or [DLL Search Order Hijacking](https://attack.mitre.org/techniques/T1038)), an adversary can achieve arbitrary code execution triggered by continuous LSA operations."
+      }
+    },
+    {
+      "id": "attack-pattern--4061e78c-1284-44b4-9116-73e4ac3912f7",
+      "nodeType": "Attack",
+      "label": "Remote Access Tools",
+      "properties": {
+        "attack_id": "T1219",
+        "description": "An adversary may use legitimate remote access tools to establish an interactive command and control channel within a network. Remote access tools create a session between two trusted hosts through a graphical interface, a command line interaction, a protocol tunnel via development or management software, or hardware-level access such as KVM (Keyboard, Video, Mouse) over IP solutions. Desktop support software (usually graphical interface) and remote management software (typically command line interface) allow a user to control a computer remotely as if they are a local user inheriting the user or software permissions. This software is commonly used for troubleshooting, software installation, and system management.(Citation: Symantec Living off the Land)(Citation: CrowdStrike 2015 Global Threat Report)(Citation: CrySyS Blog TeamSpy) Adversaries may similarly abuse response features included in EDR and other defensive tools that enable remote access.\n\nRemote access tools may be installed and used post-compromise as an alternate communications channel for redundant access or to establish an interactive remote desktop session with the target system. It may also be used as a malware component to establish a reverse connection or back-connect to a service or adversary-controlled system.\n\nInstallation of many remote access tools may also include persistence (e.g., the software's installation routine creates a [Windows Service](https://attack.mitre.org/techniques/T1543/003)). Remote access modules/features may also exist as part of otherwise existing software (e.g., Google Chrome\u2019s Remote Desktop).(Citation: Google Chrome Remote Desktop)(Citation: Chrome Remote Desktop)"
+      }
+    },
+    {
+      "id": "attack-pattern--3d333250-30e4-4a82-9edc-756c68afc529",
+      "nodeType": "Attack",
+      "label": "Impair Defenses",
+      "properties": {
+        "attack_id": "T1562",
+        "description": "Adversaries may maliciously modify components of a victim environment in order to hinder or disable defensive mechanisms. This not only involves impairing preventative defenses, such as firewalls and anti-virus, but also detection capabilities that defenders can use to audit activity and identify malicious behavior. This may also span both native defenses as well as supplemental capabilities installed by users and administrators.\n\nAdversaries may also impair routine operations that contribute to defensive hygiene, such as blocking users from logging out, preventing a system from shutting down, or disabling or modifying the update process. Adversaries could also target event aggregation and analysis mechanisms, or otherwise disrupt these procedures by altering other system components. These restrictions can further enable malicious operations as well as the continued propagation of incidents.(Citation: Google Cloud Mandiant UNC3886 2024)(Citation: Emotet shutdown)\n\n"
+      }
+    },
+    {
+      "id": "attack-pattern--731f4f55-b6d0-41d1-a7a9-072a66389aea",
+      "nodeType": "Attack",
+      "label": "Proxy",
+      "properties": {
+        "attack_id": "T1090",
+        "description": "Adversaries may use a connection proxy to direct network traffic between systems or act as an intermediary for network communications to a command and control server to avoid direct connections to their infrastructure. Many tools exist that enable traffic redirection through proxies or port redirection, including [HTRAN](https://attack.mitre.org/software/S0040), ZXProxy, and ZXPortMap. (Citation: Trend Micro APT Attack Tools) Adversaries use these types of proxies to manage command and control communications, reduce the number of simultaneous outbound network connections, provide resiliency in the face of connection loss, or to ride over existing trusted communications paths between victims to avoid suspicion. Adversaries may chain together multiple proxies to further disguise the source of malicious traffic.\n\nAdversaries can also take advantage of routing schemes in Content Delivery Networks (CDNs) to proxy command and control traffic."
+      }
+    },
+    {
+      "id": "attack-pattern--b8017880-4b1e-42de-ad10-ae7ac6705166",
+      "nodeType": "Attack",
+      "label": "Network Boundary Bridging",
+      "properties": {
+        "attack_id": "T1599",
+        "description": "Adversaries may bridge network boundaries by compromising perimeter network devices or internal devices responsible for network segmentation. Breaching these devices may enable an adversary to bypass restrictions on traffic routing that otherwise separate trusted and untrusted networks.\n\nDevices such as routers and firewalls can be used to create boundaries between trusted and untrusted networks.  They achieve this by restricting traffic types to enforce organizational policy in an attempt to reduce the risk inherent in such connections.  Restriction of traffic can be achieved by prohibiting IP addresses, layer 4 protocol ports, or through deep packet inspection to identify applications.  To participate with the rest of the network, these devices can be directly addressable or transparent, but their mode of operation has no bearing on how the adversary can bypass them when compromised.\n\nWhen an adversary takes control of such a boundary device, they can bypass its policy enforcement to pass normally prohibited traffic across the trust boundary between the two separated networks without hinderance.  By achieving sufficient rights on the device, an adversary can reconfigure the device to allow the traffic they want, allowing them to then further achieve goals such as command and control via [Multi-hop Proxy](https://attack.mitre.org/techniques/T1090/003) or exfiltration of data via [Traffic Duplication](https://attack.mitre.org/techniques/T1020/001). Adversaries may also target internal devices responsible for network segmentation and abuse these in conjunction with [Internal Proxy](https://attack.mitre.org/techniques/T1090/001) to achieve the same goals.(Citation: Kaspersky ThreatNeedle Feb 2021)  In the cases where a border device separates two separate organizations, the adversary can also facilitate lateral movement into new victim environments."
+      }
+    },
+    {
+      "id": "attack-pattern--51a14c76-dd3b-440b-9c20-2bf91d25a814",
+      "nodeType": "Attack",
+      "label": "Use Alternate Authentication Material",
+      "properties": {
+        "attack_id": "T1550",
+        "description": "Adversaries may use alternate authentication material, such as password hashes, Kerberos tickets, and application access tokens, in order to move laterally within an environment and bypass normal system access controls. \n\nAuthentication processes generally require a valid identity (e.g., username) along with one or more authentication factors (e.g., password, pin, physical smart card, token generator, etc.). Alternate authentication material is legitimately generated by systems after a user or application successfully authenticates by providing a valid identity and the required authentication factor(s). Alternate authentication material may also be generated during the identity creation process.(Citation: NIST Authentication)(Citation: NIST MFA)\n\nCaching alternate authentication material allows the system to verify an identity has successfully authenticated without asking the user to reenter authentication factor(s). Because the alternate authentication must be maintained by the system\u2014either in memory or on disk\u2014it may be at risk of being stolen through [Credential Access](https://attack.mitre.org/tactics/TA0006) techniques. By stealing alternate authentication material, adversaries are able to bypass system access controls and authenticate to systems without knowing the plaintext password or any additional authentication factors.\n"
+      }
+    },
+    {
+      "id": "attack-pattern--39131305-9282-45e4-ac3b-591d2d4fc3ef",
+      "nodeType": "Attack",
+      "label": "Compromise Hardware Supply Chain",
+      "properties": {
+        "attack_id": "T1195.003",
+        "description": "Adversaries may manipulate hardware components in products prior to receipt by a final consumer for the purpose of data or system compromise. By modifying hardware or firmware in the supply chain, adversaries can insert a backdoor into consumer networks that may be difficult to detect and give the adversary a high degree of control over the system. Hardware backdoors may be inserted into various devices, such as servers, workstations, network infrastructure, or peripherals."
+      }
+    },
+    {
+      "id": "attack-pattern--2e0dd10b-676d-4964-acd0-8a404c92b044",
+      "nodeType": "Attack",
+      "label": "Disabling Security Tools",
+      "properties": {
+        "attack_id": "CAPEC-578",
+        "description": "Adversaries may disable security tools to avoid possible detection of their tools and activities. This can take the form of killing security software or event logging processes, deleting Registry keys so that tools do not start at run time, or other methods to interfere with security scanning or event reporting."
+      }
+    },
+    {
+      "id": "attack-pattern--ff25900d-76d5-449b-a351-8824e62fc81b",
+      "nodeType": "Attack",
+      "label": "Trusted Developer Utilities Proxy Execution",
+      "properties": {
+        "attack_id": "T1127",
+        "description": "Adversaries may take advantage of trusted developer utilities to proxy execution of malicious payloads. There are many utilities used for software development related tasks that can be used to execute code in various forms to assist in development, debugging, and reverse engineering.(Citation: engima0x3 DNX Bypass)(Citation: engima0x3 RCSI Bypass)(Citation: Exploit Monday WinDbg)(Citation: LOLBAS Tracker) These utilities may often be signed with legitimate certificates that allow them to execute on a system and proxy execution of malicious code through a trusted process that effectively bypasses application control solutions.\n\nSmart App Control is a feature of Windows that blocks applications it considers potentially malicious from running by verifying unsigned applications against a known safe list from a Microsoft cloud service before executing them.(Citation: Microsoft Smart App Control) However, adversaries may leverage \"reputation hijacking\" to abuse an operating system\u2019s trust of safe, signed applications that support the execution of arbitrary code. By leveraging [Trusted Developer Utilities Proxy Execution](https://attack.mitre.org/techniques/T1127) to run their malicious code, adversaries may bypass Smart App Control protections.(Citation: Elastic Security Labs)"
+      }
+    },
+    {
+      "id": "attack-pattern--9b00925a-7c4b-4e53-bfc8-9a6a806fde03",
+      "nodeType": "Attack",
+      "label": "Selective Exclusion",
+      "properties": {
+        "attack_id": "T1679",
+        "description": "Adversaries may intentionally exclude certain files, folders, directories, file types, or system components from encryption or tampering during a ransomware or malicious payload execution. Some file extensions that adversaries may avoid encrypting include `.dll`, `.exe`, and `.lnk`.(Citation: Palo Alto Unit 42 Medusa Group Medusa Ransomware January 2024)  \n\nAdversaries may perform this behavior to avoid alerting users, to evade detection by security tools and analysts, or, in the case of ransomware, to ensure that the system remains operational enough to deliver the ransom notice. \n\nExclusions may target files and components whose corruption would cause instability, break core services, or immediately expose the attack. By carefully avoiding these areas, adversaries maintain system responsiveness while minimizing indicators that could trigger alarms or otherwise inhibit achieving their goals. "
+      }
+    },
+    {
+      "id": "attack-pattern--9c306d8d-cde7-4b4c-b6e8-d0bb16caca36",
+      "nodeType": "Attack",
+      "label": "Exploitation for Credential Access",
+      "properties": {
+        "attack_id": "T1212",
+        "description": "Adversaries may exploit software vulnerabilities in an attempt to collect credentials. Exploitation of a software vulnerability occurs when an adversary takes advantage of a programming error in a program, service, or within the operating system software or kernel itself to execute adversary-controlled code.\u00a0\n\nCredentialing and authentication mechanisms may be targeted for exploitation by adversaries as a means to gain access to useful credentials or circumvent the process to gain authenticated access to systems. One example of this is `MS14-068`, which targets Kerberos and can be used to forge Kerberos tickets using domain user permissions.(Citation: Technet MS14-068)(Citation: ADSecurity Detecting Forged Tickets) Another example of this is replay attacks, in which the adversary intercepts data packets sent between parties and then later replays these packets. If services don't properly validate authentication requests, these replayed packets may allow an adversary to impersonate one of the parties and gain unauthorized access or privileges.(Citation: Bugcrowd Replay Attack)(Citation: Comparitech Replay Attack)(Citation: Microsoft Midnight Blizzard Replay Attack)\n\nSuch exploitation has been demonstrated in cloud environments as well. For example, adversaries have exploited vulnerabilities in public cloud infrastructure that allowed for unintended authentication token creation and renewal.(Citation: Storm-0558 techniques for unauthorized email access)\n\nExploitation for credential access may also result in Privilege Escalation depending on the process targeted or credentials obtained."
+      }
+    },
+    {
+      "id": "attack-pattern--b21c3b2d-02e6-45b1-980b-e69051040839",
+      "nodeType": "Attack",
+      "label": "Exploitation for Privilege Escalation",
+      "properties": {
+        "attack_id": "T1068",
+        "description": "Adversaries may exploit software vulnerabilities in an attempt to elevate privileges. Exploitation of a software vulnerability occurs when an adversary takes advantage of a programming error in a program, service, or within the operating system software or kernel itself to execute adversary-controlled code. Security constructs such as permission levels will often hinder access to information and use of certain techniques, so adversaries will likely need to perform privilege escalation to include use of software exploitation to circumvent those restrictions.\n\nWhen initially gaining access to a system, an adversary may be operating within a lower privileged process which will prevent them from accessing certain resources on the system. Vulnerabilities may exist, usually in operating system components and software commonly running at higher permissions, that can be exploited to gain higher levels of access on the system. This could enable someone to move from unprivileged or user level permissions to SYSTEM or root permissions depending on the component that is vulnerable. This could also enable an adversary to move from a virtualized environment, such as within a virtual machine or container, onto the underlying host. This may be a necessary step for an adversary compromising an endpoint system that has been properly configured and limits other privilege escalation methods.\n\nAdversaries may bring a signed vulnerable driver onto a compromised machine so that they can exploit the vulnerability to execute code in kernel mode. This process is sometimes referred to as Bring Your Own Vulnerable Driver (BYOVD).(Citation: ESET InvisiMole June 2020)(Citation: Unit42 AcidBox June 2020) Adversaries may include the vulnerable driver with files delivered during Initial Access or download it to a compromised system via [Ingress Tool Transfer](https://attack.mitre.org/techniques/T1105) or [Lateral Tool Transfer](https://attack.mitre.org/techniques/T1570)."
+      }
+    },
+    {
+      "id": "malware--77df6839-6a54-46ca-9baf-ce76f87dfd1a",
+      "nodeType": "Agent",
+      "label": "BlackCat Ransomware",
+      "properties": {}
+    },
+    {
+      "id": "tool--110114da-c619-4fff-b60f-9a3f1eb7c072",
+      "nodeType": "Agent",
+      "label": "Google Tag Manager",
+      "properties": {}
+    },
+    {
+      "id": "tool--40d9c554-2d69-4591-a983-7bd1e32811c4",
+      "nodeType": "Agent",
+      "label": "Image Loading",
+      "properties": {}
+    },
+    {
+      "id": "threat-actor--bd956f5e-7ee7-48d6-94ae-0321113c2c54",
+      "nodeType": "Agent",
+      "label": "BlackCat",
+      "properties": {}
+    },
+    {
+      "id": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "nodeType": "Event",
+      "label": "Observed Behavior",
+      "properties": {
+        "type": "observed-data",
+        "id": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+        "created": "2025-12-29T21:08:29.907489Z",
+        "modified": "2025-12-29T21:08:29.907499Z",
+        "first_observed": "2025-12-29T21:08:29.907508Z",
+        "last_observed": "2025-12-29T21:08:29.907518Z",
+        "number_observed": 1,
+        "objects": {
+          "0": {
+            "type": "x-observable",
+            "spec_version": "2.1",
+            "x_behavior": "utilizes google tag manager for tracking and potentially malicious purposes."
+          }
+        },
+        "x_cti_confidence": 0.6,
+        "labels": [
+          "d3f:observed-data"
+        ],
+        "x_d3fend_class": "d3f:observed-data",
+        "x_cad_schema": {
+          "analytic_id": "cad:analytic:observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+          "analytic_type": "observed-data",
+          "references": []
+        }
+      }
+    },
+    {
+      "id": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "nodeType": "Event",
+      "label": "Observed Behavior",
+      "properties": {
+        "type": "observed-data",
+        "id": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+        "created": "2025-12-29T21:08:29.907560Z",
+        "modified": "2025-12-29T21:08:29.907570Z",
+        "first_observed": "2025-12-29T21:08:29.907580Z",
+        "last_observed": "2025-12-29T21:08:29.907589Z",
+        "number_observed": 1,
+        "objects": {
+          "0": {
+            "type": "x-observable",
+            "spec_version": "2.1",
+            "x_behavior": "employs image loading techniques, potentially for data exfiltration or bypassing security controls."
+          }
+        },
+        "x_cti_confidence": 0.6,
+        "labels": [
+          "d3f:observed-data"
+        ],
+        "x_d3fend_class": "d3f:observed-data",
+        "x_cad_schema": {
+          "analytic_id": "cad:analytic:observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+          "analytic_type": "observed-data",
+          "references": []
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "obs-attack-pattern--1f9012ef-1e10-4e48-915e-e03563435fe8-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--1f9012ef-1e10-4e48-915e-e03563435fe8",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--1f9012ef-1e10-4e48-915e-e03563435fe8-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--1f9012ef-1e10-4e48-915e-e03563435fe8",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--b8017880-4b1e-42de-ad10-ae7ac6705166-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--b8017880-4b1e-42de-ad10-ae7ac6705166",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--b8017880-4b1e-42de-ad10-ae7ac6705166-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--b8017880-4b1e-42de-ad10-ae7ac6705166",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--a0f84e1d-d25c-4dd1-bb26-3c0e68471530-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--a0f84e1d-d25c-4dd1-bb26-3c0e68471530",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--a0f84e1d-d25c-4dd1-bb26-3c0e68471530-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--a0f84e1d-d25c-4dd1-bb26-3c0e68471530",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--f4c1826f-a322-41cd-9557-562100848c84-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--f4c1826f-a322-41cd-9557-562100848c84",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--f4c1826f-a322-41cd-9557-562100848c84-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--f4c1826f-a322-41cd-9557-562100848c84",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--3d333250-30e4-4a82-9edc-756c68afc529-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--3d333250-30e4-4a82-9edc-756c68afc529",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--3d333250-30e4-4a82-9edc-756c68afc529-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--3d333250-30e4-4a82-9edc-756c68afc529",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--39131305-9282-45e4-ac3b-591d2d4fc3ef-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--39131305-9282-45e4-ac3b-591d2d4fc3ef",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--39131305-9282-45e4-ac3b-591d2d4fc3ef-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--39131305-9282-45e4-ac3b-591d2d4fc3ef",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--818302b2-d640-477b-bf88-873120ce85c4-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--818302b2-d640-477b-bf88-873120ce85c4",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--818302b2-d640-477b-bf88-873120ce85c4-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--818302b2-d640-477b-bf88-873120ce85c4",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--9b00925a-7c4b-4e53-bfc8-9a6a806fde03-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--9b00925a-7c4b-4e53-bfc8-9a6a806fde03",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--9b00925a-7c4b-4e53-bfc8-9a6a806fde03-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--9b00925a-7c4b-4e53-bfc8-9a6a806fde03",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--389735f1-f21c-4208-b8f0-f8031e7169b8-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--389735f1-f21c-4208-b8f0-f8031e7169b8",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--389735f1-f21c-4208-b8f0-f8031e7169b8-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--389735f1-f21c-4208-b8f0-f8031e7169b8",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--b21c3b2d-02e6-45b1-980b-e69051040839-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--b21c3b2d-02e6-45b1-980b-e69051040839",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--b21c3b2d-02e6-45b1-980b-e69051040839-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--b21c3b2d-02e6-45b1-980b-e69051040839",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--f24faf46-3b26-4dbb-98f2-63460498e433-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--f24faf46-3b26-4dbb-98f2-63460498e433",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--f24faf46-3b26-4dbb-98f2-63460498e433-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--f24faf46-3b26-4dbb-98f2-63460498e433",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--77532a55-c283-4cd2-bc5d-2d0b65e9d88c-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--77532a55-c283-4cd2-bc5d-2d0b65e9d88c",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--77532a55-c283-4cd2-bc5d-2d0b65e9d88c-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--77532a55-c283-4cd2-bc5d-2d0b65e9d88c",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--c848fcf7-6b62-4bde-8216-b6c157d48da0-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--c848fcf7-6b62-4bde-8216-b6c157d48da0",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--c848fcf7-6b62-4bde-8216-b6c157d48da0-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--c848fcf7-6b62-4bde-8216-b6c157d48da0",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--fe926152-f431-4baf-956c-4ad3cb0bf23b-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--fe926152-f431-4baf-956c-4ad3cb0bf23b",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--fe926152-f431-4baf-956c-4ad3cb0bf23b-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--fe926152-f431-4baf-956c-4ad3cb0bf23b",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--9c306d8d-cde7-4b4c-b6e8-d0bb16caca36-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--9c306d8d-cde7-4b4c-b6e8-d0bb16caca36",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--9c306d8d-cde7-4b4c-b6e8-d0bb16caca36-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--9c306d8d-cde7-4b4c-b6e8-d0bb16caca36",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--731f4f55-b6d0-41d1-a7a9-072a66389aea-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--731f4f55-b6d0-41d1-a7a9-072a66389aea",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--731f4f55-b6d0-41d1-a7a9-072a66389aea-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--731f4f55-b6d0-41d1-a7a9-072a66389aea",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--f6dacc85-b37d-458e-b58d-74fc4bbf5755-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--f6dacc85-b37d-458e-b58d-74fc4bbf5755",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--f6dacc85-b37d-458e-b58d-74fc4bbf5755-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--f6dacc85-b37d-458e-b58d-74fc4bbf5755",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--51a14c76-dd3b-440b-9c20-2bf91d25a814-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--51a14c76-dd3b-440b-9c20-2bf91d25a814",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--51a14c76-dd3b-440b-9c20-2bf91d25a814-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--51a14c76-dd3b-440b-9c20-2bf91d25a814",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--2e0dd10b-676d-4964-acd0-8a404c92b044-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--2e0dd10b-676d-4964-acd0-8a404c92b044",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--2e0dd10b-676d-4964-acd0-8a404c92b044-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--2e0dd10b-676d-4964-acd0-8a404c92b044",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--6e6845c2-347a-4a6f-a2d1-b74a18ebd352-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--6e6845c2-347a-4a6f-a2d1-b74a18ebd352",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--6e6845c2-347a-4a6f-a2d1-b74a18ebd352-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--6e6845c2-347a-4a6f-a2d1-b74a18ebd352",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--5372c5fe-f424-4def-bcd5-d3a8e770f07b-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--5372c5fe-f424-4def-bcd5-d3a8e770f07b",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--5372c5fe-f424-4def-bcd5-d3a8e770f07b-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--5372c5fe-f424-4def-bcd5-d3a8e770f07b",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--b8902400-e6c5-4ba2-95aa-2d35b442b118-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--b8902400-e6c5-4ba2-95aa-2d35b442b118",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--b8902400-e6c5-4ba2-95aa-2d35b442b118-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--b8902400-e6c5-4ba2-95aa-2d35b442b118",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--a9fb6b3f-4a3c-4703-a4f1-f55f83d1e017-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--a9fb6b3f-4a3c-4703-a4f1-f55f83d1e017",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--a9fb6b3f-4a3c-4703-a4f1-f55f83d1e017-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--a9fb6b3f-4a3c-4703-a4f1-f55f83d1e017",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--f0589bc3-a6ae-425a-a3d5-5659bfee07f4-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--f0589bc3-a6ae-425a-a3d5-5659bfee07f4",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--f0589bc3-a6ae-425a-a3d5-5659bfee07f4-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--f0589bc3-a6ae-425a-a3d5-5659bfee07f4",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--ff25900d-76d5-449b-a351-8824e62fc81b-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--ff25900d-76d5-449b-a351-8824e62fc81b",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--ff25900d-76d5-449b-a351-8824e62fc81b-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--ff25900d-76d5-449b-a351-8824e62fc81b",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--4061e78c-1284-44b4-9116-73e4ac3912f7-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--4061e78c-1284-44b4-9116-73e4ac3912f7",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--4061e78c-1284-44b4-9116-73e4ac3912f7-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--4061e78c-1284-44b4-9116-73e4ac3912f7",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--4b74a1d4-b0e9-4ef1-93f1-14ecc6e2f5b5-observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "source": "attack-pattern--4b74a1d4-b0e9-4ef1-93f1-14ecc6e2f5b5",
+      "target": "observed-data--3c6356cf-ac0e-4f41-adac-7274a24b9f0e",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--4b74a1d4-b0e9-4ef1-93f1-14ecc6e2f5b5-observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "source": "attack-pattern--4b74a1d4-b0e9-4ef1-93f1-14ecc6e2f5b5",
+      "target": "observed-data--ef0ca2b6-390d-446e-85d6-c9ed5f5a5dd2",
+      "relationship": "observed-in"
+    }
+  ],
+  "metadata": {
+    "source": "blackcat_cti_pipeline",
+    "stix_bundle_id": "bundle--d5440e8d-a274-4e4c-b9d5-eb8969ca9d2c",
+    "ontology_modules": [
+      "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/d3fend-protege.ttl",
+      "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/mappings/d3fend-cco.ttl",
+      "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/mappings/d3fend-ontology-mappings.ttl",
+      "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/initiatives/example-initiative.ttl",
+      "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/extensions/d3fend-catalog.ttl"
+    ]
+  }
+}

@@ -164,25 +164,35 @@ def make_infrastructure(i: dict) -> dict:
 # Attack Pattern (TTP)
 # ----------------------------------------------------------------------
 
-def make_attack_pattern(ttp_text: str, taxonomy: dict):
+def make_attack_pattern(ttp_text, taxonomy: dict):
     """
     Create attack-pattern SDO using MITRE taxonomy first.
+
     ttp_text may be:
         - "T1048"
         - "Exfiltration Over Alternative Protocol (T1048)"
         - "T1070.004"
         - plain English name
+        - dict from IR with keys: id, name, confidence, evidence
     """
 
-    # Normalize dict → string
+    confidence = None
+    evidence = None
+
+    # ----------------------------
+    # Normalize IR dict → string (WITHOUT losing metadata)
+    # ----------------------------
     if isinstance(ttp_text, dict):
-        if "name" in ttp_text:
+        confidence = ttp_text.get("confidence")
+        evidence = ttp_text.get("evidence")
+
+        if "id" in ttp_text:
+            t = ttp_text["id"].strip()
+        elif "name" in ttp_text:
             t = ttp_text["name"].strip()
-        elif "technique_id" in ttp_text:
-            t = ttp_text["technique_id"].strip()
         else:
-            # If dict has unknown shape
             t = str(ttp_text).strip()
+
     elif isinstance(ttp_text, str):
         t = ttp_text.strip()
     else:
@@ -193,34 +203,55 @@ def make_attack_pattern(ttp_text: str, taxonomy: dict):
     # ----------------------------
     match = re.search(r"(T\d{4}(?:\.\d{3})?)", t.upper())
     tid = match.group(1) if match else None
-    
+
+    # ----------------------------
     # 1) If technique ID present, look up MITRE object
-    if tid and tid in taxonomy["attack_id_index"]:
+    # ----------------------------
+    if tid and tid in taxonomy.get("attack_id_index", {}):
         obj = taxonomy["attack_id_index"][tid]
-        # Reuse MITRE object (clone minimal fields)
-        return {
+
+        ap = {
             "type": "attack-pattern",
             "id": obj["id"],
             "name": obj.get("name"),
             "description": obj.get("description", ""),
-            "external_references": obj.get("external_references", [])
+            "external_references": obj.get("external_references", []),
         }
 
-    # 2) Otherwise try a simple name lookup
+        # Preserve analytical signal from IR
+        if confidence is not None:
+            ap["x_cti_confidence"] = confidence
+        if evidence is not None:
+            ap["x_cti_evidence"] = evidence
+
+        return ap
+
+    # ----------------------------
+    # 2) Name-based lookup (ontology-driven, no guessing)
+    # ----------------------------
     name_key = t.lower()
-    if name_key in taxonomy["name_index"]:
+    if name_key in taxonomy.get("name_index", {}):
         stype, sid, sobj = taxonomy["name_index"][name_key]
         if stype == "attack-pattern":
-            return {
+            ap = {
                 "type": "attack-pattern",
                 "id": sid,
                 "name": sobj.get("name"),
                 "description": sobj.get("description", ""),
-                "external_references": sobj.get("external_references", [])
+                "external_references": sobj.get("external_references", []),
             }
 
-    # 3) Fallback to our own simple object
-    return {
+            if confidence is not None:
+                ap["x_cti_confidence"] = confidence
+            if evidence is not None:
+                ap["x_cti_evidence"] = evidence
+
+            return ap
+
+    # ----------------------------
+    # 3) Deterministic fallback (NO enrichment, NO inference)
+    # ----------------------------
+    ap = {
         "type": "attack-pattern",
         "id": new_stix_id("attack-pattern"),
         "created": now(),
@@ -228,6 +259,13 @@ def make_attack_pattern(ttp_text: str, taxonomy: dict):
         "name": t,
         "external_references": [],
     }
+
+    if confidence is not None:
+        ap["x_cti_confidence"] = confidence
+    if evidence is not None:
+        ap["x_cti_evidence"] = evidence
+
+    return ap
 
 # ----------------------------------------------------------------------
 # Observed Data (behaviors)

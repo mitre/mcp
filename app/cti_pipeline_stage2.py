@@ -26,6 +26,7 @@ import json
 from pathlib import Path
 
 import datetime
+from nltk.corpus import wordnet as wn
 
 
 # ----------------- Imports from utilities -----------------
@@ -51,6 +52,7 @@ from utilities.cti_taxonomy_loader import (
 from utilities.cti_stix_validation import validate_bundle
 from utilities.cti_stix_report_writer import render_stix_report
 from utilities.cti_defend_enricher import enrich_stix_bundle_with_defend
+from utilities.cti_mitre_extract import hashes_to_stix_observed_data
 
 # -----------------------------------------------------------
 # Directories
@@ -64,6 +66,17 @@ OUTPUTS_STIX_DIR = "outputs_stix"
 DEBUG_DIR        = "debug"
 OUTPUTS_CAD_DIR  = "outputs_cad"
 
+
+def log(msg):
+    """
+    Phase-2 stdout logger.
+
+    This ensures:
+      • Messages appear in terminal
+      • Messages are captured by tee debug_mitre.log
+    """
+    print(msg, flush=True)
+
 # -----------------------------------------------------------
 # Load IR
 # -----------------------------------------------------------
@@ -73,7 +86,7 @@ def load_ir(path: Path) -> dict:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
-        print(f"[!] Failed to load IR '{path.name}': {e}")
+        log(f"[!] Failed to load IR '{path.name}': {e}")
         return {}
 
 # -----------------------------------------------------------
@@ -146,7 +159,6 @@ def convert_ir_to_stix(ir: dict, debug: dict, taxonomy: dict) -> dict:
             for alias in obj.get("aliases", []):
                 name_to_id[alias.lower()] = obj["id"]
 
-
     # ------- Tools -------
     for t in ir.get("tools", []):
         obj = make_tool(t)
@@ -195,22 +207,41 @@ def convert_ir_to_stix(ir: dict, debug: dict, taxonomy: dict) -> dict:
             stix_objects.append(obj)
             name_to_id[obj["name"].lower()] = obj["id"]
 
-
+    # ------- Hashes (Observed Data) -------
+    if ir.get("hashes"):
+        hash_objects = hashes_to_stix_observed_data(ir["hashes"])
+        stix_objects.extend(hash_objects)
+        log(f"Observed-Data → {len(hash_objects)} file hash observables created")
+           
     # ------- Observed Data -------
-    for obs in ir.get("behaviors", []):
+    for obs in ir.get("qualified_behaviors", ir.get("behaviors", [])):
         if isinstance(obs, dict):
-            behavior_text = obs.get("text", "")
+            behavior_text = obs.get("normalized") or obs.get("description") or ""
         else:
             behavior_text = obs
 
-        if not behavior_text:
-            log(f"Observed-Data → SKIPPED (empty behavior)")
+        if not behavior_text.strip():
+            log("Observed-Data → SKIPPED (empty after IR normalization)")
             continue
-        norm = normalize_behavior_text(obs)
-        obj = make_observed_data(norm)
-        log(f"Observed-Data → {obj['id'] if obj else 'SKIPPED'} for {obs}")
-        if obj:
-            stix_objects.append(obj)
+
+        norm_text = normalize_behavior_text(behavior_text)
+
+        obj = make_observed_data(norm_text)
+        if not obj:
+            continue
+
+        if isinstance(obs, dict):
+            if "confidence" in obs:
+                obj["x_cti_confidence"] = obs["confidence"]
+            if "evidence" in obs:
+                obj["x_cti_evidence"] = obs["evidence"]
+            # Preserve execution-ready metadata for MCP RAG / AE / IaC
+            if "x_cti_configuration" in obs:
+                obj["x_cti_configuration"] = obs["x_cti_configuration"]
+            if "x_cti_sequence" in obs:
+                obj["x_cti_sequence"] = obs["x_cti_sequence"]
+
+        stix_objects.append(obj)
 
     # -------------------------------------------------------
     # Build relationships
@@ -253,19 +284,79 @@ def convert_ir_to_stix(ir: dict, debug: dict, taxonomy: dict) -> dict:
             debug["relationship_debug"].append(entry)
             continue
 
-        if src_name not in name_to_id or dst_name not in name_to_id:
-            entry["status"] = "SKIPPED (unresolved names)"
+        # -------------------------------------------------------
+        # Relationship resolution (lossless, uncertainty-aware)
+        # -------------------------------------------------------
+
+        status = rel.get("status", "concrete")
+        target_role = rel.get("target_role", "unknown")
+        confidence = rel.get("confidence", 0.5)
+        evidence = rel.get("evidence", [])
+        # ---------------------------------------------------------------------------
+
+        src_id = name_to_id.get(src_name)
+        dst_id = name_to_id.get(dst_name)
+
+        # --- Handle unresolved TARGET without dropping ---
+        if not dst_id:
+            placeholder_name = f"abstract-{target_role}-{dst_name or 'target'}"
+
+            if placeholder_name.lower() not in name_to_id:
+                placeholder_obj = (
+                    make_infrastructure({
+                        "name": placeholder_name,
+                        "description": "Abstract relationship target derived from CTI text",
+                        "confidence": confidence,
+                        "x_cti_status": status,
+                        "x_cti_evidence": evidence,
+                        "x_cti_target_role": target_role,
+                    })
+                    if target_role == "infrastructure"
+                    else {
+                        "type": "artifact",
+                        "spec_version": "2.1",
+                        "id": f"artifact--{placeholder_name}",
+                        "name": placeholder_name,
+                        "confidence": confidence,
+                        "x_cti_status": status,
+                        "x_cti_evidence": evidence,
+                        "x_cti_target_role": target_role,
+                    }
+                )
+
+                stix_objects.append(placeholder_obj)
+                name_to_id[placeholder_name.lower()] = placeholder_obj["id"]
+
+            dst_id = name_to_id[placeholder_name.lower()]
+
+
+        # --- Handle unresolved SOURCE (cannot recover safely) ---
+        if not src_id:
+            entry["status"] = "SKIPPED (unresolved source)"
             debug["relationship_debug"].append(entry)
             continue
 
-        stix_rel = canonicalize_verb(raw_rel)
-        rel_obj = make_relationship(stix_rel, name_to_id[src_name], name_to_id[dst_name])
+        # -------------------------------------------------------
+        # Relationship creation (Stage-1 semantics preserved)
+        # -------------------------------------------------------
+
+        stix_rel = raw_rel.strip().lower().replace(" ", "-")
+
+        rel_obj = make_relationship(stix_rel, src_id, dst_id)
 
         if rel_obj:
+            # Preserve Stage-1 semantics explicitly
+            rel_obj["x_cti_confidence"] = rel.get("confidence")
+            rel_obj["x_cti_status"] = rel.get("status", "concrete")
+            rel_obj["x_cti_target_role"] = rel.get("target_role")
+            rel_obj["x_cti_evidence"] = rel.get("evidence")
+
             stix_objects.append(rel_obj)
-            entry["status"] = f"CREATED ({rel_obj['id']})"
+            entry["status"] = f"CREATED ({rel_obj['x_cti_status']})"
         else:
             entry["status"] = "SKIPPED (failed creation)"
+
+
 
         debug["relationship_debug"].append(entry)
 
@@ -276,7 +367,6 @@ def convert_ir_to_stix(ir: dict, debug: dict, taxonomy: dict) -> dict:
     debug["bundle_id"] = bundle["id"]
 
     return bundle
-
 
 # -----------------------------------------------------------
 # Phase 2 Runner
@@ -294,26 +384,26 @@ def run_phase2(base_dir: Path):
     # Load MITRE taxonomy once
     taxonomy = load_mitre_taxonomy()
 
-    print("[+] Running Phase 2: IR → STIX")
+    log("[+] Running Phase 2: IR → STIX")
 
     # Prefer full Stage-1 outputs (parse-to-ir → complete_*.json)
-    ir_files = sorted(outputs_ir.glob("complete_*.json"))
+    ir_files = sorted(outputs_ir.glob("*.json"))
 
-    # Fallback: allow IR-only outputs for testing step 1
-    if not ir_files:
-        ir_files = sorted(outputs_ir.glob("*.ir-only.json"))
+    # # Fallback: allow IR-only outputs for testing step 1
+    # if not ir_files:
+    #     ir_files = sorted(outputs_ir.glob("*.ir-only.json"))
 
     if not ir_files:
-        print("[!] No IR files found. Run Phase 1 first.")
+        log("[!] No IR files found. Run Phase 1 first.")
         return
 
 
     for ir_path in ir_files:
-        print(f"    [*] Processing {ir_path.name}")
+        log(f"    [*] Processing {ir_path.name}")
 
         ir = load_ir(ir_path)
         if not ir:
-            print("        [!] Invalid IR, skipping.")
+            log("        [!] Invalid IR, skipping.")
             continue
 
         stem = ir_path.stem
@@ -370,12 +460,12 @@ def run_phase2(base_dir: Path):
         stix_out = outputs_stix / f"{stem}.stix.json"
         with stix_out.open("w", encoding="utf-8") as f:
             json.dump(bundle, f, indent=2)
-        print(f"        → wrote {stix_out.name}")
+        log(f"        → wrote {stix_out.name}")
 
         # Save .txt report
         report_text = render_stix_report(bundle, ir_path.name)
         (outputs_stix / f"{stem}.stix.txt").write_text(report_text, encoding="utf-8")
-        print(f"        → wrote {stem}.stix.txt")
+        log(f"        → wrote {stem}.stix.txt")
 
        
         # -------------------------------------------------------
@@ -383,35 +473,34 @@ def run_phase2(base_dir: Path):
         # -------------------------------------------------------
         defense_root = HERE / "utilities" / "D3fend_CAD"
         enriched_bundle, ontology_info = enrich_stix_bundle_with_defend(bundle, defense_root)
-        print("        → performed D3FEND enrichment")
-        print("ontology_info keys:")
-        print(ontology_info.keys())
+        log("        → performed D3FEND enrichment")
+        log("ontology_info keys:")
+        log(", ".join(ontology_info.keys()))
         if "cad_graph" in ontology_info:
             cad_out = outputs_cad / f"{stem}.cad.json"
             with cad_out.open("w", encoding="utf-8") as f:
                 json.dump(ontology_info["cad_graph"], f, indent=2)
 
-            print(f"        → wrote {cad_out.name} (CAD Graph Preview)")
+            log(f"        → wrote {cad_out.name} (CAD Graph Preview)")
         else:
-            print("        [!] No CAD graph returned from enrichment.")
+            log("        [!] No CAD graph returned from enrichment.")
 
         # -------------------------------------------------------
-        # STDOUT PRINT: ontology modules + mappings + schema used
+        # STDOUT log: ontology modules + mappings + schema used
         # -------------------------------------------------------
-        print("\n===== D3FEND ENRICHMENT DEBUG =====")
+        log("\n===== D3FEND ENRICHMENT DEBUG =====")
 
-        print(f"[Ontology] Loaded {len(ontology_info['ontology_modules'])} ontology_modules:")
+        log(f"[Ontology] Loaded {len(ontology_info['ontology_modules'])} ontology_modules:")
         for m in ontology_info["ontology_modules"]:
-            print(f"   - {m}")
+            log(f"   - {m}")
 
-        print(f"\n[CAD Schema] {ontology_info['cad_schema']}")
+        log(f"\n[CAD Schema] {ontology_info['cad_schema']}")
 
-        print("\n[Dynamic D3FEND Class Mappings]:")
+        log("\n[Dynamic D3FEND Class Mappings]:")
         for k, v in ontology_info["mappings_used"].items():
-            print(f"   {k:20s} → {v}")
+            log(f"   {k:20s} → {v}")
 
-        print("===== END D3FEND ENRICHMENT DEBUG =====\n")
-
+        log("===== END D3FEND ENRICHMENT DEBUG =====\n")
 
 # -----------------------------------------------------------
 # STIX → CAD Enrichment Only Runner
@@ -423,18 +512,18 @@ def run_stix_to_cad_only(base_dir: Path):
     outputs_stix.mkdir(parents=True, exist_ok=True)
     outputs_cad.mkdir(parents=True, exist_ok=True)
 
-    print("[+] Running STIX → CAD enrichment only")
+    log("[+] Running STIX → CAD enrichment only")
 
     # Only process raw STIX bundles, not CAD output
     stix_files = sorted(outputs_stix.glob("*.stix.json"))
     if not stix_files:
-        print("[!] No .stix.json files found in outputs_stix/.")
+        log("[!] No .stix.json files found in outputs_stix/.")
         return
 
     defense_root = HERE / "utilities" / "D3fend_CAD"
 
     for stix_file in stix_files:
-        print(f"    [*] Enriching {stix_file.name}")
+        log(f"    [*] Enriching {stix_file.name}")
 
         with stix_file.open("r", encoding="utf-8") as f:
             bundle = json.load(f)
@@ -446,7 +535,11 @@ def run_stix_to_cad_only(base_dir: Path):
             cad_out = outputs_cad / f"{stem}.cad.json"
             with cad_out.open("w", encoding="utf-8") as f:
                 json.dump(ontology_info["cad_graph"], f, indent=2)
-            print(f"        → wrote {cad_out.name} (CAD Graph)")
+            log(f"        → wrote {cad_out.name} (CAD Graph)")
         else:
-            print("        [!] No CAD graph returned.")
+            log("        [!] No CAD graph returned.")
+
+def is_physical_or_protocol(noun: str) -> bool:
+    synsets = wn.synsets(noun, pos=wn.NOUN)
+    return any(s.lexname() in {"noun.artifact", "noun.communication"} for s in synsets)
 

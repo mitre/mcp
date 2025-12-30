@@ -1,0 +1,399 @@
+[+] Base dir: ../data
+[+] Async raw → clean extraction starting…
+    [HTML] Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.html → Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.txt
+    [HTML] BlackCat Ransomware (ALPHV).html → BlackCat Ransomware (ALPHV).txt
+    [SKIP] Unsupported type: p13n.min.js
+    [SKIP] Unsupported type: module_Global_Blog_Card_Deck.min.css
+    [IMG] Copied config.png
+    [SKIP] Unsupported type: Support_Icon.svg
+    [IMG] Copied linux_cli.png
+    [SKIP] Unsupported type: in.js
+    [SKIP] Unsupported type: Nav_Finance_Icon.svg
+    [SKIP] Unsupported type: module_Global_Header.min.js
+    [SKIP] Unsupported type: module_Blog_Table_of_Contents.min.css
+    [SKIP] Unsupported type: bizible.js
+    [SKIP] Code-dominant TXT: f.txt
+    [SKIP] Unsupported type: LanguageSwitcher.css
+    [SKIP] Unsupported type: insight.min.js
+    [SKIP] Unsupported type: Salesforce_logo_nav.svg
+    [SKIP] Unsupported type: banner.js
+    [SKIP] Unsupported type: template_blog-post.min.css
+    [SKIP] Unsupported type: widgets.js
+    [IMG] Copied Blog_BlackCat_Hero_FNL.png
+    [SKIP] Unsupported type: 142972(1).js
+    [SKIP] Unsupported type: module_Inline_Blog_End_Card.min.css
+    [SKIP] Unsupported type: active-directory-logo-only_nav.svg
+    [SKIP] Unsupported type: sync
+    [SKIP] Unsupported type: Events_Icon.svg
+    [SKIP] Unsupported type: azure_logo_nav.svg
+    [SKIP] Unsupported type: Blog_VTL-AWSAccountID_202508_V1.webp
+    [SKIP] Unsupported type: Box,_Inc._logo_nav.svg
+    [SKIP] Unsupported type: module_Global_Footer.min.css
+    [SKIP] Unsupported type: template_main.min.js
+    [SKIP] Unsupported type: Windows & NAS_Icon.svg
+    [SKIP] Unsupported type: Databases.svg
+    [SKIP] Unsupported type: module_Blog_Table_of_Contents.min.js
+    [SKIP] Unsupported type: ipv
+    [SKIP] Unsupported type: Blog_VTL-CookieBite_202504_V1.webp
+    [SKIP] Unsupported type: email-data-protection-icon.svg
+    [SKIP] Unsupported type: 148008183.js
+    [SKIP] Unsupported type: FeaturedImage.webp
+    [SKIP] Unsupported type: Data risk analysis_Icon.svg
+    [SKIP] Unsupported type: Databricks_logo_nav.svg
+    [SKIP] Unsupported type: Nav_Manufacturing_Icon.svg
+    [SKIP] Unsupported type: SaaS apps_Icon.svg
+    [SKIP] Unsupported type: Microsoft_365_(2022)_logo_nav.svg
+    [SKIP] Unsupported type: module_Global_Header.css
+    [SKIP] Unsupported type: 0
+    [SKIP] Unsupported type: GoogleCloud_logo_nav.svg
+    [SKIP] Unsupported type: 6si.min.js
+    [SKIP] Unsupported type: Google_Drive_icon_(2020)_nav.svg
+    [SKIP] Unsupported type: Blog_VTL-Azure_202507_V1.webp
+    [SKIP] Unsupported type: Nav_Federal_Icon.svg
+    [SKIP] Unsupported type: module_Global_Simple_Conversion_Panel.min.css
+    [SKIP] Unsupported type: template_fonts.min.css
+    [SKIP] Unsupported type: Compliance management_Icon.svg
+    [SKIP] Unsupported type: pixel.js
+    [SKIP] Code-dominant TXT: f(3).txt
+    [SKIP] Unsupported type: Ransomware prevention_Icon.svg
+    [SKIP] Unsupported type: default+en.css
+    [SKIP] Unsupported type: embed.js
+    [SKIP] Unsupported type: Nav_Data Lifecycle Automation.svg
+    [SKIP] Empty HTML: widget_iframe.2f70fb173b9000da126c79afe2098f02.html
+    [SKIP] Unsupported type: Data access governance_Icon.svg
+    [SKIP] Unsupported type: 179650485736885
+    [SKIP] Unsupported type: salesforce_updated.svg
+    [SKIP] Unsupported type: sdk(1).js
+    [SKIP] Unsupported type: module_2025_Blog_Post_Header.min.css
+    [SKIP] Unsupported type: AuthorPhoto_Maya.webp
+    [SKIP] Unsupported type: minimalist.css
+    [SKIP] Unsupported type: 142972(2).js
+    [SKIP] Unsupported type: sync(1)
+    [SKIP] Unsupported type: Blog_PreventingRansomwarebyHours_202509_V1.webp
+    [SKIP] Unsupported type: bat.js
+    [SKIP] Unsupported type: conversations-embed.js
+    [SKIP] Unsupported type: Blog_MindGames_202503_V1.webp
+    [SKIP] Code-dominant TXT: f(1).txt
+    [SKIP] Unsupported type: Nav-DAM.svg
+    [SKIP] Unsupported type: web-interactives-embed.js
+    [SKIP] Unsupported type: Cloud DLP_Icon.svg
+    [SKIP] Unsupported type: State of Cybercrime_Icon.svg
+    [SKIP] Unsupported type: Webinars_Icon.svg
+    [SKIP] Unsupported type: DanielHeadshot - Edited.webp
+    [IMG] Copied win_cli.png
+    [SKIP] Unsupported type: template_blog.min.js
+    [SKIP] Unsupported type: Microsoft 365 & Entra ID_Icon.svg
+    [SKIP] Unsupported type: nav_platform_image.webp
+    [SKIP] Unsupported type: email-security-icon.svg
+    [SKIP] Unsupported type: Nav_Operation_Frostbyte_Icon.svg
+    [SKIP] Unsupported type: CISO_Resource_Center.svg
+    [SKIP] Unsupported type: Microsoft_365_Copilot_Icon_nav.svg
+    [SKIP] Unsupported type: Cloud data security_Icon-1.svg
+    [SKIP] Unsupported type: AuthorPhoto_ (1).webp
+    [SKIP] Unsupported type: seg
+    [SKIP] Unsupported type: Amazon_Web_Services_Logo_nav.svg
+    [SKIP] Unsupported type: Cloud infrastructure_Icon.svg
+    [SKIP] Unsupported type: Cloud data security_Icon.svg
+    [SKIP] Unsupported type: js
+    [SKIP] Unsupported type: px
+    [IMG] Copied forum.png
+    [SKIP] Unsupported type: fb.js
+    [SKIP] Unsupported type: Data discovery & classification_Icon.svg
+    [SKIP] Unsupported type: sl.js
+    [SKIP] Unsupported type: AI security_Icon.svg
+    [SKIP] Unsupported type: events.js
+    [SKIP] Unsupported type: 142972.js
+    [SKIP] Unsupported type: template_main.min.css
+    [IMG] Copied AuthorPhoto_JosephAvanzato_202503.jpg
+    [SKIP] Unsupported type: logo-chatgpt-nav.svg
+    [SKIP] Unsupported type: cse_element__en.js
+    [SKIP] Unsupported type: index.js
+    [SKIP] Unsupported type: module_Global_Footer.min.js
+    [SKIP] Code-dominant TXT: f(2).txt
+    [SKIP] Unsupported type: zi-tag.js
+    [SKIP] Unsupported type: gtm.js
+    [SKIP] Unsupported type: Blog_Icon.svg
+    [SKIP] Unsupported type: Insider risk management_Icon.svg
+    [SKIP] Unsupported type: Nav_SLED_Icon.svg
+    [SKIP] Empty HTML: saved_resource.html
+    [SKIP] Unsupported type: sdk.js
+    [SKIP] Unsupported type: _Incapsula_Resource
+    [SKIP] Unsupported type: MDDR_Icon.svg
+    [SKIP] Unsupported type: fbevents.js
+    [SKIP] Unsupported type: Resources_Icon.svg
+    [SKIP] Unsupported type: Nav_Network_Icon.svg
+    [SKIP] Unsupported type: sa.css
+    [SKIP] Unsupported type: aws_updated.svg
+    [SKIP] Unsupported type: tc.min.js
+    [IMG] Copied wallpaper.png
+    [SKIP] Unsupported type: ServiceNow_logo_nav.svg
+    [SKIP] Empty HTML: saved_resource(1).html
+    [SKIP] Unsupported type: js(1)
+    [SKIP] Unsupported type: 1024922.js
+    [SKIP] Unsupported type: Nav_Healthcare_Icon.svg
+    [IMG] Copied jason-hill.jpg
+    [SKIP] Unsupported type: azure_updated.svg
+    [SKIP] Unsupported type: Blog_VTL-Atroposia_202510_V1.webp
+    [SKIP] Unsupported type: Data-centric threat detection_Icon.svg
+    [SKIP] Unsupported type: project.js
+    [SKIP] Unsupported type: 399-401d6466e23d2395.js
+    [SKIP] Unsupported type: 898-8343fee746aadddf.js
+    [SKIP] Unsupported type: otBannerSdk.js
+    [IMG] Copied Kroll.png
+    [SKIP] Unsupported type: 92977076-ce22c5f5394b11cd.js
+    [SKIP] Unsupported type: image
+    [SKIP] Unsupported type: 68c0a17d-a4b271f5e43bb828.js
+    [SKIP] Unsupported type: [[...path]]-4da1d3699332963c.js
+    [SKIP] Unsupported type: db.js
+    [IMG] Copied analyzing-exmatter-a-ransomware-data-exfiltration-tool-table2.jpg
+    [SKIP] Unsupported type: otSDKStub.js
+    [SKIP] Unsupported type: 1d6e49b90012fb18.css
+    [SKIP] Unsupported type: _buildManifest.js
+    [SKIP] Unsupported type: _app-a9814e2f4df8723b.js
+    [SKIP] Unsupported type: 0
+    [SKIP] Unsupported type: OtAutoBlock.js
+    [SKIP] Unsupported type: jquery-3.7.1.min.js
+    [SKIP] Unsupported type: 954-54c9b3ed51748095.js
+    [IMG] Copied analyzing-exmatter-a-ransomware-data-exfiltration-tool-table1.jpg
+    [SKIP] Unsupported type: KROLL_SVG_RGB.svg
+    [IMG] Copied 464526.gif
+    [SKIP] Unsupported type: powered_by_logo.svg
+    [SKIP] Empty HTML: sync.html
+    [SKIP] Unsupported type: ee9ce975-7fc3646d17e67c34.js
+    [SKIP] Unsupported type: framework-e952fed463eb8e34.js
+    [SKIP] Unsupported type: polyfills-42372ed130431b0a.js
+    [SKIP] Unsupported type: 5d416436-014d1cbd031ad87b.js
+    [SKIP] Unsupported type: 646e0218-e2228982e9d5cc7e.js
+    [SKIP] Unsupported type: embedded-player-sdk-v5.min.js
+    [SKIP] Unsupported type: 56180571.js
+    [SKIP] Unsupported type: _ssgManifest.js
+    [SKIP] Unsupported type: rum
+    [SKIP] Unsupported type: api.js
+    [SKIP] Empty HTML: saved_resource.html
+    [SKIP] Unsupported type: e21e5bbe-3d57eca89d858117.js
+    [SKIP] Unsupported type: b637e9a5-ebfee6b48b492480.js
+    [SKIP] Empty HTML: saved_resource(1).html
+    [SKIP] Unsupported type: main-b35d64fa7b14b737.js
+    [SKIP] Unsupported type: webpack-a7f1728dccad98c6.js
+[+] Async raw-to-clean complete.
+[+] Stage1 starting: 2 files | 9 workers
+
+[*] Processing BlackCat Ransomware (ALPHV).txt
+[IR] Resumed BlackCat Ransomware (ALPHV)
+[DEPNLP] Beginning NLP Layer #1
+[DEPNLP] Behaviors after NLP Layer 1: 22
+[DEPNLP] Actors removed: []
+[DEPNLP] Actors kept: ['Varonis']
+[DEPNLP] Canonicalized 13 entities
+[REL] semantic=0 behavior=0 combined_pre_dedup=0
+[REL][REJECT_SUMMARY] {}
+[REL] final_deduped=0
+
+[ENT] Starting entity validation
+[ENT] unique_entities=7
+[ENT][LLM] validating threat_actor: 'Varonis'
+[ENT][LLM] threat_actor 'Varonis' → uncertain
+[ENT][LLM] validating malware: 'ransomware'
+[ENT][LLM] malware 'ransomware' → yes
+[ENT][LLM] validating tool: 'SIEM'
+[ENT][LLM] tool 'SIEM' → yes
+[ENT][LLM] validating tool: 'EDR'
+[ENT][LLM] tool 'EDR' → yes
+[ENT][LLM] validating tool: 'antivirus'
+[ENT][LLM] tool 'antivirus' → yes
+[ENT][LLM] validating tool: 'Firewall'
+[ENT][LLM] tool 'Firewall' → yes
+[ENT][LLM] validating tool: 'Host-based intrusion detection/prevention systems'
+[ENT][LLM] tool 'Host-based intrusion detection/prevention systems' → yes
+[ENT] kept=6 uncertain=1 rejected=0
+
+[ENT] repair_before=56 repair_after=56
+[LING] techniques_in=835 behaviors_in=1
+[LING] raw_phrases=5
+[LING] operational_phrases=0
+[LING] candidate phrases extracted: 0
+[LING] semantic matches above threshold: 0
+[MITRE] inferred=2 dropped=1
+[MITRE] explicit=0 inferred=2 final=2
+[IR][PARSED] actors=1  malware=1  tools=5  infra=6  patterns=2  behaviors=1  relationships=0
+
+[*] Processing Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.txt
+[IR] Resumed Analyzing Exmatter_ A Ransomware Data Exfiltration Tool
+[DEPNLP] Beginning NLP Layer #1
+[DEPNLP] Behaviors after NLP Layer 1: 23
+[DEPNLP] Actors removed: ["Kroll's Threat Intelligence team reports more than 200 ransomware threat actor groups"]
+[DEPNLP] Actors kept: ['BlackMatter']
+[DEPNLP] Canonicalized 11 entities
+[REL][CANDIDATE] verb=perform sentence='data exfiltration is performed shortly before ransomware deployment.
+'
+[REL][CHECK] src=BlackMatter roles={'actor'} verb=perform tgt=data tgt_roles={'unknown'}
+[REL][CHECK] src=BlackMatter roles={'actor'} verb=perform tgt=data exfiltration tgt_roles={'unknown'}
+[REL][CHECK] src=BlackMatter roles={'actor'} verb=perform tgt=ransomware tgt_roles={'unknown'}
+[REL][CHECK] src=BlackMatter roles={'actor'} verb=perform tgt=ransomware deployment tgt_roles={'unknown'}
+[REL][CANDIDATE] verb=prioritize sentence='the tool prioritizes recently modified files for exfiltration.
+uses sftp to exfiltrate data.
+'
+[REL][CHECK] src=BlackMatter roles={'actor'} verb=prioritize tgt=recently modified files for exfiltration tgt_roles={'unknown'}
+[REL][CANDIDATE] verb=modify sentence='the tool prioritizes recently modified files for exfiltration.
+uses sftp to exfiltrate data.
+'
+[REL][CANDIDATE] verb=use sentence='the tool prioritizes recently modified files for exfiltration.
+uses sftp to exfiltrate data.
+'
+[REL][CHECK] src=BlackMatter roles={'actor'} verb=use tgt=sftp tgt_roles={'unknown'}
+[REL][CANDIDATE] verb=exfiltrate sentence='the tool prioritizes recently modified files for exfiltration.
+uses sftp to exfiltrate data.
+'
+[REL][CHECK] src=BlackMatter roles={'actor'} verb=exfiltrate tgt=data tgt_roles={'unknown'}
+[REL][CANDIDATE] verb=use sentence='uses webdav as a secondary exfiltration method.
+'
+[REL][CHECK] src=BlackMatter roles={'actor'} verb=use tgt=webdav tgt_roles={'unknown'}
+[REL][CANDIDATE] verb=use sentence='uses a socks5 proxy.'
+[REL][CHECK] src=BlackMatter roles={'actor'} verb=use tgt=a socks5 proxy tgt_roles={'unknown'}
+[REL] semantic=8
+[REL][CANDIDATE] verb=perform sentence='data exfiltration is performed shortly before ransomware deployment.'
+[REL][CHECK] src=BlackMatter roles={'actor'} verb=perform tgt=data tgt_roles={'unknown'}
+[REL][CHECK] src=BlackMatter roles={'actor'} verb=perform tgt=data exfiltration tgt_roles={'unknown'}
+[REL][CHECK] src=BlackMatter roles={'actor'} verb=perform tgt=ransomware tgt_roles={'unknown'}
+[REL][CHECK] src=BlackMatter roles={'actor'} verb=perform tgt=ransomware deployment tgt_roles={'unknown'}
+[REL][CANDIDATE] verb=prioritize sentence='the tool prioritizes recently modified files for exfiltration.'
+[REL][CHECK] src=BlackMatter roles={'actor'} verb=prioritize tgt=recently modified files for exfiltration tgt_roles={'unknown'}
+[REL][CANDIDATE] verb=modify sentence='the tool prioritizes recently modified files for exfiltration.'
+[REL][CANDIDATE] verb=use sentence='uses sftp to exfiltrate data.'
+[REL][CHECK] src=BlackMatter roles={'actor'} verb=use tgt=sftp tgt_roles={'unknown'}
+[REL][CANDIDATE] verb=exfiltrate sentence='uses sftp to exfiltrate data.'
+[REL][CHECK] src=BlackMatter roles={'actor'} verb=exfiltrate tgt=data tgt_roles={'unknown'}
+[REL][CANDIDATE] verb=use sentence='uses webdav as a secondary exfiltration method.'
+[REL][CHECK] src=BlackMatter roles={'actor'} verb=use tgt=webdav tgt_roles={'unknown'}
+[REL][CANDIDATE] verb=use sentence='uses a socks5 proxy.'
+[REL][CHECK] src=BlackMatter roles={'actor'} verb=use tgt=a socks5 proxy tgt_roles={'unknown'}
+[REL] behavior=8
+[REL] semantic=8 behavior=8 combined_pre_dedup=16
+[REL][REJECT_SUMMARY] {'non_actionable_relationship': 12, 'no_target_recovered': 2}
+[REL] final_deduped=4
+
+[ENT] Starting entity validation
+[ENT] unique_entities=11
+[ENT][LLM] validating threat_actor: 'BlackMatter'
+[ENT][LLM] threat_actor 'BlackMatter' → yes
+[ENT][LLM] validating malware: 'Exmatter'
+[ENT][LLM] malware 'Exmatter' → uncertain
+[ENT][LLM] validating malware: 'Ryuk Infostealer'
+[ENT][LLM] malware 'Ryuk Infostealer' → yes
+[ENT][LLM] validating malware: 'StealBit'
+[ENT][LLM] malware 'StealBit' → no
+[ENT][LLM] validating malware: 'Conti Ransomware'
+[ENT][LLM] malware 'Conti Ransomware' → yes
+[ENT][LLM] validating tool: 'Exmatter'
+[ENT][LLM] tool 'Exmatter' → yes
+[ENT][LLM] validating tool: 'PowerShell'
+[ENT][LLM] tool 'PowerShell' → yes
+[ENT][LLM] validating tool: 'ADFind'
+[ENT][LLM] tool 'ADFind' → yes
+[ENT][LLM] validating tool: 'Advanced IP Scanner'
+[ENT][LLM] tool 'Advanced IP Scanner' → yes
+[ENT][LLM] validating tool: 'Windows Sysinternals suite'
+[ENT][LLM] tool 'Windows Sysinternals suite' → yes
+[ENT][LLM] validating tool: 'Themida'
+[ENT][LLM] tool 'Themida' → yes
+[ENT] kept=9 uncertain=1 rejected=1
+
+[ENT] repair_before=29 repair_after=29
+[LING] techniques_in=835 behaviors_in=5
+[LING] raw_phrases=38
+[LING] operational_phrases=17
+[LING] candidate phrases extracted: 17
+[LING] semantic matches above threshold: 7879
+[MITRE] inferred=10 dropped=2
+[MITRE] explicit=0 inferred=10 final=9
+[IR][PARSED] actors=1  malware=4  tools=6  infra=0  patterns=33  behaviors=5  relationships=4
+[OK] BlackCat Ransomware (ALPHV).txt
+[OK] Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.txt
+
+[STAGE1] completed in 107.61s
+[DEBUG] Total MITRE objects loaded: 24772
+[DEBUG][MITRE] attack_patterns loaded: 835
+[DEBUG][MITRE] malware loaded: 696
+[DEBUG][MITRE] groups loaded: 187
+[DEBUG][MITRE] tools loaded: 91
+[DEBUG][MITRE] relationships loaded: 20048
+[DEBUG][MITRE] name_index entries: 1778
+[DEBUG][MITRE] attack_id_index entries: 835
+[+] Running Phase 2: IR → STIX
+    [*] Processing Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.json
+        → wrote Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.stix.json
+        → wrote Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.stix.txt
+[D3FEND] Enriching STIX bundle...
+[D3FEND] No scenario directory found.
+[D3FEND] Loaded TTL ontology module: d3fend-protege.ttl
+[D3FEND] Loaded TTL ontology module: d3fend-cco.ttl
+[D3FEND] ERROR parsing /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/mappings/d3fend-ontology-mappings.ttl: at line 107 of <>:
+Bad syntax (objectList expected) at ^ in:
+"...b'ws a dublin code property" .\n    owl:sameAs bibo:contributor'^b" . ## Isn't handled well by OWLAPI/Robot; and capturing this"..."
+[D3FEND] Loaded TTL ontology module: example-initiative.ttl
+[D3FEND] Loaded TTL ontology module: d3fend-catalog.ttl
+[D3FEND] Defensive techniques discovered: 0
+[D3FEND] CAD Graph: 49 nodes, 165 edges
+        → performed D3FEND enrichment
+ontology_info keys:
+ontology_modules, cad_schema, mappings_used, bundle, cad_graph
+        → wrote Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.cad.json (CAD Graph Preview)
+
+===== D3FEND ENRICHMENT DEBUG =====
+[Ontology] Loaded 5 ontology_modules:
+   - /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/d3fend-protege.ttl
+   - /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/mappings/d3fend-cco.ttl
+   - /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/mappings/d3fend-ontology-mappings.ttl
+   - /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/initiatives/example-initiative.ttl
+   - /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/extensions/d3fend-catalog.ttl
+
+[CAD Schema] /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/D3fend_CAD_Graph_Schema.json
+
+[Dynamic D3FEND Class Mappings]:
+   malware              → d3f:malware
+   tool                 → d3f:tool
+   threat-actor         → d3f:threat-actor
+   attack-pattern       → d3f:attack-pattern
+   observed-data        → d3f:observed-data
+   relationship         → d3f:relationship
+   artifact             → d3f:artifact
+===== END D3FEND ENRICHMENT DEBUG =====
+
+    [*] Processing BlackCat Ransomware (ALPHV).json
+        → wrote BlackCat Ransomware (ALPHV).stix.json
+        → wrote BlackCat Ransomware (ALPHV).stix.txt
+[D3FEND] Enriching STIX bundle...
+[D3FEND] No scenario directory found.
+[D3FEND] Loaded TTL ontology module: d3fend-protege.ttl
+[D3FEND] Loaded TTL ontology module: d3fend-cco.ttl
+[D3FEND] ERROR parsing /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/mappings/d3fend-ontology-mappings.ttl: at line 107 of <>:
+Bad syntax (objectList expected) at ^ in:
+"...b'ws a dublin code property" .\n    owl:sameAs bibo:contributor'^b" . ## Isn't handled well by OWLAPI/Robot; and capturing this"..."
+[D3FEND] Loaded TTL ontology module: example-initiative.ttl
+[D3FEND] Loaded TTL ontology module: d3fend-catalog.ttl
+[D3FEND] Defensive techniques discovered: 0
+[D3FEND] CAD Graph: 46 nodes, 74 edges
+        → performed D3FEND enrichment
+ontology_info keys:
+ontology_modules, cad_schema, mappings_used, bundle, cad_graph
+        → wrote BlackCat Ransomware (ALPHV).cad.json (CAD Graph Preview)
+
+===== D3FEND ENRICHMENT DEBUG =====
+[Ontology] Loaded 5 ontology_modules:
+   - /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/d3fend-protege.ttl
+   - /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/mappings/d3fend-cco.ttl
+   - /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/mappings/d3fend-ontology-mappings.ttl
+   - /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/initiatives/example-initiative.ttl
+   - /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/extensions/d3fend-catalog.ttl
+
+[CAD Schema] /home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/D3fend_CAD_Graph_Schema.json
+
+[Dynamic D3FEND Class Mappings]:
+   malware              → d3f:malware
+   tool                 → d3f:tool
+   threat-actor         → d3f:threat-actor
+   infrastructure       → d3f:infrastructure
+   attack-pattern       → d3f:attack-pattern
+   observed-data        → d3f:observed-data
+===== END D3FEND ENRICHMENT DEBUG =====
+

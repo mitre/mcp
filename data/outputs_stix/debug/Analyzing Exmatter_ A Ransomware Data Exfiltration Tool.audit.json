@@ -1,0 +1,105 @@
+{
+  "ir_file": "Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.json",
+  "bundle_id": "bundle--c5a5b5b7-51ba-4075-a581-5a977e8efefd",
+  "metrics": {
+    "timestamp": "2025-12-30T18:16:27.758290Z",
+    "input_counts": {
+      "malware": 4,
+      "tools": 6,
+      "threat_actors": 1,
+      "infrastructure": 0,
+      "attack_patterns": 33,
+      "behaviors": 5,
+      "relationships": 4
+    },
+    "output_counts": {
+      "total_stix_objects": 56,
+      "relationships": 4,
+      "attack_patterns": 33
+    }
+  },
+  "validation_errors": [
+    "Object 50 ID 'artifact--abstract-unknown-ransomware deployment' does not match artifact--<uuid4>.",
+    "Unknown STIX type 'artifact' in object 50.",
+    "Object 52 ID 'artifact--abstract-unknown-sftp' does not match artifact--<uuid4>.",
+    "Unknown STIX type 'artifact' in object 52.",
+    "Object 54 ID 'artifact--abstract-unknown-webdav' does not match artifact--<uuid4>.",
+    "Unknown STIX type 'artifact' in object 54."
+  ],
+  "conversion_log": [
+    "[DEBUG] Processing 33 TTPs, 4 relationships",
+    "Malware \u2192 Exmatter \u2192 malware--7adf3cc3-bb86-4901-b331-3ced60a5b9a5",
+    "Malware \u2192 Ryuk Infostealer \u2192 malware--d05fe19b-ddf3-4c9f-861b-55051298ef31",
+    "Malware \u2192 StealBit \u2192 malware--77d95314-3f28-46aa-b652-cba77e1a4166",
+    "Malware \u2192 Conti Ransomware \u2192 malware--7bbb2a4e-fe22-4e50-94a6-ce552951e998",
+    "Tool \u2192 Exmatter \u2192 tool--0525e385-c26e-490c-a35f-783df2d4ac51",
+    "Tool \u2192 PowerShell \u2192 tool--023c4a82-a371-417f-ad8f-42d6ddd3afbb",
+    "Tool \u2192 ADFind \u2192 tool--59311a17-2bda-43a1-b3f5-a2aadac8b13e",
+    "Tool \u2192 Advanced IP Scanner \u2192 tool--aca67e75-4ea9-472d-87a9-6d95dff6a552",
+    "Tool \u2192 Windows Sysinternals suite \u2192 tool--16ab7e9f-5474-4cc8-9619-1a84083bf614",
+    "Tool \u2192 Themida \u2192 tool--1514344c-b33c-4365-9cfe-178c2ca40524",
+    "Threat Actor \u2192 BlackMatter \u2192 threat-actor--474d6031-5ad9-45b5-938d-9ec173ccee77",
+    "TTP \u2192 T1079 \u2192 attack-pattern--428ca9f8-0e33-442a-be87-f869cb4cf73e",
+    "TTP \u2192 T1075 \u2192 attack-pattern--c23b740b-a42b-47a1-aec2-9d48ddd547ff",
+    "TTP \u2192 T1542.005 \u2192 attack-pattern--28abec6c-4443-4b03-8206-07f2e264a6b4",
+    "TTP \u2192 T1055.005 \u2192 attack-pattern--e49ee9d2-0d98-44ef-85e5-5d3100065744",
+    "TTP \u2192 T1560.003 \u2192 attack-pattern--143c0cbb-a297-4142-9624-87ffc778980b",
+    "TTP \u2192 T1556.001 \u2192 attack-pattern--d4b96d2c-1032-4b22-9235-2b5b649d0605",
+    "TTP \u2192 T1100 \u2192 attack-pattern--c16e5409-ee53-4d79-afdc-4099dc9292df",
+    "TTP \u2192 T1550.002 \u2192 attack-pattern--e624264c-033a-424d-9fd7-fc9c3bbdb03e",
+    "TTP \u2192 T1032 \u2192 attack-pattern--4b74a1d4-b0e9-4ef1-93f1-14ecc6e2f5b5",
+    "TTP \u2192 T1563.001 \u2192 attack-pattern--4d2a5b3e-340d-4600-9123-309dd63c9bf8",
+    "TTP \u2192 T1505.003 \u2192 attack-pattern--5d0d3609-d06d-49e1-b9c9-b544e0c618cb",
+    "TTP \u2192 T1573 \u2192 attack-pattern--b8902400-e6c5-4ba2-95aa-2d35b442b118",
+    "TTP \u2192 T1184 \u2192 attack-pattern--c1b11bf7-c68e-4fbf-a95b-28efbe7953bb",
+    "TTP \u2192 T1055.014 \u2192 attack-pattern--98be40f2-c86b-4ade-b6fc-4964932040e5",
+    "TTP \u2192 T1602.002 \u2192 attack-pattern--52759bf1-fe12-4052-ace6-c5b0cf7dd7fd",
+    "TTP \u2192 T1187 \u2192 attack-pattern--b77cf5f3-6060-475d-bd60-40ccbf28fdc2",
+    "TTP \u2192 T1055.001 \u2192 attack-pattern--f4599aa0-4f85-4a32-80ea-fc39dc965945",
+    "TTP \u2192 T1024 \u2192 attack-pattern--3b3cbbe0-6ed3-4334-b543-3ddfd8c5642d",
+    "TTP \u2192 T1128 \u2192 attack-pattern--bb0e0cb5-f3e4-4118-a4cb-6bf13bfbc9f2",
+    "TTP \u2192 T1117 \u2192 attack-pattern--68f7e3a1-f09f-4164-9a62-16b648a0dd5a",
+    "TTP \u2192 T1132.001 \u2192 attack-pattern--04fd5427-79c7-44ea-ae13-11b24778ff1c",
+    "TTP \u2192 T1568 \u2192 attack-pattern--7bd9c723-2f78-4309-82c5-47cad406572b",
+    "TTP \u2192 T1185 \u2192 attack-pattern--544b0346-29ad-41e1-a808-501bb4193f47",
+    "TTP \u2192 T1021.001 \u2192 attack-pattern--eb062747-2193-45de-8fa2-e62549c37ddf",
+    "TTP \u2192 T1021.005 \u2192 attack-pattern--01327cde-66c4-4123-bf34-5f258d59457b",
+    "TTP \u2192 T1552.001 \u2192 attack-pattern--837f9164-50af-4ac0-8219-379d8a74cefc",
+    "TTP \u2192 T1081 \u2192 attack-pattern--ba8e391f-14b5-496f-81f2-2d5ecd646c1c",
+    "TTP \u2192 T1560 \u2192 attack-pattern--53ac20cd-aca3-406e-9aa0-9fc7fdc60a5a",
+    "TTP \u2192 T1052.001 \u2192 attack-pattern--a3e1e6c5-9c74-4fc0-a16c-a9d228c17829",
+    "TTP \u2192 T1022 \u2192 attack-pattern--d54416bd-0803-41ca-870a-ce1af7c05638",
+    "TTP \u2192 T1132 \u2192 attack-pattern--cc7b8c4e-9be0-47ca-b0bb-83915ec3ee2f",
+    "TTP \u2192 T1216 \u2192 attack-pattern--f6fe9070-7a65-49ea-ae72-76292f42cebe",
+    "TTP \u2192 T1090 \u2192 attack-pattern--731f4f55-b6d0-41d1-a7a9-072a66389aea"
+  ],
+  "relationship_debug": [
+    {
+      "src": "blackmatter",
+      "dst": "conti ransomware",
+      "raw_rel": "perform",
+      "status": "CREATED (concrete)"
+    },
+    {
+      "src": "blackmatter",
+      "dst": "ransomware deployment",
+      "raw_rel": "perform",
+      "status": "CREATED (concrete)"
+    },
+    {
+      "src": "blackmatter",
+      "dst": "sftp",
+      "raw_rel": "use",
+      "status": "CREATED (concrete)"
+    },
+    {
+      "src": "blackmatter",
+      "dst": "webdav",
+      "raw_rel": "use",
+      "status": "CREATED (concrete)"
+    }
+  ],
+  "unresolved_entities": [],
+  "object_count_before_bundle": 56,
+  "object_count_after_bundle": 56
+}

@@ -29,9 +29,7 @@ from cti_pipeline_stage1 import (
 )
 
 from cti_pipeline_stage2 import run_phase2
-
-
-
+from cti_pipeline_stage3 import run_phase3_infrastructure
 
 # ==============================================================
 # Pipeline State
@@ -41,6 +39,7 @@ class PipelineState(Enum):
     INIT = "init"
     STAGE1 = "stage1"
     STAGE2 = "stage2"
+    STAGE3 = "stage3"
     COMPLETE = "complete"
     FAILED = "failed"
 
@@ -71,21 +70,30 @@ class CTIIngestService:
                     step_raw_to_clean(base_dir)
 
                 case "debug-ir":
-                    asyncio.run(step_parse_to_ir(base_dir, stop_after="ir"))
+                    step_parse_to_ir(base_dir, stop_after="ir")
 
                 case "debug-mitre":
-                    asyncio.run(step_parse_to_ir(base_dir, stop_after="mitre"))
+                    step_parse_to_ir(base_dir, stop_after="mitre")
 
                 case "debug-relationships":
-                    asyncio.run(step_parse_to_ir(base_dir, stop_after="relationships"))
+                    step_parse_to_ir(base_dir, stop_after="relationships")
                 
                 case "stage2":
                     self.run_stage2(base_dir)
+                
+                case "stage3-infra":
+                    # default deterministic
+                    self.run_stage3(base_dir, use_llm=False)
+                
+                case "stage3-infra-llm":
+                    # optional: use LLM for refinement only
+                    self.run_stage3(base_dir, use_llm=True)
 
                 case "all":
                     step_raw_to_clean(base_dir)
-                    asyncio.run(step_parse_to_ir(base_dir))
+                    step_parse_to_ir(base_dir)
                     self.run_stage2(base_dir)
+                    # self.run_stage3(base_dir, use_llm=False)
 
                 case _:
                     raise ValueError(f"Unknown step: {step}")
@@ -105,7 +113,17 @@ class CTIIngestService:
             self._set_state(PipelineState.FAILED)
             self.errors.append(str(e))
             raise
-    
+        
+    def run_stage3(self, base_dir: Path, use_llm: bool = False):
+        try:
+            self._set_state(PipelineState.STAGE3)
+            run_phase3_infrastructure(base_dir, use_llm=use_llm)
+            self._set_state(PipelineState.COMPLETE)
+        except Exception as e:
+            self._set_state(PipelineState.FAILED)
+            self.errors.append(str(e))
+            raise
+
     def status(self):
         return {
             "state": self.state.value,

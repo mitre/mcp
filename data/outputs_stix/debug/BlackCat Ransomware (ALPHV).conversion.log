@@ -1,0 +1,17 @@
+[DEBUG] Processing 2 TTPs, 0 relationships
+Malware → ransomware → malware--3de5d249-b52f-4be5-af13-4aa377862fb5
+Tool → SIEM → tool--0b1a6647-d483-4ebf-9ddb-34400ef9cf21
+Tool → EDR → tool--ed8bc763-4d69-44cb-a7cc-776e8888ca45
+Tool → antivirus → tool--ee60ab89-8d62-4cd2-9de5-ea9d0c50a937
+Tool → Firewall → tool--5879bf22-ff6a-4d2c-bc9c-1b0154e8728e
+Tool → Host-based intrusion detectionprevention systems → tool--8c50d1dd-4d53-4a6a-bea8-9be0ef1aecb3
+Threat Actor → Varonis → threat-actor--222f7663-de05-46f4-82ac-a333fc1e73b2
+Infrastructure → network → infrastructure--45aff83a-c35d-413d-9a3b-408d43f208ce
+Infrastructure → network shares → infrastructure--e7e88b30-c6c0-431c-bce9-f0ff6620e91b
+Infrastructure → cloud-based backups → infrastructure--25c6a1b5-8cf8-4d80-8136-1c4861dac527
+Infrastructure → network shares → infrastructure--9e76db9d-9029-4263-b9e7-21bba67183e4
+Infrastructure → network → infrastructure--7564962d-8a24-4689-b28d-3f5fc5832633
+Infrastructure → network shares → infrastructure--f368420c-22ef-42f7-ac06-2a40405528e5
+TTP → T1132 → attack-pattern--cc7b8c4e-9be0-47ca-b0bb-83915ec3ee2f
+TTP → T1559.002 → attack-pattern--232a7e42-cd6e-4902-8fe9-2960f529dd4d
+Observed-Data → 36 file hash observables created

@@ -1,0 +1,1010 @@
+{
+  "type": "bundle",
+  "id": "bundle--efb7463f-bc53-4b42-acc2-899f356c31a5",
+  "objects": [
+    {
+      "type": "malware",
+      "id": "malware--3de5d249-b52f-4be5-af13-4aa377862fb5",
+      "created": "2025-12-30T18:16:31.512485Z",
+      "modified": "2025-12-30T18:16:31.512511Z",
+      "name": "ransomware",
+      "is_family": false,
+      "x_canonical": "ransomware",
+      "x_confidence": 0.5,
+      "x_source": "recovered-string",
+      "x_x_cti_commands": [
+        {
+          "command": "WMIC) that, along with the \u2018access token\u2019 value, generates an \u2018access-key\u2019 to allow access to the victim-specific Tor site:",
+          "confidence": 0.9,
+          "source": "report-text",
+          "evidence": "- Acquiring the host universally unique identifier (UUID) using the Windows Management Interface command-line utility (WMIC) that, along with the \u2018access token\u2019 value, generates an \u2018access-key\u2019 to allow access to the victim-specific Tor site: - wmic csproduct get UUID - Enabling both \u2018remote to local\u2019 and \u2018remote to remote\u2019 symbolic links using the file system"
+        },
+        {
+          "command": "wmic csproduct get UUID",
+          "confidence": 0.9,
+          "source": "report-text",
+          "evidence": "that, along with the \u2018access token\u2019 value, generates an \u2018access-key\u2019 to allow access to the victim-specific Tor site: - wmic csproduct get UUID - Enabling both \u2018remote to local\u2019 and \u2018remote to remote\u2019 symbolic links using the file system utility (fsutil) to allow"
+        },
+        {
+          "command": "psexec.exe -accepteula \\\\<TARGET_HOST> -u <USERNAME> -p <PASSWORD> -s -d -f -c <ALPHV_EXECUTABLE> [FLAGS] [OPTIONS] --access-token <ACCESS_TOKEN> [SUBCOMMAND]",
+          "confidence": 0.9,
+          "source": "report-text",
+          "evidence": "ration and makes use of PsExec, a Microsoft Windows Sysinternals utility, to execute the ransomware on a remote host: - psexec.exe -accepteula \\\\<TARGET_HOST> -u <USERNAME> -p <PASSWORD> -s -d -f -c <ALPHV_EXECUTABLE> [FLAGS] [OPTIONS] --access-token <ACCESS_TOKEN> [SUBCOMMAND] In addition to suppressing the display of the PsExec license dialog (-accepteula), the propagated ransomware process wi"
+        },
+        {
+          "command": "psexec.exe -accepteula \\\\<TARGET_HOST> -u <USERNAME> -p <PASSWORD> -s -d -f -c <ALPHV_EXECUTABLE> [FLAGS] [OPTIONS] --access-token <ACCESS_TOKEN> [SUBCOMMAND]",
+          "confidence": 0.9,
+          "source": "report-text",
+          "evidence": "O wevtutil.exe cl \\\"%1\\\"\" - fsutil behavior set SymlinkEvaluation R2L:1 - fsutil behavior set SymlinkEvaluation R2R:1 - psexec.exe -accepteula \\\\<TARGET_HOST> -u <USERNAME> -p <PASSWORD> -s -d -f -c <ALPHV_EXECUTABLE> [FLAGS] [OPTIONS] --access-token <ACCESS_TOKEN> [SUBCOMMAND] - reg add HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters /v MaxMpxCt /d 65535 /t REG_DWOR"
+        },
+        {
+          "command": "wmic csproduct get UUID",
+          "confidence": 0.9,
+          "source": "report-text",
+          "evidence": "add HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters /v MaxMpxCt /d 65535 /t REG_DWORD /f - wmic csproduct get UUID Linux Ransomware Executables (SHA256) Given that each sample is victim-specific, the following are provided for researc"
+        }
+      ]
+    },
+    {
+      "type": "tool",
+      "id": "tool--0b1a6647-d483-4ebf-9ddb-34400ef9cf21",
+      "created": "2025-12-30T18:16:31.512547Z",
+      "modified": "2025-12-30T18:16:31.512557Z",
+      "name": "SIEM",
+      "x_canonical": "siem",
+      "x_confidence": 0.5,
+      "x_source": "recovered-string"
+    },
+    {
+      "type": "tool",
+      "id": "tool--ed8bc763-4d69-44cb-a7cc-776e8888ca45",
+      "created": "2025-12-30T18:16:31.512584Z",
+      "modified": "2025-12-30T18:16:31.512594Z",
+      "name": "EDR",
+      "x_canonical": "edr",
+      "x_confidence": 0.5,
+      "x_source": "recovered-string"
+    },
+    {
+      "type": "tool",
+      "id": "tool--ee60ab89-8d62-4cd2-9de5-ea9d0c50a937",
+      "created": "2025-12-30T18:16:31.512620Z",
+      "modified": "2025-12-30T18:16:31.512630Z",
+      "name": "antivirus",
+      "x_canonical": "antivirus",
+      "x_confidence": 0.5,
+      "x_source": "recovered-string"
+    },
+    {
+      "type": "tool",
+      "id": "tool--5879bf22-ff6a-4d2c-bc9c-1b0154e8728e",
+      "created": "2025-12-30T18:16:31.512656Z",
+      "modified": "2025-12-30T18:16:31.512666Z",
+      "name": "Firewall",
+      "x_canonical": "firewall",
+      "x_confidence": 0.5,
+      "x_source": "recovered-string"
+    },
+    {
+      "type": "tool",
+      "id": "tool--8c50d1dd-4d53-4a6a-bea8-9be0ef1aecb3",
+      "created": "2025-12-30T18:16:31.512706Z",
+      "modified": "2025-12-30T18:16:31.512717Z",
+      "name": "Host-based intrusion detectionprevention systems",
+      "x_canonical": "hostbasedintrusiondetectionpreventionsystems",
+      "x_confidence": 0.5,
+      "x_source": "recovered-string"
+    },
+    {
+      "type": "threat-actor",
+      "id": "threat-actor--222f7663-de05-46f4-82ac-a333fc1e73b2",
+      "created": "2025-12-30T18:16:31.512746Z",
+      "modified": "2025-12-30T18:16:31.512755Z",
+      "name": "Varonis",
+      "roles": [
+        "threat-actor"
+      ],
+      "description": "",
+      "x_confidence": 0.5,
+      "x_source": "recovered-string",
+      "x_canonical": "varonis"
+    },
+    {
+      "type": "infrastructure",
+      "id": "infrastructure--45aff83a-c35d-413d-9a3b-408d43f208ce",
+      "created": "2025-12-30T18:16:31.512786Z",
+      "modified": "2025-12-30T18:16:31.512796Z",
+      "name": "network",
+      "x_canonical": "network",
+      "x_confidence": 0.5,
+      "x_source": "recovered-string"
+    },
+    {
+      "type": "infrastructure",
+      "id": "infrastructure--e7e88b30-c6c0-431c-bce9-f0ff6620e91b",
+      "created": "2025-12-30T18:16:31.512829Z",
+      "modified": "2025-12-30T18:16:31.512839Z",
+      "name": "network shares",
+      "x_canonical": "networkshares",
+      "x_confidence": 0.5,
+      "x_source": "recovered-string"
+    },
+    {
+      "type": "infrastructure",
+      "id": "infrastructure--25c6a1b5-8cf8-4d80-8136-1c4861dac527",
+      "created": "2025-12-30T18:16:31.512866Z",
+      "modified": "2025-12-30T18:16:31.512876Z",
+      "name": "cloud-based backups",
+      "x_canonical": "cloudbasedbackups",
+      "x_confidence": 0.5,
+      "x_source": "recovered-string"
+    },
+    {
+      "type": "infrastructure",
+      "id": "infrastructure--9e76db9d-9029-4263-b9e7-21bba67183e4",
+      "created": "2025-12-30T18:16:31.512901Z",
+      "modified": "2025-12-30T18:16:31.512911Z",
+      "name": "network shares",
+      "x_canonical": "networkshares",
+      "x_confidence": 0.5,
+      "x_source": "recovered-string"
+    },
+    {
+      "type": "infrastructure",
+      "id": "infrastructure--7564962d-8a24-4689-b28d-3f5fc5832633",
+      "created": "2025-12-30T18:16:31.512936Z",
+      "modified": "2025-12-30T18:16:31.512946Z",
+      "name": "network",
+      "x_canonical": "network",
+      "x_confidence": 0.5,
+      "x_source": "recovered-string"
+    },
+    {
+      "type": "infrastructure",
+      "id": "infrastructure--f368420c-22ef-42f7-ac06-2a40405528e5",
+      "created": "2025-12-30T18:16:31.512971Z",
+      "modified": "2025-12-30T18:16:31.512981Z",
+      "name": "network shares",
+      "x_canonical": "networkshares",
+      "x_confidence": 0.5,
+      "x_source": "recovered-string"
+    },
+    {
+      "type": "attack-pattern",
+      "id": "attack-pattern--cc7b8c4e-9be0-47ca-b0bb-83915ec3ee2f",
+      "name": "Data Encoding",
+      "description": "Adversaries may encode data to make the content of command and control traffic more difficult to detect. Command and control (C2) information can be encoded using a standard data encoding system. Use of data encoding may adhere to existing protocol specifications and includes use of ASCII, Unicode, Base64, MIME, or other binary-to-text and character encoding systems.(Citation: Wikipedia Binary-to-text Encoding) (Citation: Wikipedia Character Encoding) Some data encoding systems may also result in data compression, such as gzip.",
+      "external_references": [
+        {
+          "source_name": "mitre-attack",
+          "url": "https://attack.mitre.org/techniques/T1132",
+          "external_id": "T1132"
+        },
+        {
+          "source_name": "University of Birmingham C2",
+          "description": "Gardiner, J.,  Cova, M., Nagaraja, S. (2014, February). Command & Control Understanding, Denying and Detecting. Retrieved April 20, 2016.",
+          "url": "https://arxiv.org/ftp/arxiv/papers/1408/1408.1136.pdf"
+        },
+        {
+          "source_name": "Wikipedia Binary-to-text Encoding",
+          "description": "Wikipedia. (2016, December 26). Binary-to-text encoding. Retrieved March 1, 2017.",
+          "url": "https://en.wikipedia.org/wiki/Binary-to-text_encoding"
+        },
+        {
+          "source_name": "Wikipedia Character Encoding",
+          "description": "Wikipedia. (2017, February 19). Character Encoding. Retrieved March 1, 2017.",
+          "url": "https://en.wikipedia.org/wiki/Character_encoding"
+        }
+      ],
+      "x_cti_confidence": 1.0,
+      "x_cti_evidence": "Example embedded JSON data structure"
+    },
+    {
+      "type": "attack-pattern",
+      "id": "attack-pattern--232a7e42-cd6e-4902-8fe9-2960f529dd4d",
+      "name": "Dynamic Data Exchange",
+      "description": "Adversaries may use Windows Dynamic Data Exchange (DDE) to execute arbitrary commands. DDE is a client-server protocol for one-time and/or continuous inter-process communication (IPC) between applications. Once a link is established, applications can autonomously exchange transactions consisting of strings, warm data links (notifications when a data item changes), hot data links (duplications of changes to a data item), and requests for command execution.\n\nObject Linking and Embedding (OLE), or the ability to link data between documents, was originally implemented through DDE. Despite being superseded by [Component Object Model](https://attack.mitre.org/techniques/T1559/001), DDE may be enabled in Windows 10 and most of Microsoft Office 2016 via Registry keys.(Citation: BleepingComputer DDE Disabled in Word Dec 2017)(Citation: Microsoft ADV170021 Dec 2017)(Citation: Microsoft DDE Advisory Nov 2017)\n\nMicrosoft Office documents can be poisoned with DDE commands, directly or through embedded files, and used to deliver execution via [Phishing](https://attack.mitre.org/techniques/T1566) campaigns or hosted Web content, avoiding the use of Visual Basic for Applications (VBA) macros.(Citation: SensePost PS DDE May 2016)(Citation: Kettle CSV DDE Aug 2014)(Citation: Enigma Reviving DDE Jan 2018)(Citation: SensePost MacroLess DDE Oct 2017) Similarly, adversaries may infect payloads to execute applications and/or commands on a victim device by way of embedding DDE formulas within a CSV file intended to be opened through a Windows spreadsheet program.(Citation: OWASP CSV Injection)(Citation: CSV Excel Macro Injection )\n\nDDE could also be leveraged by an adversary operating on a compromised machine who does not have direct access to a [Command and Scripting Interpreter](https://attack.mitre.org/techniques/T1059). DDE execution can be invoked remotely via [Remote Services](https://attack.mitre.org/techniques/T1021) such as [Distributed Component Object Model](https://attack.mitre.org/techniques/T1021/003) (DCOM).(Citation: Fireeye Hunting COM June 2019)",
+      "external_references": [
+        {
+          "source_name": "mitre-attack",
+          "url": "https://attack.mitre.org/techniques/T1559/002",
+          "external_id": "T1559.002"
+        },
+        {
+          "source_name": "OWASP CSV Injection",
+          "description": " Albinowax Timo Goosen. (n.d.). CSV Injection. Retrieved February 7, 2022.",
+          "url": "https://owasp.org/www-community/attacks/CSV_Injection"
+        },
+        {
+          "source_name": "CSV Excel Macro Injection ",
+          "description": " Ishaq Mohammed . (2021, January 10). Everything about CSV Injection and CSV Excel Macro Injection. Retrieved February 7, 2022.",
+          "url": "https://blog.securelayer7.net/how-to-perform-csv-excel-macro-injection/"
+        },
+        {
+          "source_name": "BleepingComputer DDE Disabled in Word Dec 2017",
+          "description": "Cimpanu, C. (2017, December 15). Microsoft Disables DDE Feature in Word to Prevent Further Malware Attacks. Retrieved December 19, 2017.",
+          "url": "https://www.bleepingcomputer.com/news/microsoft/microsoft-disables-dde-feature-in-word-to-prevent-further-malware-attacks/"
+        },
+        {
+          "source_name": "SensePost PS DDE May 2016",
+          "description": "El-Sherei, S. (2016, May 20). PowerShell, C-Sharp and DDE The Power Within. Retrieved November 22, 2017.",
+          "url": "https://sensepost.com/blog/2016/powershell-c-sharp-and-dde-the-power-within/"
+        },
+        {
+          "source_name": "Fireeye Hunting COM June 2019",
+          "description": "Hamilton, C. (2019, June 4). Hunting COM Objects. Retrieved June 10, 2019.",
+          "url": "https://www.fireeye.com/blog/threat-research/2019/06/hunting-com-objects.html"
+        },
+        {
+          "source_name": "Kettle CSV DDE Aug 2014",
+          "description": "Kettle, J. (2014, August 29). Comma Separated Vulnerabilities. Retrieved November 22, 2017.",
+          "url": "https://www.contextis.com/blog/comma-separated-vulnerabilities"
+        },
+        {
+          "source_name": "Microsoft ADV170021 Dec 2017",
+          "description": "Microsoft. (2017, December 12). ADV170021 - Microsoft Office Defense in Depth Update. Retrieved February 3, 2018.",
+          "url": "https://portal.msrc.microsoft.com/security-guidance/advisory/ADV170021"
+        },
+        {
+          "source_name": "Microsoft DDE Advisory Nov 2017",
+          "description": "Microsoft. (2017, November 8). Microsoft Security Advisory 4053440 - Securely opening Microsoft Office documents that contain Dynamic Data Exchange (DDE) fields. Retrieved November 21, 2017.",
+          "url": "https://technet.microsoft.com/library/security/4053440"
+        },
+        {
+          "source_name": "Enigma Reviving DDE Jan 2018",
+          "description": "Nelson, M. (2018, January 29). Reviving DDE: Using OneNote and Excel for Code Execution. Retrieved February 3, 2018.",
+          "url": "https://posts.specterops.io/reviving-dde-using-onenote-and-excel-for-code-execution-d7226864caee"
+        },
+        {
+          "source_name": "NVisio Labs DDE Detection Oct 2017",
+          "description": "NVISO Labs. (2017, October 11). Detecting DDE in MS Office documents. Retrieved November 21, 2017.",
+          "url": "https://blog.nviso.be/2017/10/11/detecting-dde-in-ms-office-documents/"
+        },
+        {
+          "source_name": "SensePost MacroLess DDE Oct 2017",
+          "description": "Stalmans, E., El-Sherei, S. (2017, October 9). Macro-less Code Exec in MSWord. Retrieved November 21, 2017.",
+          "url": "https://sensepost.com/blog/2017/macro-less-code-exec-in-msword/"
+        }
+      ],
+      "x_cti_confidence": 1.0,
+      "x_cti_evidence": "Example embedded JSON data structure"
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--2fb9ff42-1fa9-4ce4-8fab-ce221416f929",
+      "created": "2025-12-30T18:16:31.513063Z",
+      "modified": "2025-12-30T18:16:31.513075Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--11bcba8a-d4b7-4d18-8423-e47e5818763d",
+          "hashes": {
+            "SHA256": "3a08e3bfec2db5dbece359ac9662e65361a8625a0122e68b56cd5ef3aedf8ce1"
+          }
+        }
+      },
+      "x_cti_evidence": "- 3a08e3bfec2db5dbece359ac9662e65361a8625a0122e68b56cd5ef3aedf8ce1",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--5da0341a-6e12-4bec-bb69-74d76e859ccf",
+      "created": "2025-12-30T18:16:31.513109Z",
+      "modified": "2025-12-30T18:16:31.513119Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--8503469f-8cdd-4a59-9dca-be2d06825e3a",
+          "hashes": {
+            "SHA256": "5121f08cf8614a65d7a86c2f462c0694c132e2877a7f54ab7fcefd7ee5235a42"
+          }
+        }
+      },
+      "x_cti_evidence": "- 5121f08cf8614a65d7a86c2f462c0694c132e2877a7f54ab7fcefd7ee5235a42",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--03e3b06b-a802-47fd-bc90-2c40def48674",
+      "created": "2025-12-30T18:16:31.513152Z",
+      "modified": "2025-12-30T18:16:31.513162Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--46547ffe-1385-47e4-98ce-2c803ce774aa",
+          "hashes": {
+            "SHA256": "9802a1e8fb425ac3a7c0a7fca5a17cfcb7f3f5f0962deb29e3982f0bece95e26"
+          }
+        }
+      },
+      "x_cti_evidence": "- 9802a1e8fb425ac3a7c0a7fca5a17cfcb7f3f5f0962deb29e3982f0bece95e26",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--0ce73f1a-6b92-4592-947d-5961609be7e4",
+      "created": "2025-12-30T18:16:31.513194Z",
+      "modified": "2025-12-30T18:16:31.513204Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--875a9937-b9fc-4e8b-956c-1195ebfb9def",
+          "hashes": {
+            "SHA256": "e7060538ee4b48b0b975c8928c617f218703dab7aa7814ce97481596f2a78556"
+          }
+        }
+      },
+      "x_cti_evidence": "- e7060538ee4b48b0b975c8928c617f218703dab7aa7814ce97481596f2a78556",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--f6181a6f-7ada-45b4-8988-6f8c6579e3c8",
+      "created": "2025-12-30T18:16:31.513241Z",
+      "modified": "2025-12-30T18:16:31.513251Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--3dca4fcf-4b8d-4946-bf32-6212be9593a6",
+          "hashes": {
+            "SHA256": "f7a038f9b91c40e9d67f4168997d7d8c12c2d27cd9e36c413dd021796a24e083"
+          }
+        }
+      },
+      "x_cti_evidence": "- f7a038f9b91c40e9d67f4168997d7d8c12c2d27cd9e36c413dd021796a24e083",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--aa1b7b2b-95b2-4745-922a-14635539ef48",
+      "created": "2025-12-30T18:16:31.513283Z",
+      "modified": "2025-12-30T18:16:31.513293Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--a4afc5ca-5e7e-47cd-beab-50a448f1c91c",
+          "hashes": {
+            "SHA256": "f8c08d00ff6e8c6adb1a93cd133b19302d0b651afd73ccb54e3b6ac6c60d99c6"
+          }
+        }
+      },
+      "x_cti_evidence": "- f8c08d00ff6e8c6adb1a93cd133b19302d0b651afd73ccb54e3b6ac6c60d99c6",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--f7ac6a46-52f7-421b-b04f-c16ebbe3f460",
+      "created": "2025-12-30T18:16:31.513324Z",
+      "modified": "2025-12-30T18:16:31.513334Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--5d656142-a6ef-4a53-9394-22a8cc1cc6df",
+          "hashes": {
+            "SHA256": "0c6f444c6940a3688ffc6f8b9d5774c032e3551ebbccb64e4280ae7fc1fac479"
+          }
+        }
+      },
+      "x_cti_evidence": "- 0c6f444c6940a3688ffc6f8b9d5774c032e3551ebbccb64e4280ae7fc1fac479",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--822dcdee-27a8-48a1-9e94-36c411fc9a7d",
+      "created": "2025-12-30T18:16:31.513365Z",
+      "modified": "2025-12-30T18:16:31.513375Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--6adc8718-d171-4673-8be5-8e4267a03bb2",
+          "hashes": {
+            "SHA256": "13828b390d5f58b002e808c2c4f02fdd920e236cc8015480fa33b6c1a9300e31"
+          }
+        }
+      },
+      "x_cti_evidence": "- 13828b390d5f58b002e808c2c4f02fdd920e236cc8015480fa33b6c1a9300e31",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--6faed561-00c0-4d7a-a7b6-cfaa80afa93a",
+      "created": "2025-12-30T18:16:31.513407Z",
+      "modified": "2025-12-30T18:16:31.513417Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--0d4efc75-5f33-4726-a2b3-6dd880a8e286",
+          "hashes": {
+            "SHA256": "15b57c1b68cd6ce3c161042e0f3be9f32d78151fe95461eedc59a79fc222c7ed"
+          }
+        }
+      },
+      "x_cti_evidence": "- 15b57c1b68cd6ce3c161042e0f3be9f32d78151fe95461eedc59a79fc222c7ed",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--195d2647-5ed1-47e6-97bb-04cb721955b3",
+      "created": "2025-12-30T18:16:31.513459Z",
+      "modified": "2025-12-30T18:16:31.513469Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--c1938466-8eab-486e-8226-0f2eb9bb84c3",
+          "hashes": {
+            "SHA256": "1af1ca666e48afc933e2eda0ae1d6e88ebd23d27c54fd1d882161fd8c70b678e"
+          }
+        }
+      },
+      "x_cti_evidence": "- 1af1ca666e48afc933e2eda0ae1d6e88ebd23d27c54fd1d882161fd8c70b678e",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--908cd324-9f3f-42ed-a48d-0cbf2e5f2664",
+      "created": "2025-12-30T18:16:31.513501Z",
+      "modified": "2025-12-30T18:16:31.513511Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--f476e5d4-dade-422d-ae01-4b822e2500af",
+          "hashes": {
+            "SHA256": "2587001d6599f0ec03534ea823aab0febb75e83f657fadc3a662338cc08646b0"
+          }
+        }
+      },
+      "x_cti_evidence": "- 2587001d6599f0ec03534ea823aab0febb75e83f657fadc3a662338cc08646b0",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--332752df-8c2f-45e0-9b69-63c16c27c020",
+      "created": "2025-12-30T18:16:31.513543Z",
+      "modified": "2025-12-30T18:16:31.513553Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--9c2ad7b5-fa11-47b8-b502-1bf74b1f1a87",
+          "hashes": {
+            "SHA256": "28d7e6fe31dc00f82cb032ba29aad6429837ba5efb83c2ce4d31d565896e1169"
+          }
+        }
+      },
+      "x_cti_evidence": "- 28d7e6fe31dc00f82cb032ba29aad6429837ba5efb83c2ce4d31d565896e1169",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--25a68a21-03bd-483c-84df-7661a8fe891c",
+      "created": "2025-12-30T18:16:31.513584Z",
+      "modified": "2025-12-30T18:16:31.513594Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--c0f6bbff-c4bf-4131-8388-a8c5a143de21",
+          "hashes": {
+            "SHA256": "2cf54942e8cf0ef6296deaa7975618dadff0c32535295d3f0d5f577552229ffc"
+          }
+        }
+      },
+      "x_cti_evidence": "- 2cf54942e8cf0ef6296deaa7975618dadff0c32535295d3f0d5f577552229ffc",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--8c681534-0eb0-4b0d-b89f-70f00db6e8d5",
+      "created": "2025-12-30T18:16:31.513626Z",
+      "modified": "2025-12-30T18:16:31.513636Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--4da4cb91-3e83-4128-8c20-af629737e343",
+          "hashes": {
+            "SHA256": "38834b796ed025563774167716a477e9217d45e47def20facb027325f2a790d1"
+          }
+        }
+      },
+      "x_cti_evidence": "- 38834b796ed025563774167716a477e9217d45e47def20facb027325f2a790d1",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--5fc1ce7f-2fe1-4e94-b729-f5adb28cfaac",
+      "created": "2025-12-30T18:16:31.513667Z",
+      "modified": "2025-12-30T18:16:31.513677Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--d735b1c6-c2b1-4e0d-8ac0-f59e787ea231",
+          "hashes": {
+            "SHA256": "3d7cf20ca6476e14e0a026f9bdd8ff1f26995cdc5854c3adb41a6135ef11ba83"
+          }
+        }
+      },
+      "x_cti_evidence": "- 3d7cf20ca6476e14e0a026f9bdd8ff1f26995cdc5854c3adb41a6135ef11ba83",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--33d33449-a864-420c-8ffa-bd873cc668b1",
+      "created": "2025-12-30T18:16:31.513719Z",
+      "modified": "2025-12-30T18:16:31.513729Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--f2245491-93cf-4ce3-9e1e-56de94921cff",
+          "hashes": {
+            "SHA256": "4e18f9293a6a72d5d42dad179b532407f45663098f959ea552ae43dbb9725cbf"
+          }
+        }
+      },
+      "x_cti_evidence": "- 4e18f9293a6a72d5d42dad179b532407f45663098f959ea552ae43dbb9725cbf",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--a28afef3-aaeb-4b39-a4d5-b8b454cc6325",
+      "created": "2025-12-30T18:16:31.513761Z",
+      "modified": "2025-12-30T18:16:31.513770Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--29261ace-c7d1-4ae3-b258-fde3ffe8402e",
+          "hashes": {
+            "SHA256": "59868f4b346bd401e067380cac69080709c86e06fae219bfb5bc17605a71ab3f"
+          }
+        }
+      },
+      "x_cti_evidence": "- 59868f4b346bd401e067380cac69080709c86e06fae219bfb5bc17605a71ab3f",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--3f26da0e-43f7-45c7-91d0-b90b13a03f76",
+      "created": "2025-12-30T18:16:31.513802Z",
+      "modified": "2025-12-30T18:16:31.513812Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--b5a92a96-8a53-4907-b901-55f994d56817",
+          "hashes": {
+            "SHA256": "5bdc0fb5cfbd42de726aacc40eddca034b5fa4afcc88ddfb40a3d9ae18672898"
+          }
+        }
+      },
+      "x_cti_evidence": "- 5bdc0fb5cfbd42de726aacc40eddca034b5fa4afcc88ddfb40a3d9ae18672898",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--6b7f5ff7-0fa1-4770-b674-050db2307b1b",
+      "created": "2025-12-30T18:16:31.513843Z",
+      "modified": "2025-12-30T18:16:31.513853Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--c526aa1e-3e6e-4098-ac17-3d5a62d592ea",
+          "hashes": {
+            "SHA256": "658e07739ad0137bceb910a351ce3fe4913f6fcc3f63e6ff2eb726e45f29e582"
+          }
+        }
+      },
+      "x_cti_evidence": "- 658e07739ad0137bceb910a351ce3fe4913f6fcc3f63e6ff2eb726e45f29e582",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--83701d8e-c993-44b9-b37a-e8e0966655a4",
+      "created": "2025-12-30T18:16:31.513885Z",
+      "modified": "2025-12-30T18:16:31.513894Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--7355a2d3-b631-46e3-a0c8-a35e59eeab74",
+          "hashes": {
+            "SHA256": "7154fdb1ef9044da59fcfdbdd1ed9abc1a594cacb41a0aeddb5cd9fdaeea5ea8"
+          }
+        }
+      },
+      "x_cti_evidence": "- 7154fdb1ef9044da59fcfdbdd1ed9abc1a594cacb41a0aeddb5cd9fdaeea5ea8",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--f3315b55-1566-403f-b7f0-4bddabcfde57",
+      "created": "2025-12-30T18:16:31.513926Z",
+      "modified": "2025-12-30T18:16:31.513936Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--82ad76a1-696d-41a2-8e03-f1c20f26e3f4",
+          "hashes": {
+            "SHA256": "722f1c1527b2c788746fec4dd1af70b0c703644336909735f8f23f6ef265784b"
+          }
+        }
+      },
+      "x_cti_evidence": "- 722f1c1527b2c788746fec4dd1af70b0c703644336909735f8f23f6ef265784b",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--a4979dd3-bf70-43dd-974a-a57129f85793",
+      "created": "2025-12-30T18:16:31.513968Z",
+      "modified": "2025-12-30T18:16:31.513978Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--a0c24756-5503-4d82-bc53-4c8389eef64e",
+          "hashes": {
+            "SHA256": "731adcf2d7fb61a8335e23dbee2436249e5d5753977ec465754c6b699e9bf161"
+          }
+        }
+      },
+      "x_cti_evidence": "- 731adcf2d7fb61a8335e23dbee2436249e5d5753977ec465754c6b699e9bf161",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--cdabbba4-683f-419d-b2c5-8b4e0e4abf35",
+      "created": "2025-12-30T18:16:31.514014Z",
+      "modified": "2025-12-30T18:16:31.514024Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--11149eae-8a9f-4e4f-9f08-81247526749f",
+          "hashes": {
+            "SHA256": "7b2449bb8be1b37a9d580c2592a67a759a3116fe640041d0f36dc93ca3db4487"
+          }
+        }
+      },
+      "x_cti_evidence": "- 7b2449bb8be1b37a9d580c2592a67a759a3116fe640041d0f36dc93ca3db4487",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--d9c252ef-09ef-43af-846c-bf96ec50c034",
+      "created": "2025-12-30T18:16:31.514060Z",
+      "modified": "2025-12-30T18:16:31.514070Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--0a698361-5d81-4a9b-a5c5-dfc953714b2a",
+          "hashes": {
+            "SHA256": "7e363b5f1ba373782261713fa99e8bbc35ddda97e48799c4eb28f17989da8d8e"
+          }
+        }
+      },
+      "x_cti_evidence": "- 7e363b5f1ba373782261713fa99e8bbc35ddda97e48799c4eb28f17989da8d8e",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--9921b32e-534d-4007-b2ee-464cb08638ff",
+      "created": "2025-12-30T18:16:31.514102Z",
+      "modified": "2025-12-30T18:16:31.514111Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--efa14f90-d67d-4561-b0dc-458987448891",
+          "hashes": {
+            "SHA256": "9f6876762614e407d0ee6005f165dd4bbd12cb21986abc4a3a5c7dc6271fcdc3"
+          }
+        }
+      },
+      "x_cti_evidence": "- 9f6876762614e407d0ee6005f165dd4bbd12cb21986abc4a3a5c7dc6271fcdc3",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--37211d64-b23e-478e-806b-2cff6ebbacf3",
+      "created": "2025-12-30T18:16:31.514147Z",
+      "modified": "2025-12-30T18:16:31.514157Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--a6a1b61e-f469-47c7-adaa-2ec2581dc568",
+          "hashes": {
+            "SHA256": "aae77d41eba652683f3ae114fadec279d5759052d2d774f149f3055bf40c4c14"
+          }
+        }
+      },
+      "x_cti_evidence": "- aae77d41eba652683f3ae114fadec279d5759052d2d774f149f3055bf40c4c14",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--66ab2fb0-6457-4c12-a45c-2f0d055753dc",
+      "created": "2025-12-30T18:16:31.514193Z",
+      "modified": "2025-12-30T18:16:31.514203Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--ab92a4d0-bf9a-41d7-b86e-1fbd8c7335ff",
+          "hashes": {
+            "SHA256": "b588823eb5c65f36d067d496881d9c704d3ba57100c273656a56a43215f35442"
+          }
+        }
+      },
+      "x_cti_evidence": "- b588823eb5c65f36d067d496881d9c704d3ba57100c273656a56a43215f35442",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--99d23c1e-5a0e-47b7-bda5-8749848de304",
+      "created": "2025-12-30T18:16:31.514234Z",
+      "modified": "2025-12-30T18:16:31.514244Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--bab99ed8-8e5f-42c3-aff5-2076bcd09a41",
+          "hashes": {
+            "SHA256": "bd337d4e83ab1c2cacb43e4569f977d188f1bb7c7a077026304bf186d49d4117"
+          }
+        }
+      },
+      "x_cti_evidence": "- bd337d4e83ab1c2cacb43e4569f977d188f1bb7c7a077026304bf186d49d4117",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--08116178-a4f3-4c14-8d62-d5508db088ea",
+      "created": "2025-12-30T18:16:31.514275Z",
+      "modified": "2025-12-30T18:16:31.514285Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--6364f3ac-1c05-410e-9f6c-5e8f2e2da724",
+          "hashes": {
+            "SHA256": "be8c5d07ab6e39db28c40db20a32f47a97b7ec9f26c9003f9101a154a5a98486"
+          }
+        }
+      },
+      "x_cti_evidence": "- be8c5d07ab6e39db28c40db20a32f47a97b7ec9f26c9003f9101a154a5a98486",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--078d804c-43e3-46f4-aca0-32e5e1a555e5",
+      "created": "2025-12-30T18:16:31.514317Z",
+      "modified": "2025-12-30T18:16:31.514326Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--41e7be51-ece0-4a81-8382-c0f6bf15ff5a",
+          "hashes": {
+            "SHA256": "c3e5d4e62ae4eca2bfca22f8f3c8cbec12757f78107e91e85404611548e06e40"
+          }
+        }
+      },
+      "x_cti_evidence": "- c3e5d4e62ae4eca2bfca22f8f3c8cbec12757f78107e91e85404611548e06e40",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--29b619a8-5fc7-4c7c-a657-3860a44784ff",
+      "created": "2025-12-30T18:16:31.514358Z",
+      "modified": "2025-12-30T18:16:31.514367Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--a2f2c665-f672-437d-8a2b-42be718be1f5",
+          "hashes": {
+            "SHA256": "c5ad3534e1c939661b71f56144d19ff36e9ea365fdb47e4f8e2d267c39376486"
+          }
+        }
+      },
+      "x_cti_evidence": "- c5ad3534e1c939661b71f56144d19ff36e9ea365fdb47e4f8e2d267c39376486",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--bb0a992d-7915-47c1-99da-fd92dee521b0",
+      "created": "2025-12-30T18:16:31.514399Z",
+      "modified": "2025-12-30T18:16:31.514408Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--5dde3b22-e98c-44a8-80cc-8b2dae349058",
+          "hashes": {
+            "SHA256": "c8b3b67ea4d7625f8b37ba59eed5c9406b3ef04b7a19b97e5dd5dab1bd59f283"
+          }
+        }
+      },
+      "x_cti_evidence": "- c8b3b67ea4d7625f8b37ba59eed5c9406b3ef04b7a19b97e5dd5dab1bd59f283",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--a03bdb59-3434-4690-81e5-e5cba7446992",
+      "created": "2025-12-30T18:16:31.514452Z",
+      "modified": "2025-12-30T18:16:31.514462Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--84399fd3-b325-4289-8fc4-2430d49bf2d1",
+          "hashes": {
+            "SHA256": "cda37b13d1fdee1b4262b5a6146a35d8fc88fa572e55437a47a950037cc65d40"
+          }
+        }
+      },
+      "x_cti_evidence": "- cda37b13d1fdee1b4262b5a6146a35d8fc88fa572e55437a47a950037cc65d40",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--67e458cb-954a-4c85-abb7-0439d3d49a2d",
+      "created": "2025-12-30T18:16:31.514498Z",
+      "modified": "2025-12-30T18:16:31.514508Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--5d790dd7-c81f-4725-ba51-c4bb29a251b5",
+          "hashes": {
+            "SHA256": "cefea76dfdbb48cfe1a3db2c8df34e898e29bec9b2c13e79ef40655c637833ae"
+          }
+        }
+      },
+      "x_cti_evidence": "- cefea76dfdbb48cfe1a3db2c8df34e898e29bec9b2c13e79ef40655c637833ae",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--d2f12fe7-3247-4bcb-b5d0-a36840108aae",
+      "created": "2025-12-30T18:16:31.514540Z",
+      "modified": "2025-12-30T18:16:31.514549Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--54f9426f-cc6d-48a5-94a7-8a11f29ecc12",
+          "hashes": {
+            "SHA256": "d767524e1bbb8d50129485ffa667eb1d379c745c30d4588672636998c20f857f"
+          }
+        }
+      },
+      "x_cti_evidence": "- d767524e1bbb8d50129485ffa667eb1d379c745c30d4588672636998c20f857f",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--b03587b6-d30c-4333-9f41-9308fce876c9",
+      "created": "2025-12-30T18:16:31.514581Z",
+      "modified": "2025-12-30T18:16:31.514590Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "file",
+          "id": "file--6e12fee4-9f76-46e9-8c7f-3b705f778fbf",
+          "hashes": {
+            "SHA256": "f837f1cd60e9941aa60f7be50a8f2aaaac380f560db8ee001408f35c1b7a97cb"
+          }
+        }
+      },
+      "x_cti_evidence": "- f837f1cd60e9941aa60f7be50a8f2aaaac380f560db8ee001408f35c1b7a97cb",
+      "labels": [
+        "malicious-activity"
+      ]
+    },
+    {
+      "type": "observed-data",
+      "id": "observed-data--348a8418-724d-4a8d-a98b-b1e91479327d",
+      "created": "2025-12-30T18:16:31.514632Z",
+      "modified": "2025-12-30T18:16:31.514642Z",
+      "first_observed": "2025-12-30T18:16:31.514651Z",
+      "last_observed": "2025-12-30T18:16:31.514661Z",
+      "number_observed": 1,
+      "objects": {
+        "0": {
+          "type": "x-observable",
+          "spec_version": "2.1",
+          "x_behavior": "example embedded json data structure"
+        }
+      },
+      "x_cti_confidence": 0.35
+    }
+  ]
+}

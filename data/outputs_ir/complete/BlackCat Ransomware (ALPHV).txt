@@ -1,0 +1,30 @@
+Threat Actors:
+  - 
+
+Malware:
+  - ransomware: 
+
+Tools:
+  - SIEM: 
+  - EDR: 
+  - antivirus: 
+  - Firewall: 
+  - Host-based intrusion detectionprevention systems: 
+
+Infrastructure:
+  - network: 
+  - network shares: 
+  - cloud-based backups: 
+  - network shares: 
+  - network: 
+  - network shares: 
+
+Attack Patterns:
+  - Data Encoding: 
+  - Dynamic Data Exchange: 
+
+Behaviors:
+  - Example embedded JSON data structure
+
+Relationships:
+  (none)

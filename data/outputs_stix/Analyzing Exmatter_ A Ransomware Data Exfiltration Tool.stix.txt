@@ -1,0 +1,72 @@
+========================================================================
+STIX 2.1 CONVERSION REPORT
+========================================================================
+Generated: 2025-12-30T18:16:27.764759Z
+Source IR File: Analyzing Exmatter_ A Ransomware Data Exfiltration Tool.json
+Bundle ID: bundle--c5a5b5b7-51ba-4075-a581-5a977e8efefd
+Total STIX Objects: 56
+
+Malware:
+  - Exmatter  (malware--7adf3cc3-bb86-4901-b331-3ced60a5b9a5)
+  - Ryuk Infostealer  (malware--d05fe19b-ddf3-4c9f-861b-55051298ef31)
+  - StealBit  (malware--77d95314-3f28-46aa-b652-cba77e1a4166)
+  - Conti Ransomware  (malware--7bbb2a4e-fe22-4e50-94a6-ce552951e998)
+
+Tools:
+  - Exmatter  (tool--0525e385-c26e-490c-a35f-783df2d4ac51)
+  - PowerShell  (tool--023c4a82-a371-417f-ad8f-42d6ddd3afbb)
+  - ADFind  (tool--59311a17-2bda-43a1-b3f5-a2aadac8b13e)
+  - Advanced IP Scanner  (tool--aca67e75-4ea9-472d-87a9-6d95dff6a552)
+  - Windows Sysinternals suite  (tool--16ab7e9f-5474-4cc8-9619-1a84083bf614)
+  - Themida  (tool--1514344c-b33c-4365-9cfe-178c2ca40524)
+
+Threat Actors:
+  - BlackMatter  (threat-actor--474d6031-5ad9-45b5-938d-9ec173ccee77)
+
+Infrastructure:
+  (none)
+
+Attack Patterns (TTPs):
+  - Multilayer Encryption  (attack-pattern--428ca9f8-0e33-442a-be87-f869cb4cf73e)
+  - Pass the Hash  (attack-pattern--c23b740b-a42b-47a1-aec2-9d48ddd547ff)
+  - TFTP Boot  (attack-pattern--28abec6c-4443-4b03-8206-07f2e264a6b4)
+  - Thread Local Storage  (attack-pattern--e49ee9d2-0d98-44ef-85e5-5d3100065744)
+  - Archive via Custom Method  (attack-pattern--143c0cbb-a297-4142-9624-87ffc778980b)
+  - Domain Controller Authentication  (attack-pattern--d4b96d2c-1032-4b22-9235-2b5b649d0605)
+  - Web Shell  (attack-pattern--c16e5409-ee53-4d79-afdc-4099dc9292df)
+  - Pass the Hash  (attack-pattern--e624264c-033a-424d-9fd7-fc9c3bbdb03e)
+  - Standard Cryptographic Protocol  (attack-pattern--4b74a1d4-b0e9-4ef1-93f1-14ecc6e2f5b5)
+  - SSH Hijacking  (attack-pattern--4d2a5b3e-340d-4600-9123-309dd63c9bf8)
+  - Web Shell  (attack-pattern--5d0d3609-d06d-49e1-b9c9-b544e0c618cb)
+  - Encrypted Channel  (attack-pattern--b8902400-e6c5-4ba2-95aa-2d35b442b118)
+  - SSH Hijacking  (attack-pattern--c1b11bf7-c68e-4fbf-a95b-28efbe7953bb)
+  - VDSO Hijacking  (attack-pattern--98be40f2-c86b-4ade-b6fc-4964932040e5)
+  - Network Device Configuration Dump  (attack-pattern--52759bf1-fe12-4052-ace6-c5b0cf7dd7fd)
+  - Forced Authentication  (attack-pattern--b77cf5f3-6060-475d-bd60-40ccbf28fdc2)
+  - Dynamic-link Library Injection  (attack-pattern--f4599aa0-4f85-4a32-80ea-fc39dc965945)
+  - Custom Cryptographic Protocol  (attack-pattern--3b3cbbe0-6ed3-4334-b543-3ddfd8c5642d)
+  - Netsh Helper DLL  (attack-pattern--bb0e0cb5-f3e4-4118-a4cb-6bf13bfbc9f2)
+  - Regsvr32  (attack-pattern--68f7e3a1-f09f-4164-9a62-16b648a0dd5a)
+  - Standard Encoding  (attack-pattern--04fd5427-79c7-44ea-ae13-11b24778ff1c)
+  - Dynamic Resolution  (attack-pattern--7bd9c723-2f78-4309-82c5-47cad406572b)
+  - Browser Session Hijacking  (attack-pattern--544b0346-29ad-41e1-a808-501bb4193f47)
+  - Remote Desktop Protocol  (attack-pattern--eb062747-2193-45de-8fa2-e62549c37ddf)
+  - VNC  (attack-pattern--01327cde-66c4-4123-bf34-5f258d59457b)
+  - Credentials In Files  (attack-pattern--837f9164-50af-4ac0-8219-379d8a74cefc)
+  - Credentials in Files  (attack-pattern--ba8e391f-14b5-496f-81f2-2d5ecd646c1c)
+  - Archive Collected Data  (attack-pattern--53ac20cd-aca3-406e-9aa0-9fc7fdc60a5a)
+  - Exfiltration over USB  (attack-pattern--a3e1e6c5-9c74-4fc0-a16c-a9d228c17829)
+  - Data Encrypted  (attack-pattern--d54416bd-0803-41ca-870a-ce1af7c05638)
+  - Data Encoding  (attack-pattern--cc7b8c4e-9be0-47ca-b0bb-83915ec3ee2f)
+  - System Script Proxy Execution  (attack-pattern--f6fe9070-7a65-49ea-ae72-76292f42cebe)
+  - Proxy  (attack-pattern--731f4f55-b6d0-41d1-a7a9-072a66389aea)
+
+Relationships:
+  - threat-actor--474d6031-5ad9-45b5-938d-9ec173ccee77 --[perform]→ malware--7bbb2a4e-fe22-4e50-94a6-ce552951e998
+  - threat-actor--474d6031-5ad9-45b5-938d-9ec173ccee77 --[perform]→ artifact--abstract-unknown-ransomware deployment
+  - threat-actor--474d6031-5ad9-45b5-938d-9ec173ccee77 --[use]→ artifact--abstract-unknown-sftp
+  - threat-actor--474d6031-5ad9-45b5-938d-9ec173ccee77 --[use]→ artifact--abstract-unknown-webdav
+
+========================================================================
+END OF REPORT
+========================================================================

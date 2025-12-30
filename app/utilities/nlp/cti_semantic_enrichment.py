@@ -14,36 +14,8 @@ import math
 import hashlib
 
 
-KILL_CHAIN_KEYWORDS = {
-    "reconnaissance": ["probe", "scan", "discover", "identify"],
-    "discovery": ["enumerate", "list", "inspect"],
-    "collection": ["collect", "gather", "read"],
-    "exfiltration": ["exfil", "upload", "transfer"],
-    "defense-evasion": ["delete", "tamper", "hide"],
-    "impact": ["encrypt", "destroy", "wipe"],
-}
-
 def _log(msg: str):
     print(f"[MITRE-SEM] {msg}")
-
-def normalize_behavior(text: str):
-    t = text.lower()
-    t = re.sub(r"[^a-z0-9\s]", " ", t)
-    t = re.sub(r"\s+", " ", t).strip()
-    return t
-
-def embed(text: str):
-    """
-    Placeholder embedding function.
-    Replace with MiniLM or mpnet later.
-    """
-    vec = np.zeros(300)
-    for i, ch in enumerate(text[:300]):
-        vec[i] = ord(ch)
-    return vec / (np.linalg.norm(vec) + 1e-6)
-
-def cosine(a, b):
-    return (a @ b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-6)
 # ---------------------------------------------------------------------------
 # MAIN LAYER 3 PIPELINE
 # ---------------------------------------------------------------------------
@@ -57,64 +29,42 @@ def behavior_vector(text: str) -> list[float]:
     # produce 8 stable floats between -1 and +1
     return [((b / 255.0) * 2 - 1) for b in h[:8]]
 
-def infer_killchain(text: str) -> str:
-    t = text.lower()
-
-    if any(w in t for w in ("phishing", "credential", "social engineering")):
-        return "initial-access"
-
-    if any(w in t for w in ("execute", "run", "launch", "payload")):
-        return "execution"
-
-    if any(w in t for w in ("persist", "boot", "autorun", "startup")):
-        return "persistence"
-
-    if any(w in t for w in ("enumerate", "scan", "discover", "recon")):
-        return "discovery"
-
-    if any(w in t for w in ("move laterally", "pivot", "remote", "lateral movement")):
-        return "lateral-movement"
-
-    if any(w in t for w in ("collect", "gather", "archive", "prepare")):
-        return "collection"
-
-    if any(w in t for w in ("exfil", "upload", "steal", "transfer")):
-        return "exfiltration"
-
-    return "unknown"
-
 def clean_ir_nlp_layer2(ir: dict, taxonomy: dict) -> dict:
     """
-    Layer-3 transforms behaviors into:
-        - normalized form
-        - semantic vector hints
-        - kill-chain classifications
+    Layer-2 semantic enrichment.
 
-    It MUST NOT attach technique IDs — MITRE happens afterward.
+    Adds:
+      - normalized behavior text
+      - deterministic semantic vectors
+
+    Does NOT:
+      - replace behaviors
+      - infer kill-chain
+      - attach MITRE techniques
+      - modify relationships
     """
 
-    new_behaviors = []
-
     for b in ir.get("behaviors", []):
-        if isinstance(b, str):
-            text = b.strip()
-            desc = text
-        elif isinstance(b, dict):
-            desc = b.get("description", "").strip()
-        else:
+        if not isinstance(b, dict):
             continue
 
+        desc = b.get("description")
         if not desc:
             continue
 
-        entry = {
-            "description": desc,
-            "normalized": re.sub(r"\s+", " ", desc.lower()).strip(),
-            "semantic_vector": behavior_vector(desc),
-            "kill_chain_phase": infer_killchain(desc),
-        }
+        b.setdefault(
+            "normalized",
+            re.sub(r"\s+", " ", desc.lower()).strip()
+        )
+        b.setdefault(
+            "semantic_vector",
+            behavior_vector(desc)
+        )
 
-        new_behaviors.append(entry)
+    existing_relationships = ir.get("relationships", [])
 
-    ir["behaviors"] = new_behaviors
+    if existing_relationships:
+        ir["relationships"] = existing_relationships
+
     return ir
+

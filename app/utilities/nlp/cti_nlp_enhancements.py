@@ -159,12 +159,31 @@ def clean_ir_nlp_layer1(ir: dict, original_text: str) -> dict:
     removed = []
 
     for a in actors:
-        name = a.get("name", "")
-        if not is_valid_actor(name):
-            removed.append(name)
-            continue
-        a["name"] = normalize_actor_name(name)
-        cleaned.append(a)
+        if isinstance(a, dict):
+            name = a.get("name", "")
+            if not name:
+                continue
+            if not is_valid_actor(name):
+                removed.append(name)
+                continue
+
+            a["name"] = normalize_actor_name(name)
+            cleaned.append(a)
+
+        elif isinstance(a, str):
+            name = a.strip()
+            if not name:
+                continue
+            if not is_valid_actor(name):
+                removed.append(name)
+                continue
+
+            cleaned.append({
+                "name": normalize_actor_name(name),
+                "description": "",
+                "confidence": 0.5,
+                "source": "recovered-string"
+            })
 
     ir["threat_actors"] = cleaned
     _log(f"Actors removed: {removed}")
@@ -173,17 +192,34 @@ def clean_ir_nlp_layer1(ir: dict, original_text: str) -> dict:
     # ------------------------
     # Canonicalization
     # ------------------------
-    all_entities = (
-        ir.get("malware", []) +
-        ir.get("tools", []) +
-        ir.get("infrastructure", []) +
-        ir.get("threat_actors", [])
+    ir["malware"] = _canonicalize_list(ir.get("malware", []))
+    ir["tools"] = _canonicalize_list(ir.get("tools", []))
+    ir["infrastructure"] = _canonicalize_list(ir.get("infrastructure", []))
+    ir["threat_actors"] = _canonicalize_list(ir.get("threat_actors", []))
+
+    _log(
+        f"Canonicalized "
+        f"{len(ir['malware']) + len(ir['tools']) + len(ir['infrastructure']) + len(ir['threat_actors'])} entities"
     )
 
-    for e in all_entities:
-        e["canonical"] = normalize_phrase(e.get("name", ""))
-
-    _log(f"Canonicalized {len(all_entities)} entities")
-    _log("Completed NLP Layer #1")
-
     return ir
+
+# ------------------------
+# Canonicalization (STRUCTURE-SAFE)
+# ------------------------
+def _canonicalize_list(items):
+    out = []
+    for e in items:
+        if isinstance(e, dict):
+            e["canonical"] = normalize_phrase(e.get("name", ""))
+            out.append(e)
+        elif isinstance(e, str) and e.strip():
+            out.append({
+                "name": e.strip(),
+                "canonical": normalize_phrase(e),
+                "confidence": 0.5,
+                "source": "recovered-string"
+            })
+    return out
+
+

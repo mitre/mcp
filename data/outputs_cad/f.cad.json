@@ -1,0 +1,477 @@
+{
+  "nodes": [
+    {
+      "id": "attack-pattern--53ac20cd-aca3-406e-9aa0-9fc7fdc60a5a",
+      "nodeType": "Attack",
+      "label": "Archive Collected Data",
+      "properties": {
+        "attack_id": "T1560",
+        "description": "An adversary may compress and/or encrypt data that is collected prior to exfiltration. Compressing the data can help to obfuscate the collected data and minimize the amount of data sent over the network.(Citation: DOJ GRU Indictment Jul 2018) Encryption can be used to hide information that is being exfiltrated from detection or make exfiltration less conspicuous upon inspection by a defender.\n\nBoth compression and encryption are done prior to exfiltration, and can be performed using a utility, 3rd party library, or custom method."
+      }
+    },
+    {
+      "id": "attack-pattern--bd369cd9-abb8-41ce-b5bb-fff23ee86c00",
+      "nodeType": "Attack",
+      "label": "Compromise Software Supply Chain",
+      "properties": {
+        "attack_id": "T1195.002",
+        "description": "Adversaries may manipulate application software prior to receipt by a final consumer for the purpose of data or system compromise. Supply chain compromise of software can take place in a number of ways, including manipulation of the application source code, manipulation of the update/distribution mechanism for that software, or replacing compiled releases with a modified version.\n\nTargeting may be specific to a desired victim set or may be distributed to a broad set of consumers but only move on to additional tactics on specific victims.(Citation: Avast CCleaner3 2018)(Citation: Command Five SK 2011)  "
+      }
+    },
+    {
+      "id": "attack-pattern--ba8e391f-14b5-496f-81f2-2d5ecd646c1c",
+      "nodeType": "Attack",
+      "label": "Credentials in Files",
+      "properties": {
+        "attack_id": "CAPEC-639",
+        "description": "Adversaries may search local file systems and remote file shares for files containing passwords. These can be files created by users to store their own credentials, shared credential stores for a group of individuals, configuration files containing passwords for a system or service, or source code/binary files containing embedded passwords.\n\nIt is possible to extract passwords from backups or saved virtual machines through [OS Credential Dumping](https://attack.mitre.org/techniques/T1003). (Citation: CG 2014) Passwords may also be obtained from Group Policy Preferences stored on the Windows Domain Controller. (Citation: SRD GPP)\n\nIn cloud environments, authenticated user credentials are often stored in local configuration and credential files. In some cases, these files can be copied and reused on another machine or the contents can be read and then used to authenticate without needing to copy any files. (Citation: Specter Ops - Cloud Credential Storage)\n\n"
+      }
+    },
+    {
+      "id": "attack-pattern--837f9164-50af-4ac0-8219-379d8a74cefc",
+      "nodeType": "Attack",
+      "label": "Credentials In Files",
+      "properties": {
+        "attack_id": "T1552.001",
+        "description": "Adversaries may search local file systems and remote file shares for files containing insecurely stored credentials. These can be files created by users to store their own credentials, shared credential stores for a group of individuals, configuration files containing passwords for a system or service, or source code/binary files containing embedded passwords.\n\nIt is possible to extract passwords from backups or saved virtual machines through [OS Credential Dumping](https://attack.mitre.org/techniques/T1003).(Citation: CG 2014) Passwords may also be obtained from Group Policy Preferences stored on the Windows Domain Controller.(Citation: SRD GPP)\n\nIn cloud and/or containerized environments, authenticated user and service account credentials are often stored in local configuration and credential files.(Citation: Unit 42 Hildegard Malware) They may also be found as parameters to deployment commands in container logs.(Citation: Unit 42 Unsecured Docker Daemons) In some cases, these files can be copied and reused on another machine or the contents can be read and then used to authenticate without needing to copy any files.(Citation: Specter Ops - Cloud Credential Storage)"
+      }
+    },
+    {
+      "id": "attack-pattern--1e9eb839-294b-48cc-b0d3-c45555a2a004",
+      "nodeType": "Attack",
+      "label": "Local Email Collection",
+      "properties": {
+        "attack_id": "T1114.001",
+        "description": "Adversaries may target user email on local systems to collect sensitive information. Files containing email data can be acquired from a user\u2019s local system, such as Outlook storage or cache files.\n\nOutlook stores data locally in offline data files with an extension of .ost. Outlook 2010 and later supports .ost file sizes up to 50GB, while earlier versions of Outlook support up to 20GB.(Citation: Outlook File Sizes) IMAP accounts in Outlook 2013 (and earlier) and POP accounts use Outlook Data Files (.pst) as opposed to .ost, whereas IMAP accounts in Outlook 2016 (and later) use .ost files. Both types of Outlook data files are typically stored in `C:\\Users\\<username>\\Documents\\Outlook Files` or `C:\\Users\\<username>\\AppData\\Local\\Microsoft\\Outlook`.(Citation: Microsoft Outlook Files)"
+      }
+    },
+    {
+      "id": "attack-pattern--7dd95ff6-712e-4056-9626-312ea4ab4c5e",
+      "nodeType": "Attack",
+      "label": "Data Staged",
+      "properties": {
+        "attack_id": "T1074",
+        "description": "Adversaries may stage collected data in a central location or directory prior to Exfiltration. Data may be kept in separate files or combined into one file through techniques such as [Archive Collected Data](https://attack.mitre.org/techniques/T1560). Interactive command shells may be used, and common functionality within [cmd](https://attack.mitre.org/software/S0106) and bash may be used to copy data into a staging location.(Citation: PWC Cloud Hopper April 2017)\n\nIn cloud environments, adversaries may stage data within a particular instance or virtual machine before exfiltration. An adversary may [Create Cloud Instance](https://attack.mitre.org/techniques/T1578/002) and stage data in that instance.(Citation: Mandiant M-Trends 2020)\n\nAdversaries may choose to stage data from a victim network in a centralized location prior to Exfiltration to minimize the number of connections made to their C2 server and better evade detection."
+      }
+    },
+    {
+      "id": "attack-pattern--b4b7458f-81f2-4d38-84be-1c5ba0167a52",
+      "nodeType": "Attack",
+      "label": "Invalid Code Signature",
+      "properties": {
+        "attack_id": "T1036.001",
+        "description": "Adversaries may attempt to mimic features of valid code signatures to increase the chance of deceiving a user, analyst, or tool. Code signing provides a level of authenticity on a binary from the developer and a guarantee that the binary has not been tampered with. Adversaries can copy the metadata and signature information from a signed program, then use it as a template for an unsigned program. Files with invalid code signatures will fail digital signature validation checks, but they may appear more legitimate to users and security tools may improperly handle these files.(Citation: Threatexpress MetaTwin 2017)\n\nUnlike [Code Signing](https://attack.mitre.org/techniques/T1553/002), this activity will not result in a valid signature."
+      }
+    },
+    {
+      "id": "attack-pattern--e7cbc1de-1f79-48ee-abfd-da1241c65a15",
+      "nodeType": "Attack",
+      "label": "Code Signing Certificates",
+      "properties": {
+        "attack_id": "T1588.003",
+        "description": "Adversaries may buy and/or steal code signing certificates that can be used during targeting. Code signing is the process of digitally signing executables and scripts to confirm the software author and guarantee that the code has not been altered or corrupted. Code signing provides a level of authenticity for a program from the developer and a guarantee that the program has not been tampered with.(Citation: Wikipedia Code Signing) Users and/or security tools may trust a signed piece of code more than an unsigned piece of code even if they don't know who issued the certificate or who the author is.\n\nPrior to [Code Signing](https://attack.mitre.org/techniques/T1553/002), adversaries may purchase or steal code signing certificates for use in operations. The purchase of code signing certificates may be done using a front organization or using information stolen from a previously compromised entity that allows the adversary to validate to a certificate provider as that entity. Adversaries may also steal code signing materials directly from a compromised third-party."
+      }
+    },
+    {
+      "id": "attack-pattern--d4bdbdea-eaec-4071-b4f9-5105e12ea4b6",
+      "nodeType": "Attack",
+      "label": "Transfer Data to Cloud Account",
+      "properties": {
+        "attack_id": "T1537",
+        "description": "Adversaries may exfiltrate data by transferring the data, including through sharing/syncing and creating backups of cloud environments, to another cloud account they control on the same service.\n\nA defender who is monitoring for large transfers to outside the cloud environment through normal file transfers or over command and control channels may not be watching for data transfers to another account within the same cloud provider. Such transfers may utilize existing cloud provider APIs and the internal address space of the cloud provider to blend into normal traffic or avoid data transfers over external network interfaces.(Citation: TLDRSec AWS Attacks)\n\nAdversaries may also use cloud-native mechanisms to share victim data with adversary-controlled cloud accounts, such as creating anonymous file sharing links or, in Azure, a shared access signature (SAS) URI.(Citation: Microsoft Azure Storage Shared Access Signature)\n\nIncidents have been observed where adversaries have created backups of cloud instances and transferred them to separate accounts.(Citation: DOJ GRU Indictment Jul 2018) "
+      }
+    },
+    {
+      "id": "attack-pattern--1c34f7aa-9341-4a48-bfab-af22e51aca6c",
+      "nodeType": "Attack",
+      "label": "Local Data Staging",
+      "properties": {
+        "attack_id": "T1074.001",
+        "description": "Adversaries may stage collected data in a central location or directory on the local system prior to Exfiltration. Data may be kept in separate files or combined into one file through techniques such as [Archive Collected Data](https://attack.mitre.org/techniques/T1560). Interactive command shells may be used, and common functionality within [cmd](https://attack.mitre.org/software/S0106) and bash may be used to copy data into a staging location.\n\nAdversaries may also stage collected data in various available formats/locations of a system, including local storage databases/repositories or the Windows Registry.(Citation: Prevailion DarkWatchman 2021)"
+      }
+    },
+    {
+      "id": "attack-pattern--d54416bd-0803-41ca-870a-ce1af7c05638",
+      "nodeType": "Attack",
+      "label": "Data Encrypted",
+      "properties": {
+        "attack_id": "T1022",
+        "description": "Data is encrypted before being exfiltrated in order to hide the information that is being exfiltrated from detection or to make the exfiltration less conspicuous upon inspection by a defender. The encryption is performed by a utility, programming library, or custom algorithm on the data itself and is considered separate from any encryption performed by the command and control or file transfer protocol. Common file archive formats that can encrypt files are RAR and zip.\n\nOther exfiltration techniques likely apply as well to transfer the information out of the network, such as [Exfiltration Over C2 Channel](https://attack.mitre.org/techniques/T1041) and [Exfiltration Over Alternative Protocol](https://attack.mitre.org/techniques/T1048)"
+      }
+    },
+    {
+      "id": "attack-pattern--359b00ad-9425-420b-bba5-6de8d600cbc0",
+      "nodeType": "Attack",
+      "label": "Remote Data Staging",
+      "properties": {
+        "attack_id": "T1074.002",
+        "description": "Adversaries may stage data collected from multiple systems in a central location or directory on one system prior to Exfiltration. Data may be kept in separate files or combined into one file through techniques such as [Archive Collected Data](https://attack.mitre.org/techniques/T1560). Interactive command shells may be used, and common functionality within [cmd](https://attack.mitre.org/software/S0106) and bash may be used to copy data into a staging location.\n\nIn cloud environments, adversaries may stage data within a particular instance or virtual machine before exfiltration. An adversary may [Create Cloud Instance](https://attack.mitre.org/techniques/T1578/002) and stage data in that instance.(Citation: Mandiant M-Trends 2020)\n\nBy staging data on one system prior to Exfiltration, adversaries can minimize the number of connections made to their C2 server and better evade detection."
+      }
+    },
+    {
+      "id": "attack-pattern--c2e147a9-d1a8-4074-811a-d8789202d916",
+      "nodeType": "Attack",
+      "label": "Steganography",
+      "properties": {
+        "attack_id": "T1027.003",
+        "description": "Adversaries may use steganography techniques in order to prevent the detection of hidden information. Steganographic techniques can be used to hide data in digital media such as images, audio tracks, video clips, or text files.\n\n[Duqu](https://attack.mitre.org/software/S0038) was an early example of malware that used steganography. It encrypted the gathered information from a victim's system and hid it within an image before exfiltrating the image to a C2 server.(Citation: Wikipedia Duqu) \n\nBy the end of 2017, a threat group used\u202f<code>Invoke-PSImage</code>\u202fto hide [PowerShell](https://attack.mitre.org/techniques/T1059/001) commands in an image file (.png) and execute the code on a victim's system. In this particular case the [PowerShell](https://attack.mitre.org/techniques/T1059/001) code downloaded another obfuscated script to gather intelligence from the victim's machine and communicate it back to the adversary.(Citation: McAfee Malicious Doc Targets Pyeongchang Olympics)  "
+      }
+    },
+    {
+      "id": "attack-pattern--1c2fd73a-e634-44ed-b1b5-9e7cf7404e9f",
+      "nodeType": "Attack",
+      "label": "Cloud Instance Metadata API",
+      "properties": {
+        "attack_id": "T1522",
+        "description": "Adversaries may attempt to access the Cloud Instance Metadata API to collect credentials and other sensitive data.\n\nMost cloud service providers support a Cloud Instance Metadata API which is a service provided to running virtual instances that allows applications to access information about the running virtual instance. Available information generally includes name, security group, and additional metadata including sensitive data such as credentials and UserData scripts that may contain additional secrets. The Instance Metadata API is provided as a convenience to assist in managing applications and is accessible by anyone who can access the instance.(Citation: AWS Instance Metadata API)\n\nIf adversaries have a presence on the running virtual instance, they may query the Instance Metadata API directly to identify credentials that grant access to additional resources. Additionally, attackers may exploit a Server-Side Request Forgery (SSRF) vulnerability in a public facing web proxy that allows the attacker to gain access to the sensitive information via a request to the Instance Metadata API.(Citation: RedLock Instance Metadata API 2018)\n\nThe de facto standard across cloud service providers is to host the Instance Metadata API at <code>http[:]//169.254.169.254</code>.\n"
+      }
+    },
+    {
+      "id": "attack-pattern--ae676644-d2d2-41b7-af7e-9bed1b55898c",
+      "nodeType": "Attack",
+      "label": "Data from Network Shared Drive",
+      "properties": {
+        "attack_id": "T1039",
+        "description": "Adversaries may search network shares on computers they have compromised to find files of interest. Sensitive data can be collected from remote systems via shared network drives (host shared directory, network file server, etc.) that are accessible from the current system prior to Exfiltration. Interactive command shells may be in use, and common functionality within [cmd](https://attack.mitre.org/software/S0106) may be used to gather information."
+      }
+    },
+    {
+      "id": "attack-pattern--19bf235b-8620-4997-b5b4-94e0659ed7c3",
+      "nodeType": "Attack",
+      "label": "Cloud Instance Metadata API",
+      "properties": {
+        "attack_id": "T1552.005",
+        "description": "Adversaries may attempt to access the Cloud Instance Metadata API to collect credentials and other sensitive data.\n\nMost cloud service providers support a Cloud Instance Metadata API which is a service provided to running virtual instances that allows applications to access information about the running virtual instance. Available information generally includes name, security group, and additional metadata including sensitive data such as credentials and UserData scripts that may contain additional secrets. The Instance Metadata API is provided as a convenience to assist in managing applications and is accessible by anyone who can access the instance.(Citation: AWS Instance Metadata API) A cloud metadata API has been used in at least one high profile compromise.(Citation: Krebs Capital One August 2019)\n\nIf adversaries have a presence on the running virtual instance, they may query the Instance Metadata API directly to identify credentials that grant access to additional resources. Additionally, adversaries may exploit a Server-Side Request Forgery (SSRF) vulnerability in a public facing web proxy that allows them to gain access to the sensitive information via a request to the Instance Metadata API.(Citation: RedLock Instance Metadata API 2018)\n\nThe de facto standard across cloud service providers is to host the Instance Metadata API at <code>http[:]//169.254.169.254</code>.\n"
+      }
+    },
+    {
+      "id": "attack-pattern--3ccef7ae-cb5e-48f6-8302-897105fbf55c",
+      "nodeType": "Attack",
+      "label": "Deobfuscate/Decode Files or Information",
+      "properties": {
+        "attack_id": "T1140",
+        "description": "Adversaries may use [Obfuscated Files or Information](https://attack.mitre.org/techniques/T1027) to hide artifacts of an intrusion from analysis. They may require separate mechanisms to decode or deobfuscate that information depending on how they intend to use it. Methods for doing that include built-in functionality of malware or by using utilities present on the system.\n\nOne such example is the use of [certutil](https://attack.mitre.org/software/S0160) to decode a remote access tool portable executable file that has been hidden inside a certificate file.(Citation: Malwarebytes Targeted Attack against Saudi Arabia) Another example is using the Windows <code>copy /b</code> or <code>type</code> command to reassemble binary fragments into a malicious payload.(Citation: Carbon Black Obfuscation Sept 2016)(Citation: Sentinel One Tainted Love 2023)\n\nSometimes a user's action may be required to open it for deobfuscation or decryption as part of [User Execution](https://attack.mitre.org/techniques/T1204). The user may also be required to input a password to open a password protected compressed/encrypted file that was provided by the adversary.(Citation: Volexity PowerDuke November 2016)"
+      }
+    },
+    {
+      "id": "attack-pattern--3a40f208-a9c1-4efa-a598-4003c3681fb8",
+      "nodeType": "Attack",
+      "label": "Reduce Key Space",
+      "properties": {
+        "attack_id": "T1600.001",
+        "description": "Adversaries may reduce the level of effort required to decrypt data transmitted over the network by reducing the cipher strength of encrypted communications.(Citation: Cisco Synful Knock Evolution)\n\nAdversaries can weaken the encryption software on a compromised network device by reducing the key size used by the software to convert plaintext to ciphertext (e.g., from hundreds or thousands of bytes to just a couple of bytes). As a result, adversaries dramatically reduce the amount of effort needed to decrypt the protected information without the key.\n\nAdversaries may modify the key size used and other encryption parameters using specialized commands in a [Network Device CLI](https://attack.mitre.org/techniques/T1059/008) introduced to the system through [Modify System Image](https://attack.mitre.org/techniques/T1601) to change the configuration of the device. (Citation: Cisco Blog Legacy Device Attacks)"
+      }
+    },
+    {
+      "id": "attack-pattern--b0533c6e-8fea-4788-874f-b799cacc4b92",
+      "nodeType": "Attack",
+      "label": "Indicator Removal from Tools",
+      "properties": {
+        "attack_id": "T1027.005",
+        "description": "Adversaries may remove indicators from tools if they believe their malicious tool was detected, quarantined, or otherwise curtailed. They can modify the tool by removing the indicator and using the updated version that is no longer detected by the target's defensive systems or subsequent targets that may use similar systems.\n\nA good example of this is when malware is detected with a file signature and quarantined by anti-virus software. An adversary who can determine that the malware was quarantined because of its file signature may modify the file to explicitly avoid that signature, and then re-use the malware."
+      }
+    },
+    {
+      "id": "attack-pattern--fa44a152-ac48-441e-a524-dd7b04b8adcd",
+      "nodeType": "Attack",
+      "label": "Network Device Authentication",
+      "properties": {
+        "attack_id": "T1556.004",
+        "description": "Adversaries may use [Patch System Image](https://attack.mitre.org/techniques/T1601/001) to hard code a password in the operating system, thus bypassing of native authentication mechanisms for local accounts on network devices.\n\n[Modify System Image](https://attack.mitre.org/techniques/T1601) may include implanted code to the operating system for network devices to provide access for adversaries using a specific password.  The modification includes a specific password which is implanted in the operating system image via the patch.  Upon authentication attempts, the inserted code will first check to see if the user input is the password. If so, access is granted. Otherwise, the implanted code will pass the credentials on for verification of potentially valid credentials.(Citation: Mandiant - Synful Knock)"
+      }
+    },
+    {
+      "id": "attack-pattern--f5bb433e-bdf6-4781-84bc-35e97e43be89",
+      "nodeType": "Attack",
+      "label": "Firmware Corruption",
+      "properties": {
+        "attack_id": "T1495",
+        "description": "Adversaries may overwrite or corrupt the flash memory contents of system BIOS or other firmware in devices attached to a system in order to render them inoperable or unable to boot, thus denying the availability to use the devices and/or the system.(Citation: Symantec Chernobyl W95.CIH) Firmware is software that is loaded and executed from non-volatile memory on hardware devices in order to initialize and manage device functionality. These devices may include the motherboard, hard drive, or video cards.\n\nIn general, adversaries may manipulate, overwrite, or corrupt firmware in order to deny the use of the system or devices. For example, corruption of firmware responsible for loading the operating system for network devices may render the network devices inoperable.(Citation: dhs_threat_to_net_devices)(Citation: cisa_malware_orgs_ukraine) Depending on the device, this attack may also result in [Data Destruction](https://attack.mitre.org/techniques/T1485). "
+      }
+    },
+    {
+      "id": "attack-pattern--0ad7bc5c-235a-4048-944b-3b286676cb74",
+      "nodeType": "Attack",
+      "label": "Data from Configuration Repository",
+      "properties": {
+        "attack_id": "T1602",
+        "description": "Adversaries may collect data related to managed devices from configuration repositories. Configuration repositories are used by management systems in order to configure, manage, and control data on remote systems. Configuration repositories may also facilitate remote access and administration of devices.\n\nAdversaries may target these repositories in order to collect large quantities of sensitive system administration data. Data from configuration repositories may be exposed by various protocols and software and can store a wide variety of data, much of which may align with adversary Discovery objectives.(Citation: US-CERT-TA18-106A)(Citation: US-CERT TA17-156A SNMP Abuse 2017)"
+      }
+    },
+    {
+      "id": "attack-pattern--00d0b012-8a03-410e-95de-5826bf542de6",
+      "nodeType": "Attack",
+      "label": "Indicator Removal from Tools",
+      "properties": {
+        "attack_id": "T1066",
+        "description": "If a malicious tool is detected and quarantined or otherwise curtailed, an adversary may be able to determine why the malicious tool was detected (the indicator), modify the tool by removing the indicator, and use the updated version that is no longer detected by the target's defensive systems or subsequent targets that may use similar systems.\n\nA good example of this is when malware is detected with a file signature and quarantined by anti-virus software. An adversary who can determine that the malware was quarantined because of its file signature may use [Software Packing](https://attack.mitre.org/techniques/T1045) or otherwise modify the file so it has a different signature, and then re-use the malware."
+      }
+    },
+    {
+      "id": "attack-pattern--52759bf1-fe12-4052-ace6-c5b0cf7dd7fd",
+      "nodeType": "Attack",
+      "label": "Network Device Configuration Dump",
+      "properties": {
+        "attack_id": "T1602.002",
+        "description": "Adversaries may access network configuration files to collect sensitive data about the device and the network. The network configuration is a file containing parameters that determine the operation of the device. The device typically stores an in-memory copy of the configuration while operating, and a separate configuration on non-volatile storage to load after device reset. Adversaries can inspect the configuration files to reveal information about the target network and its layout, the network device and its software, or identifying legitimate accounts and credentials for later use.\n\nAdversaries can use common management tools and protocols, such as Simple Network Management Protocol (SNMP) and Smart Install (SMI), to access network configuration files.(Citation: US-CERT TA18-106A Network Infrastructure Devices 2018)(Citation: Cisco Blog Legacy Device Attacks) These tools may be used to query specific data from a configuration repository or configure the device to export the configuration for later analysis. "
+      }
+    },
+    {
+      "id": "attack-pattern--6faf650d-bf31-4eb4-802d-1000cf38efaf",
+      "nodeType": "Attack",
+      "label": "Video Capture",
+      "properties": {
+        "attack_id": "T1125",
+        "description": "An adversary can leverage a computer's peripheral devices (e.g., integrated cameras or webcams) or applications (e.g., video call services) to capture video recordings for the purpose of gathering information. Images may also be captured from devices or applications, potentially in specified intervals, in lieu of video files.\n\nMalware or scripts may be used to interact with the devices through an available API provided by the operating system or an application to capture video or images. Video or image files may be written to disk and exfiltrated later. This technique differs from [Screen Capture](https://attack.mitre.org/techniques/T1113) due to use of specific devices or applications for video recording rather than capturing the victim's screen.\n\nIn macOS, there are a few different malware samples that record the user's webcam such as FruitFly and Proton. (Citation: objective-see 2017 review)"
+      }
+    },
+    {
+      "id": "attack-pattern--b80d107d-fa0d-4b60-9684-b0433e8bdba0",
+      "nodeType": "Attack",
+      "label": "Data Encrypted for Impact",
+      "properties": {
+        "attack_id": "T1486",
+        "description": "Adversaries may encrypt data on target systems or on large numbers of systems in a network to interrupt availability to system and network resources. They can attempt to render stored data inaccessible by encrypting files or data on local and remote drives and withholding access to a decryption key. This may be done in order to extract monetary compensation from a victim in exchange for decryption or a decryption key (ransomware) or to render data permanently inaccessible in cases where the key is not saved or transmitted.(Citation: US-CERT Ransomware 2016)(Citation: FireEye WannaCry 2017)(Citation: US-CERT NotPetya 2017)(Citation: US-CERT SamSam 2018)\n\nIn the case of ransomware, it is typical that common user files like Office documents, PDFs, images, videos, audio, text, and source code files will be encrypted (and often renamed and/or tagged with specific file markers). Adversaries may need to first employ other behaviors, such as [File and Directory Permissions Modification](https://attack.mitre.org/techniques/T1222) or [System Shutdown/Reboot](https://attack.mitre.org/techniques/T1529), in order to unlock and/or gain access to manipulate these files.(Citation: CarbonBlack Conti July 2020) In some cases, adversaries may encrypt critical system files, disk partitions, and the MBR.(Citation: US-CERT NotPetya 2017) Adversaries may also encrypt virtual machines hosted on ESXi or other hypervisors.(Citation: Crowdstrike Hypervisor Jackpotting Pt 2 2021) \n\nTo maximize impact on the target organization, malware designed for encrypting data may have worm-like features to propagate across a network by leveraging other attack techniques like [Valid Accounts](https://attack.mitre.org/techniques/T1078), [OS Credential Dumping](https://attack.mitre.org/techniques/T1003), and [SMB/Windows Admin Shares](https://attack.mitre.org/techniques/T1021/002).(Citation: FireEye WannaCry 2017)(Citation: US-CERT NotPetya 2017) Encryption malware may also leverage [Internal Defacement](https://attack.mitre.org/techniques/T1491/001), such as changing victim wallpapers or ESXi server login messages, or otherwise intimidate victims by sending ransom notes or other messages to connected printers (known as \"print bombing\").(Citation: NHS Digital Egregor Nov 2020)(Citation: Varonis)\n\nIn cloud environments, storage objects within compromised accounts may also be encrypted.(Citation: Rhino S3 Ransomware Part 1) For example, in AWS environments, adversaries may leverage services such as AWS\u2019s Server-Side Encryption with Customer Provided Keys (SSE-C) to encrypt data.(Citation: Halcyon AWS Ransomware 2025)"
+      }
+    },
+    {
+      "id": "attack-pattern--035bb001-ab69-4a0b-9f6c-2de8b09e1b9d",
+      "nodeType": "Attack",
+      "label": "Adversary-in-the-Middle",
+      "properties": {
+        "attack_id": "T1557",
+        "description": "Adversaries may attempt to position themselves between two or more networked devices using an adversary-in-the-middle (AiTM) technique to support follow-on behaviors such as [Network Sniffing](https://attack.mitre.org/techniques/T1040), [Transmitted Data Manipulation](https://attack.mitre.org/techniques/T1565/002), or replay attacks ([Exploitation for Credential Access](https://attack.mitre.org/techniques/T1212)). By abusing features of common networking protocols that can determine the flow of network traffic (e.g. ARP, DNS, LLMNR, etc.), adversaries may force a device to communicate through an adversary controlled system so they can collect information or perform additional actions.(Citation: Rapid7 MiTM Basics)\n\nFor example, adversaries may manipulate victim DNS settings to enable other malicious activities such as preventing/redirecting users from accessing legitimate sites and/or pushing additional malware.(Citation: ttint_rat)(Citation: dns_changer_trojans)(Citation: ad_blocker_with_miner) Adversaries may also manipulate DNS and leverage their position in order to intercept user credentials, including access tokens ([Steal Application Access Token](https://attack.mitre.org/techniques/T1528)) and session cookies ([Steal Web Session Cookie](https://attack.mitre.org/techniques/T1539)).(Citation: volexity_0day_sophos_FW)(Citation: Token tactics) [Downgrade Attack](https://attack.mitre.org/techniques/T1562/010)s can also be used to establish an AiTM position, such as by negotiating a less secure, deprecated, or weaker version of communication protocol (SSL/TLS) or encryption algorithm.(Citation: mitm_tls_downgrade_att)(Citation: taxonomy_downgrade_att_tls)(Citation: tlseminar_downgrade_att)\n\nAdversaries may also leverage the AiTM position to attempt to monitor and/or modify traffic, such as in [Transmitted Data Manipulation](https://attack.mitre.org/techniques/T1565/002). Adversaries can setup a position similar to AiTM to prevent traffic from flowing to the appropriate destination, potentially to [Impair Defenses](https://attack.mitre.org/techniques/T1562) and/or in support of a [Network Denial of Service](https://attack.mitre.org/techniques/T1498)."
+      }
+    },
+    {
+      "id": "malware--69f71536-72a6-4a58-98cc-fc32429e87f3",
+      "nodeType": "Agent",
+      "label": "BlackCat Ransomware",
+      "properties": {}
+    },
+    {
+      "id": "tool--256569bc-6b3a-41b0-8fd4-3bfe8b542f3f",
+      "nodeType": "Agent",
+      "label": "Google Tag Manager",
+      "properties": {}
+    },
+    {
+      "id": "tool--d6f7d24b-6aba-4f58-a224-80dc38417910",
+      "nodeType": "Agent",
+      "label": "Image loading via iframe",
+      "properties": {}
+    },
+    {
+      "id": "threat-actor--3b2f777a-61f3-4269-93f4-b508b629e4be",
+      "nodeType": "Agent",
+      "label": "BlackCat",
+      "properties": {}
+    },
+    {
+      "id": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "nodeType": "Event",
+      "label": "Observed Behavior",
+      "properties": {
+        "type": "observed-data",
+        "id": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+        "created": "2025-12-29T21:08:37.534243Z",
+        "modified": "2025-12-29T21:08:37.534253Z",
+        "first_observed": "2025-12-29T21:08:37.534263Z",
+        "last_observed": "2025-12-29T21:08:37.534273Z",
+        "number_observed": 1,
+        "objects": {
+          "0": {
+            "type": "x-observable",
+            "spec_version": "2.1",
+            "x_behavior": "double extortion tactics, threatening to release stolen data if the ransom is not paid."
+          }
+        },
+        "x_cti_confidence": 0.6,
+        "labels": [
+          "d3f:observed-data"
+        ],
+        "x_d3fend_class": "d3f:observed-data",
+        "x_cad_schema": {
+          "analytic_id": "cad:analytic:observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+          "analytic_type": "observed-data",
+          "references": []
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "obs-attack-pattern--1e9eb839-294b-48cc-b0d3-c45555a2a004-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--1e9eb839-294b-48cc-b0d3-c45555a2a004",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--3ccef7ae-cb5e-48f6-8302-897105fbf55c-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--3ccef7ae-cb5e-48f6-8302-897105fbf55c",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--fa44a152-ac48-441e-a524-dd7b04b8adcd-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--fa44a152-ac48-441e-a524-dd7b04b8adcd",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--1c34f7aa-9341-4a48-bfab-af22e51aca6c-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--1c34f7aa-9341-4a48-bfab-af22e51aca6c",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--3a40f208-a9c1-4efa-a598-4003c3681fb8-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--3a40f208-a9c1-4efa-a598-4003c3681fb8",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--19bf235b-8620-4997-b5b4-94e0659ed7c3-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--19bf235b-8620-4997-b5b4-94e0659ed7c3",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--1c2fd73a-e634-44ed-b1b5-9e7cf7404e9f-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--1c2fd73a-e634-44ed-b1b5-9e7cf7404e9f",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--00d0b012-8a03-410e-95de-5826bf542de6-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--00d0b012-8a03-410e-95de-5826bf542de6",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--837f9164-50af-4ac0-8219-379d8a74cefc-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--837f9164-50af-4ac0-8219-379d8a74cefc",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--035bb001-ab69-4a0b-9f6c-2de8b09e1b9d-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--035bb001-ab69-4a0b-9f6c-2de8b09e1b9d",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--b80d107d-fa0d-4b60-9684-b0433e8bdba0-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--b80d107d-fa0d-4b60-9684-b0433e8bdba0",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--ae676644-d2d2-41b7-af7e-9bed1b55898c-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--ae676644-d2d2-41b7-af7e-9bed1b55898c",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--f5bb433e-bdf6-4781-84bc-35e97e43be89-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--f5bb433e-bdf6-4781-84bc-35e97e43be89",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--b4b7458f-81f2-4d38-84be-1c5ba0167a52-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--b4b7458f-81f2-4d38-84be-1c5ba0167a52",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--53ac20cd-aca3-406e-9aa0-9fc7fdc60a5a-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--53ac20cd-aca3-406e-9aa0-9fc7fdc60a5a",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--e7cbc1de-1f79-48ee-abfd-da1241c65a15-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--e7cbc1de-1f79-48ee-abfd-da1241c65a15",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--52759bf1-fe12-4052-ace6-c5b0cf7dd7fd-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--52759bf1-fe12-4052-ace6-c5b0cf7dd7fd",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--6faf650d-bf31-4eb4-802d-1000cf38efaf-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--6faf650d-bf31-4eb4-802d-1000cf38efaf",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--0ad7bc5c-235a-4048-944b-3b286676cb74-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--0ad7bc5c-235a-4048-944b-3b286676cb74",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--b0533c6e-8fea-4788-874f-b799cacc4b92-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--b0533c6e-8fea-4788-874f-b799cacc4b92",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--ba8e391f-14b5-496f-81f2-2d5ecd646c1c-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--ba8e391f-14b5-496f-81f2-2d5ecd646c1c",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--c2e147a9-d1a8-4074-811a-d8789202d916-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--c2e147a9-d1a8-4074-811a-d8789202d916",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--bd369cd9-abb8-41ce-b5bb-fff23ee86c00-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--bd369cd9-abb8-41ce-b5bb-fff23ee86c00",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--359b00ad-9425-420b-bba5-6de8d600cbc0-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--359b00ad-9425-420b-bba5-6de8d600cbc0",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--7dd95ff6-712e-4056-9626-312ea4ab4c5e-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--7dd95ff6-712e-4056-9626-312ea4ab4c5e",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--d54416bd-0803-41ca-870a-ce1af7c05638-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--d54416bd-0803-41ca-870a-ce1af7c05638",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    },
+    {
+      "id": "obs-attack-pattern--d4bdbdea-eaec-4071-b4f9-5105e12ea4b6-observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "source": "attack-pattern--d4bdbdea-eaec-4071-b4f9-5105e12ea4b6",
+      "target": "observed-data--55b52d54-087b-47e8-8ede-6d2e0f109b2d",
+      "relationship": "observed-in"
+    }
+  ],
+  "metadata": {
+    "source": "blackcat_cti_pipeline",
+    "stix_bundle_id": "bundle--ba45b277-95ae-49d3-bb57-ac10b07e5c10",
+    "ontology_modules": [
+      "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/d3fend-protege.ttl",
+      "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/mappings/d3fend-cco.ttl",
+      "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/mappings/d3fend-ontology-mappings.ttl",
+      "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/initiatives/example-initiative.ttl",
+      "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/D3fend_CAD/ontology/src/ontology/extensions/d3fend-catalog.ttl"
+    ]
+  }
+}

@@ -12,3 +12,8 @@
 data/uploads/*
 mlruns/
 mlruns.db
+app/data/clean
+app/data/images
+app/data/output*
+app/data/scenario
+app/debug_mitre.log

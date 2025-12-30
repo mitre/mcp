@@ -272,11 +272,13 @@ def render_ir_summary(ir: dict) -> str:
         else:
             for it in items:
                 if isinstance(it, dict):
-                    name = it.get("name", "(unnamed)")
-                    desc = it.get("description", "")
-                    lines.append(f"  - {name}: {desc}")
-                else:
-                    lines.append(f"  - {it}")
+                    if "description" in it or "text" in it:
+                        btxt = it.get("description") or it.get("text") or ""
+                        lines.append(f"  - {btxt}")
+                    else:
+                        name = it.get("name", "(unnamed)")
+                        desc = it.get("description", "")
+                        lines.append(f"  - {name}: {desc}")
         lines.append("")
 
     section("Threat Actors", ir.get("threat_actors", []))

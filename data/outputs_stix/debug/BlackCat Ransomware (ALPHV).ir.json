@@ -1,0 +1,374 @@
+{
+  "threat_actors": [
+    {
+      "name": "Varonis",
+      "description": "",
+      "confidence": 0.5,
+      "source": "recovered-string",
+      "canonical": "varonis"
+    }
+  ],
+  "malware": [
+    {
+      "name": "ransomware",
+      "canonical": "ransomware",
+      "confidence": 0.5,
+      "source": "recovered-string",
+      "x_cti_commands": [
+        {
+          "command": "WMIC) that, along with the \u2018access token\u2019 value, generates an \u2018access-key\u2019 to allow access to the victim-specific Tor site:",
+          "confidence": 0.9,
+          "source": "report-text",
+          "evidence": "- Acquiring the host universally unique identifier (UUID) using the Windows Management Interface command-line utility (WMIC) that, along with the \u2018access token\u2019 value, generates an \u2018access-key\u2019 to allow access to the victim-specific Tor site: - wmic csproduct get UUID - Enabling both \u2018remote to local\u2019 and \u2018remote to remote\u2019 symbolic links using the file system"
+        },
+        {
+          "command": "wmic csproduct get UUID",
+          "confidence": 0.9,
+          "source": "report-text",
+          "evidence": "that, along with the \u2018access token\u2019 value, generates an \u2018access-key\u2019 to allow access to the victim-specific Tor site: - wmic csproduct get UUID - Enabling both \u2018remote to local\u2019 and \u2018remote to remote\u2019 symbolic links using the file system utility (fsutil) to allow"
+        },
+        {
+          "command": "psexec.exe -accepteula \\\\<TARGET_HOST> -u <USERNAME> -p <PASSWORD> -s -d -f -c <ALPHV_EXECUTABLE> [FLAGS] [OPTIONS] --access-token <ACCESS_TOKEN> [SUBCOMMAND]",
+          "confidence": 0.9,
+          "source": "report-text",
+          "evidence": "ration and makes use of PsExec, a Microsoft Windows Sysinternals utility, to execute the ransomware on a remote host: - psexec.exe -accepteula \\\\<TARGET_HOST> -u <USERNAME> -p <PASSWORD> -s -d -f -c <ALPHV_EXECUTABLE> [FLAGS] [OPTIONS] --access-token <ACCESS_TOKEN> [SUBCOMMAND] In addition to suppressing the display of the PsExec license dialog (-accepteula), the propagated ransomware process wi"
+        },
+        {
+          "command": "psexec.exe -accepteula \\\\<TARGET_HOST> -u <USERNAME> -p <PASSWORD> -s -d -f -c <ALPHV_EXECUTABLE> [FLAGS] [OPTIONS] --access-token <ACCESS_TOKEN> [SUBCOMMAND]",
+          "confidence": 0.9,
+          "source": "report-text",
+          "evidence": "O wevtutil.exe cl \\\"%1\\\"\" - fsutil behavior set SymlinkEvaluation R2L:1 - fsutil behavior set SymlinkEvaluation R2R:1 - psexec.exe -accepteula \\\\<TARGET_HOST> -u <USERNAME> -p <PASSWORD> -s -d -f -c <ALPHV_EXECUTABLE> [FLAGS] [OPTIONS] --access-token <ACCESS_TOKEN> [SUBCOMMAND] - reg add HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters /v MaxMpxCt /d 65535 /t REG_DWOR"
+        },
+        {
+          "command": "wmic csproduct get UUID",
+          "confidence": 0.9,
+          "source": "report-text",
+          "evidence": "add HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters /v MaxMpxCt /d 65535 /t REG_DWORD /f - wmic csproduct get UUID Linux Ransomware Executables (SHA256) Given that each sample is victim-specific, the following are provided for researc"
+        }
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "name": "SIEM",
+      "canonical": "siem",
+      "confidence": 0.5,
+      "source": "recovered-string"
+    },
+    {
+      "name": "EDR",
+      "canonical": "edr",
+      "confidence": 0.5,
+      "source": "recovered-string"
+    },
+    {
+      "name": "antivirus",
+      "canonical": "antivirus",
+      "confidence": 0.5,
+      "source": "recovered-string"
+    },
+    {
+      "name": "Firewall",
+      "canonical": "firewall",
+      "confidence": 0.5,
+      "source": "recovered-string"
+    },
+    {
+      "name": "Host-based intrusion detectionprevention systems",
+      "canonical": "hostbasedintrusiondetectionpreventionsystems",
+      "confidence": 0.5,
+      "source": "recovered-string"
+    }
+  ],
+  "infrastructure": [
+    {
+      "name": "network",
+      "canonical": "network",
+      "confidence": 0.5,
+      "source": "recovered-string"
+    },
+    {
+      "name": "network shares",
+      "canonical": "networkshares",
+      "confidence": 0.5,
+      "source": "recovered-string"
+    },
+    {
+      "name": "cloud-based backups",
+      "canonical": "cloudbasedbackups",
+      "confidence": 0.5,
+      "source": "recovered-string"
+    },
+    {
+      "name": "network shares",
+      "canonical": "networkshares",
+      "confidence": 0.5,
+      "source": "recovered-string"
+    },
+    {
+      "name": "network",
+      "canonical": "network",
+      "confidence": 0.5,
+      "source": "recovered-string"
+    },
+    {
+      "name": "network shares",
+      "canonical": "networkshares",
+      "confidence": 0.5,
+      "source": "recovered-string"
+    }
+  ],
+  "attack_patterns": [
+    {
+      "id": "T1132",
+      "name": "Data Encoding",
+      "confidence": 1.0,
+      "evidence": "Example embedded JSON data structure",
+      "mapping_type": "capability"
+    },
+    {
+      "id": "T1559.002",
+      "name": "Dynamic Data Exchange",
+      "confidence": 1.0,
+      "evidence": "Example embedded JSON data structure",
+      "mapping_type": "capability"
+    }
+  ],
+  "behaviors": [
+    {
+      "description": "Example embedded JSON data structure",
+      "source": "nlp-layer2",
+      "confidence": 0.35,
+      "normalized": "example embedded json data structure",
+      "semantic_vector": [
+        -0.5372549019607843,
+        0.7333333333333334,
+        0.12941176470588234,
+        -0.8666666666666667,
+        -0.592156862745098,
+        0.9372549019607843,
+        0.7882352941176471,
+        0.5764705882352941
+      ]
+    }
+  ],
+  "relationships": [],
+  "qualified_behaviors": [
+    {
+      "description": "Example embedded JSON data structure",
+      "source": "nlp-layer2",
+      "confidence": 0.35,
+      "normalized": "example embedded json data structure",
+      "semantic_vector": [
+        -0.5372549019607843,
+        0.7333333333333334,
+        0.12941176470588234,
+        -0.8666666666666667,
+        -0.592156862745098,
+        0.9372549019607843,
+        0.7882352941176471,
+        0.5764705882352941
+      ]
+    }
+  ],
+  "low_confidence_behaviors": [
+    {
+      "description": "Example embedded JSON data structure",
+      "source": "nlp-layer2",
+      "confidence": 0.35,
+      "normalized": "example embedded json data structure",
+      "semantic_vector": [
+        -0.5372549019607843,
+        0.7333333333333334,
+        0.12941176470588234,
+        -0.8666666666666667,
+        -0.592156862745098,
+        0.9372549019607843,
+        0.7882352941176471,
+        0.5764705882352941
+      ]
+    }
+  ],
+  "hashes": [
+    {
+      "hash_type": "SHA256",
+      "hash": "3a08e3bfec2db5dbece359ac9662e65361a8625a0122e68b56cd5ef3aedf8ce1",
+      "evidence": "- 3a08e3bfec2db5dbece359ac9662e65361a8625a0122e68b56cd5ef3aedf8ce1"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "5121f08cf8614a65d7a86c2f462c0694c132e2877a7f54ab7fcefd7ee5235a42",
+      "evidence": "- 5121f08cf8614a65d7a86c2f462c0694c132e2877a7f54ab7fcefd7ee5235a42"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "9802a1e8fb425ac3a7c0a7fca5a17cfcb7f3f5f0962deb29e3982f0bece95e26",
+      "evidence": "- 9802a1e8fb425ac3a7c0a7fca5a17cfcb7f3f5f0962deb29e3982f0bece95e26"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "e7060538ee4b48b0b975c8928c617f218703dab7aa7814ce97481596f2a78556",
+      "evidence": "- e7060538ee4b48b0b975c8928c617f218703dab7aa7814ce97481596f2a78556"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "f7a038f9b91c40e9d67f4168997d7d8c12c2d27cd9e36c413dd021796a24e083",
+      "evidence": "- f7a038f9b91c40e9d67f4168997d7d8c12c2d27cd9e36c413dd021796a24e083"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "f8c08d00ff6e8c6adb1a93cd133b19302d0b651afd73ccb54e3b6ac6c60d99c6",
+      "evidence": "- f8c08d00ff6e8c6adb1a93cd133b19302d0b651afd73ccb54e3b6ac6c60d99c6"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "0c6f444c6940a3688ffc6f8b9d5774c032e3551ebbccb64e4280ae7fc1fac479",
+      "evidence": "- 0c6f444c6940a3688ffc6f8b9d5774c032e3551ebbccb64e4280ae7fc1fac479"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "13828b390d5f58b002e808c2c4f02fdd920e236cc8015480fa33b6c1a9300e31",
+      "evidence": "- 13828b390d5f58b002e808c2c4f02fdd920e236cc8015480fa33b6c1a9300e31"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "15b57c1b68cd6ce3c161042e0f3be9f32d78151fe95461eedc59a79fc222c7ed",
+      "evidence": "- 15b57c1b68cd6ce3c161042e0f3be9f32d78151fe95461eedc59a79fc222c7ed"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "1af1ca666e48afc933e2eda0ae1d6e88ebd23d27c54fd1d882161fd8c70b678e",
+      "evidence": "- 1af1ca666e48afc933e2eda0ae1d6e88ebd23d27c54fd1d882161fd8c70b678e"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "2587001d6599f0ec03534ea823aab0febb75e83f657fadc3a662338cc08646b0",
+      "evidence": "- 2587001d6599f0ec03534ea823aab0febb75e83f657fadc3a662338cc08646b0"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "28d7e6fe31dc00f82cb032ba29aad6429837ba5efb83c2ce4d31d565896e1169",
+      "evidence": "- 28d7e6fe31dc00f82cb032ba29aad6429837ba5efb83c2ce4d31d565896e1169"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "2cf54942e8cf0ef6296deaa7975618dadff0c32535295d3f0d5f577552229ffc",
+      "evidence": "- 2cf54942e8cf0ef6296deaa7975618dadff0c32535295d3f0d5f577552229ffc"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "38834b796ed025563774167716a477e9217d45e47def20facb027325f2a790d1",
+      "evidence": "- 38834b796ed025563774167716a477e9217d45e47def20facb027325f2a790d1"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "3d7cf20ca6476e14e0a026f9bdd8ff1f26995cdc5854c3adb41a6135ef11ba83",
+      "evidence": "- 3d7cf20ca6476e14e0a026f9bdd8ff1f26995cdc5854c3adb41a6135ef11ba83"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "4e18f9293a6a72d5d42dad179b532407f45663098f959ea552ae43dbb9725cbf",
+      "evidence": "- 4e18f9293a6a72d5d42dad179b532407f45663098f959ea552ae43dbb9725cbf"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "59868f4b346bd401e067380cac69080709c86e06fae219bfb5bc17605a71ab3f",
+      "evidence": "- 59868f4b346bd401e067380cac69080709c86e06fae219bfb5bc17605a71ab3f"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "5bdc0fb5cfbd42de726aacc40eddca034b5fa4afcc88ddfb40a3d9ae18672898",
+      "evidence": "- 5bdc0fb5cfbd42de726aacc40eddca034b5fa4afcc88ddfb40a3d9ae18672898"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "658e07739ad0137bceb910a351ce3fe4913f6fcc3f63e6ff2eb726e45f29e582",
+      "evidence": "- 658e07739ad0137bceb910a351ce3fe4913f6fcc3f63e6ff2eb726e45f29e582"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "7154fdb1ef9044da59fcfdbdd1ed9abc1a594cacb41a0aeddb5cd9fdaeea5ea8",
+      "evidence": "- 7154fdb1ef9044da59fcfdbdd1ed9abc1a594cacb41a0aeddb5cd9fdaeea5ea8"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "722f1c1527b2c788746fec4dd1af70b0c703644336909735f8f23f6ef265784b",
+      "evidence": "- 722f1c1527b2c788746fec4dd1af70b0c703644336909735f8f23f6ef265784b"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "731adcf2d7fb61a8335e23dbee2436249e5d5753977ec465754c6b699e9bf161",
+      "evidence": "- 731adcf2d7fb61a8335e23dbee2436249e5d5753977ec465754c6b699e9bf161"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "7b2449bb8be1b37a9d580c2592a67a759a3116fe640041d0f36dc93ca3db4487",
+      "evidence": "- 7b2449bb8be1b37a9d580c2592a67a759a3116fe640041d0f36dc93ca3db4487"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "7e363b5f1ba373782261713fa99e8bbc35ddda97e48799c4eb28f17989da8d8e",
+      "evidence": "- 7e363b5f1ba373782261713fa99e8bbc35ddda97e48799c4eb28f17989da8d8e"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "9f6876762614e407d0ee6005f165dd4bbd12cb21986abc4a3a5c7dc6271fcdc3",
+      "evidence": "- 9f6876762614e407d0ee6005f165dd4bbd12cb21986abc4a3a5c7dc6271fcdc3"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "aae77d41eba652683f3ae114fadec279d5759052d2d774f149f3055bf40c4c14",
+      "evidence": "- aae77d41eba652683f3ae114fadec279d5759052d2d774f149f3055bf40c4c14"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "b588823eb5c65f36d067d496881d9c704d3ba57100c273656a56a43215f35442",
+      "evidence": "- b588823eb5c65f36d067d496881d9c704d3ba57100c273656a56a43215f35442"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "bd337d4e83ab1c2cacb43e4569f977d188f1bb7c7a077026304bf186d49d4117",
+      "evidence": "- bd337d4e83ab1c2cacb43e4569f977d188f1bb7c7a077026304bf186d49d4117"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "be8c5d07ab6e39db28c40db20a32f47a97b7ec9f26c9003f9101a154a5a98486",
+      "evidence": "- be8c5d07ab6e39db28c40db20a32f47a97b7ec9f26c9003f9101a154a5a98486"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "c3e5d4e62ae4eca2bfca22f8f3c8cbec12757f78107e91e85404611548e06e40",
+      "evidence": "- c3e5d4e62ae4eca2bfca22f8f3c8cbec12757f78107e91e85404611548e06e40"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "c5ad3534e1c939661b71f56144d19ff36e9ea365fdb47e4f8e2d267c39376486",
+      "evidence": "- c5ad3534e1c939661b71f56144d19ff36e9ea365fdb47e4f8e2d267c39376486"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "c8b3b67ea4d7625f8b37ba59eed5c9406b3ef04b7a19b97e5dd5dab1bd59f283",
+      "evidence": "- c8b3b67ea4d7625f8b37ba59eed5c9406b3ef04b7a19b97e5dd5dab1bd59f283"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "cda37b13d1fdee1b4262b5a6146a35d8fc88fa572e55437a47a950037cc65d40",
+      "evidence": "- cda37b13d1fdee1b4262b5a6146a35d8fc88fa572e55437a47a950037cc65d40"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "cefea76dfdbb48cfe1a3db2c8df34e898e29bec9b2c13e79ef40655c637833ae",
+      "evidence": "- cefea76dfdbb48cfe1a3db2c8df34e898e29bec9b2c13e79ef40655c637833ae"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "d767524e1bbb8d50129485ffa667eb1d379c745c30d4588672636998c20f857f",
+      "evidence": "- d767524e1bbb8d50129485ffa667eb1d379c745c30d4588672636998c20f857f"
+    },
+    {
+      "hash_type": "SHA256",
+      "hash": "f837f1cd60e9941aa60f7be50a8f2aaaac380f560db8ee001408f35c1b7a97cb",
+      "evidence": "- f837f1cd60e9941aa60f7be50a8f2aaaac380f560db8ee001408f35c1b7a97cb"
+    }
+  ]
+}

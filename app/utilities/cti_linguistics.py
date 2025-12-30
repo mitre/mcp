@@ -30,6 +30,92 @@ from functools import lru_cache
 
 nlp = spacy.load("en_core_web_lg")
 
+# ===========================================================
+# Attempt to capture command-line invocations
+# ===========================================================
+COMMAND_REGEXES = [
+    # Windows-style commands
+    r"\b(?:cmd\.exe|powershell\.exe|pwsh\.exe|psexec\.exe|wmic|sc\.exe)\b[^\n\r\"']{0,200}",
+    # Linux-style commands
+    r"\b(?:bash|sh|curl|wget|chmod|chown|systemctl)\b[^\n\r\"']{0,200}",
+]
+def extract_commands(text: str) -> list[dict]:
+    """
+    Extract exact command-line invocations from CTI text.
+
+    Returns:
+        [
+          {
+            "command": "...",
+            "confidence": 0.9,
+            "source": "report-text",
+            "evidence": "sentence containing command"
+          }
+        ]
+    """
+    commands = []
+    if not text:
+        return commands
+
+    for regex in COMMAND_REGEXES:
+        for m in re.finditer(regex, text, flags=re.IGNORECASE):
+            cmd = m.group(0).strip()
+            if len(cmd.split()) < 2:
+                continue
+
+            # grab surrounding evidence sentence
+            start = max(0, m.start() - 120)
+            end = min(len(text), m.end() + 120)
+            evidence = text[start:end].replace("\n", " ").strip()
+
+            commands.append({
+                "command": cmd,
+                "confidence": 0.9,
+                "source": "report-text",
+                "evidence": evidence,
+            })
+
+    return commands
+# ===========================================================
+# Attempt to capture hash-like strings
+# ===========================================================
+HASH_PATTERNS = {
+    "MD5": re.compile(r"\b[a-fA-F0-9]{32}\b"),
+    "SHA1": re.compile(r"\b[a-fA-F0-9]{40}\b"),
+    "SHA256": re.compile(r"\b[a-fA-F0-9]{64}\b"),
+    "SHA512": re.compile(r"\b[a-fA-F0-9]{128}\b"),
+}
+def extract_hashes(text: str) -> list[dict]:
+    """
+    Extract cryptographic hashes from CTI text.
+
+    Returns:
+        [
+            {
+                "hash_type": "SHA256",
+                "hash": "<value>",
+                "evidence": "<sentence>"
+            }
+        ]
+    """
+    results = []
+    seen = set()
+
+    for line in text.splitlines():
+        for htype, pattern in HASH_PATTERNS.items():
+            for match in pattern.findall(line):
+                key = (htype, match)
+                if key in seen:
+                    continue
+                seen.add(key)
+
+                results.append({
+                    "hash_type": htype,
+                    "hash": match.lower(),
+                    "evidence": line.strip(),
+                })
+
+    return results
 
 # ============================================================
 # BEHAVIOR NORMALIZATION
@@ -40,7 +126,6 @@ def normalize_behavior_text(text: str) -> str:
     Normalize behavior text without destroying semantics.
     """
     return re.sub(r"\s+", " ", text or "").strip().lower()
-
 
 # ============================================================
 # FUZZY ENTITY RESOLUTION
@@ -64,7 +149,6 @@ def fuzzy_resolve(name: str, candidates: list[dict]) -> dict | None:
 
     return best
 
-
 def canonicalize_entity(name: str, ir: dict) -> str:
     if not name:
         return name
@@ -79,7 +163,6 @@ def canonicalize_entity(name: str, ir: dict) -> str:
     hit = fuzzy_resolve(name, pool)
     return hit.get("name") if hit else name
 
-
 def canonicalize_relationship_endpoints(ir: dict, rels: list | None = None) -> list:
     if rels is None:
         rels = ir.get("relationships", [])
@@ -89,7 +172,6 @@ def canonicalize_relationship_endpoints(ir: dict, rels: list | None = None) -> l
         r["target"] = canonicalize_entity(r.get("target"), ir)
 
     return rels
-
 
 # ============================================================
 # ENTITY TYPE IDENTIFICATION
@@ -114,7 +196,6 @@ def normalize_entity_type(name: str, ir: dict) -> str:
     if match("attack_patterns"):return "attack_pattern"
     return "unknown"
 
-
 # ============================================================
 # SAFE spaCy VECTOR ACCESS
 # ============================================================
@@ -135,7 +216,6 @@ def cosine(a: np.ndarray, b: np.ndarray) -> float:
     if na == 0 or nb == 0:
         return 0.0
     return float(np.dot(a, b) / (na * nb))
-
 
 # ============================================================
 # LINGUISTIC PHRASE EXTRACTION (NON-BRITTLE)
@@ -211,17 +291,16 @@ def extract_candidate_phrases(text: str) -> list[str]:
     print(f"[LING] operational_phrases={len(cleaned)}")
     return cleaned
 
-
 # ============================================================
 # SEMANTIC MATCHING AGAINST MITRE
 # ============================================================
 
 async def _semantic_match_phrase(
-    phrase: str,
-    p_vec: np.ndarray,
-    techniques: list[dict],
-    threshold: float
-) -> list[dict]:
+        phrase: str,
+        p_vec: np.ndarray,
+        techniques: list[dict],
+        threshold: float
+    ) -> list[dict]:
 
     matches = []
     for tech in techniques:
@@ -241,12 +320,11 @@ async def _semantic_match_phrase(
 
     return matches
 
-
 async def semantic_match_techniques(
-    phrases: list[str],
-    techniques: list[dict],
-    threshold: float = 0.42
-) -> list[dict]:
+        phrases: list[str],
+        techniques: list[dict],
+        threshold: float = 0.42
+    ) -> list[dict]:
 
     tasks = [
         _semantic_match_phrase(p, phrase_vector(p), techniques, threshold)
@@ -259,7 +337,6 @@ async def semantic_match_techniques(
 
     results.sort(key=lambda x: x["score"], reverse=True)
     return results
-
 
 # ============================================================
 # STAGE-1 DYNAMIC TECHNIQUE EXTRACTION
@@ -332,3 +409,28 @@ async def extract_dynamic_techniques(text: str, arg2, arg3=None, limit=25, *_, *
 
     out = [t for t in out if t["confidence"] >= 0.18]
     return out
+
+def _sentencize(text: str) -> list[str]:
+    doc = nlp(text or "")
+    return [s.text.strip() for s in doc.sents if s.text.strip()]
+
+def _best_sentence_for_behavior(behavior: dict, sentences: list[str]) -> str | None:
+    btxt = (
+        behavior.get("description")
+        or behavior.get("text")
+        or ""
+    ).lower()
+
+    if not btxt:
+        return None
+
+    b_tokens = {t.text.lower() for t in nlp(btxt) if t.is_alpha}
+    best, score = None, 0
+
+    for s in sentences:
+        s_tokens = {t.text.lower() for t in nlp(s) if t.is_alpha}
+        overlap = len(b_tokens & s_tokens)
+        if overlap > score:
+            best, score = s, overlap
+
+    return best if score >= 2 else None

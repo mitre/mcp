@@ -1,68 +1,67 @@
 Threat Actors:
-  - BlackMatter: Originally associated with the BlackMatter Ransomware-as-a-Service (RaaS) operation, but variants are now used by other RaaS groups.
-  - BlackMatter: Originally associated with the BlackMatter Ransomware-as-a-Service (RaaS) operation, but variants are now used by other RaaS groups.
+  - Originally associated with the BlackMatter Ransomware-as-a-Service (RaaS) operation, but variants are now used by other RaaS groups.
 
 Malware:
-  - Exmatter: A custom exfiltration tool used by ransomware operators to steal user files, databases, and compressed files. It uploads data to a preconfigured server via SFTP.  It also has anti-forensic capabilities and can use a WebDav client as a secondary exfiltration method.
-  - Ryuk Infostealer: An exfiltration tool capable of programmatic identification and automatic exfiltration of data.
-  - Ryuk Infostealer: An exfiltration tool capable of programmatic identification and automatic exfiltration of data.
-  - StealBit: An exfiltration tool capable of programmatic identification and automatic exfiltration of data, associated with the LockBit 2.0 operator.
-  - Conti Ransomware: A ransomware group that a newer variant of Exmatter was observed being used with for exfiltration.
-  - Conti Ransomware: A ransomware group that a newer variant of Exmatter was observed being used with for exfiltration.
+  - A custom exfiltration tool used by ransomware operators to steal user files, databases, and compressed files. It uploads data to a preconfigured server via SFTP.  It also has anti-forensic capabilities and can use a WebDav client as a secondary exfiltration method.
+  - An exfiltration tool capable of programmatic identification and automatic exfiltration of data.
+  - An exfiltration tool capable of programmatic identification and automatic exfiltration of data, associated with the LockBit 2.0 operator.
+  - A ransomware group that a newer variant of Exmatter was observed being used with for exfiltration.
 
 Tools:
-  - Exmatter: Custom exfiltration tool that iterates through folders, prioritizes recently modified files, and excludes directories within 'C:\ProgramData\'. It uses SFTP to exfiltrate data, with options for WebDav failover and a SOCKS5 proxy.
-  - Exmatter: Custom exfiltration tool that iterates through folders, prioritizes recently modified files, and excludes directories within 'C:\ProgramData\'. It uses SFTP to exfiltrate data, with options for WebDav failover and a SOCKS5 proxy.
-  - PowerShell: Used by Exmatter to overwrite the file and delete itself after exfiltration, employing anti-forensic techniques.
-  - PowerShell: Used by Exmatter to overwrite the file and delete itself after exfiltration, employing anti-forensic techniques.
-  - ADFind: Tool used for network and Active Directory administration that can be abused for reconnaissance.
-  - ADFind: Tool used for network and Active Directory administration that can be abused for reconnaissance.
-  - Advanced IP Scanner: Tool used for network scanning that can be abused for reconnaissance.
-  - Advanced IP Scanner: Tool used for network scanning that can be abused for reconnaissance.
-  - Windows Sysinternals suite: Legitimately signed binaries that can be used for malicious activities like credential dumping (Procdump) and malware/ransomware deployment (PsExec).
-  - Windows Sysinternals suite: Legitimately signed binaries that can be used for malicious activities like credential dumping (Procdump) and malware/ransomware deployment (PsExec).
-  - Themida: Anti-reverse engineering software protection utility used to protect the Exmatter executable.
-  - Themida: Anti-reverse engineering software protection utility used to protect the Exmatter executable.
+  - Custom exfiltration tool that iterates through folders, prioritizes recently modified files, and excludes directories within 'C:\ProgramData\'. It uses SFTP to exfiltrate data, with options for WebDav failover and a SOCKS5 proxy.
+  - Used by Exmatter to overwrite the file and delete itself after exfiltration, employing anti-forensic techniques.
+  - Tool used for network and Active Directory administration that can be abused for reconnaissance.
+  - Tool used for network scanning that can be abused for reconnaissance.
+  - Legitimately signed binaries that can be used for malicious activities like credential dumping (Procdump) and malware/ransomware deployment (PsExec).
+  - Anti-reverse engineering software protection utility used to protect the Exmatter executable.
 
 Infrastructure:
   (none)
 
 Attack Patterns:
-  - Clear Command History: 
-  - Clear Command History: 
+  - Multilayer Encryption: 
+  - Pass the Hash: 
+  - TFTP Boot: 
+  - Thread Local Storage: 
+  - Archive via Custom Method: 
+  - Domain Controller Authentication: 
+  - Web Shell: 
+  - Pass the Hash: 
+  - Standard Cryptographic Protocol: 
+  - SSH Hijacking: 
+  - Web Shell: 
+  - Encrypted Channel: 
+  - SSH Hijacking: 
+  - VDSO Hijacking: 
+  - Network Device Configuration Dump: 
+  - Forced Authentication: 
+  - Dynamic-link Library Injection: 
+  - Custom Cryptographic Protocol: 
+  - Netsh Helper DLL: 
+  - Regsvr32: 
+  - Standard Encoding: 
+  - Dynamic Resolution: 
+  - Browser Session Hijacking: 
+  - Remote Desktop Protocol: 
+  - VNC: 
   - Credentials In Files: 
   - Credentials in Files: 
   - Archive Collected Data: 
-  - Archive via Custom Method: 
   - Exfiltration over USB: 
   - Data Encrypted: 
-  - Hidden Files and Directories: 
-  - Hidden Files and Directories: 
+  - Data Encoding: 
+  - System Script Proxy Execution: 
+  - Proxy: 
 
 Behaviors:
-  - (unnamed): data exfiltration is performed shortly before ransomware deployment.
-  - (unnamed): the tool prioritizes recently modified files for exfiltration.
-  - (unnamed): the tool ignores directories within 'c:\programdata\'.
-  - (unnamed): the tool accepts command-line arguments to hide its window.
-  - (unnamed): uses sftp to exfiltrate data.
-  - (unnamed): uses webdav as a secondary exfiltration method.
-  - (unnamed): uses a socks5 proxy.
-  - (unnamed): examine one
-  - (unnamed): analyze samples
-  - (unnamed): put pressure
-  - (unnamed): identify attackers
-  - (unnamed): identify factor
-  - (unnamed): observe variants
-  - (unnamed): observe variant
-  - (unnamed): include filter
-  - (unnamed): identify data
-  - (unnamed): utilize tools
-  - (unnamed): use binaries
-  - (unnamed): raise suspicion
-  - (unnamed): observe actors
-  - (unnamed): implement practices
-  - (unnamed): find more
-  - (unnamed): highlight need
+  - data exfiltration is performed shortly before ransomware deployment.
+  - the tool prioritizes recently modified files for exfiltration.
+  - uses sftp to exfiltrate data.
+  - uses webdav as a secondary exfiltration method.
+  - uses a socks5 proxy.
 
 Relationships:
+  - (unnamed): 
+  - (unnamed): 
+  - (unnamed): 
   - (unnamed): 

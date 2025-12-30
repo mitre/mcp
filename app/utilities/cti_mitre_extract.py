@@ -15,6 +15,8 @@ This module performs NO orchestration.
 import re
 import numpy as np
 import spacy
+from datetime import datetime
+import uuid
 from functools import lru_cache
 from spacy.lang.en.stop_words import STOP_WORDS as SPACY_STOP_WORDS
 
@@ -163,12 +165,20 @@ def map_behaviors_to_techniques(
             continue
 
         ev_tokens = re.findall(r"[a-z0-9]+", evidence.lower())
-        if len(ev_tokens) < 6:
+
+        if len(ev_tokens) < 4:
             MITRE_DROPPED.append({
-                "reason": "evidence_too_short",
+                "reason": "evidence_too_short_for_mitre",
                 "behavior": evidence
             })
             continue
+
+        short_evidence = len(ev_tokens) < 6
+        if short_evidence:
+            MITRE_DROPPED.append({
+                "reason": "evidence_short_downweighted",
+                "behavior": evidence[:160]
+            })
 
         stop_ratio = sum(1 for t in ev_tokens if t in SPACY_STOP_WORDS) / len(ev_tokens)
         if stop_ratio >= 0.75:
@@ -213,7 +223,8 @@ def map_behaviors_to_techniques(
                         "name": tech.get("name"),
                         "confidence": round(min(s / 10.0, 1.0), 2),
                         "evidence": evidence,
-                        "source": "inferred",
+                        "mapping_type": "activity" if "execut" in evidence.lower() else "capability",
+
                     }
                 ))
 
@@ -282,3 +293,35 @@ def convert_sets(obj):
     if isinstance(obj, set):
         return sorted(obj)
     return obj
+
+def hashes_to_stix_observed_data(hashes, source_name="cti-report"):
+    objects = []
+
+    for h in hashes:
+        file_id = f"file--{uuid.uuid4()}"
+        obs_id = f"observed-data--{uuid.uuid4()}"
+
+        file_obj = {
+            "type": "file",
+            "id": file_id,
+            "hashes": {
+                h["hash_type"]: h["hash"]
+            }
+        }
+
+        observed = {
+            "type": "observed-data",
+            "id": obs_id,
+            "created": datetime.utcnow().isoformat() + "Z",
+            "modified": datetime.utcnow().isoformat() + "Z",
+            "number_observed": 1,
+            "objects": {
+                "0": file_obj
+            },
+            "x_cti_evidence": h["evidence"],
+            "labels": ["malicious-activity"]
+        }
+
+        objects.append(observed)
+
+    return objects
