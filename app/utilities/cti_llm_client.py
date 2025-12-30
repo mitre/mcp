@@ -3,16 +3,17 @@
 import aiohttp
 import yaml
 from pathlib import Path
-
+from functools import lru_cache
 # ------------------------------------------------------
 # Config loader (local, explicit, deterministic)
 # ------------------------------------------------------
 
+@lru_cache(maxsize=1)
 def load_config() -> dict:
     cfg_path = Path(__file__).resolve().parents[2] / "conf" / "default.yml"
     if not cfg_path.exists():
         raise FileNotFoundError(f"Missing config: {cfg_path}")
-    with cfg_path.open("r") as f:
+    with cfg_path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
 # ------------------------------------------------------
