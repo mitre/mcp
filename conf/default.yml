@@ -13,27 +13,28 @@ factory:
   use_mock: false
   temperature: 0.4
 
-# cti:
-#   model: ollama/gemma3n:latest 
-#   api_key: "ollama"
-#   api_base: http://127.0.0.1:11434
-#   offline: false
-#   use_mock: false
-#   temperature: 0.1
 cti:
-  model: Qwen/Qwen3-32B
-  provider: openai_compatible
-  api_key: "sk-iNjAyGsi82DbshPyqCpXJQ"
-  api_base: https://models.k8s.aip.mitre.org
+  model: ollama/gemma3n:latest 
+  api_key: "ollama"
+  api_base: http://127.0.0.1:11434
   offline: false
   use_mock: false
-  # --- latency & reliability ---
-  timeout: 120
+  temperature: 0.1
 
-  # --- generation guardrails ---
-  max_tokens: 4000
-  temperature: 0.0
-  top_p: 1.0
+# cti:
+#   model: Qwen/Qwen3-32B
+#   provider: openai_compatible
+#   api_key: "<API KEY>"
+#   api_base: <URL>
+#   offline: false
+#   use_mock: false
+#   # --- latency & reliability ---
+#   timeout: 120
 
-  # --- operational defaults ---
-  stream: false
+#   # --- generation guardrails ---
+#   max_tokens: 4000
+#   temperature: 0.0
+#   top_p: 1.0
+
+#   # --- operational defaults ---
+#   stream: false
