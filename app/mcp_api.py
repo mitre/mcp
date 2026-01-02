@@ -17,6 +17,7 @@ class McpAPI:
         self.mcp_svc = services.get("mcp_svc")
         self.log = logging.getLogger("plugins.mcp")
         self.log.info("[MCP] Initialized McpAPI")
+        self.base_dir = (Path(__file__).resolve().parents[1])
 
     async def execute(self, request):
         self.log.info("[MCP] Executing request")
@@ -232,6 +233,7 @@ class McpAPI:
             self.log.error(f"[MCP] Error fetching run detail {run_id}: {e}")
             return web.json_response({"error": str(e)}, status=500)
 
+    # CTI vue
     async def upload_stix_cti(self, request):
         try:
             reader = await request.multipart()
@@ -273,22 +275,33 @@ class McpAPI:
             return web.json_response({"error": str(e)}, status=500)
 
     async def list_stix_cti(self, request):
-        base_dir = (
-            Path(__file__).resolve().parents[2]
-            / "plugins" / "mcp" / "data" / "stix_cti"
-        )
-
+        stix_dir = self.base_dir /( Path(__file__).resolve().parents[1]
+            / "data" / "outputs_stix")
         files = []
-        if base_dir.exists():
-            for p in base_dir.glob("*.json"):
+        if stix_dir.exists():
+            for p in stix_dir.glob("*.json"):
                 stat = p.stat()
                 files.append({
                     "filename": p.name,
                     "size": stat.st_size,
                     "modified": datetime.utcfromtimestamp(stat.st_mtime).isoformat() + "Z"
                 })
+        print(" listing stix cti files: %s "%files)
 
         return web.json_response({"files": files})
+
+    async def delete_stix_cti(self, request):
+        data = await request.json()
+        files = data.get("files", [])
+        stix_dir = self.base_dir /( Path(__file__).resolve().parents[1]
+            / "data" / "outputs_stix")
+
+        for fname in files:
+            p = stix_dir / fname
+            if p.exists() and p.is_file():
+                p.unlink()
+
+        return web.json_response({"deleted": files})
 
     async def upload_cti_raw(self, request):
         try:
@@ -414,6 +427,39 @@ class McpAPI:
             self.log.error(f"[MCP] delete_cti_raw failed: {e}")
             return web.json_response({"error": str(e)}, status=500)
 
+    # Single Stix Object fetch
+    async def get_stix_cti(self, request):
+        try:
+            data = await request.json()
+            filename = data.get("filename")
+            if not filename:
+                return web.json_response({"error": "Missing filename"}, status=400)
+
+            base_dir = (
+                Path(__file__).resolve().parents[1]
+                / "data" / "outputs_stix"
+            )
+
+            target = (base_dir / filename).resolve()
+            base_dir_resolved = base_dir.resolve()
+
+            # 🔒 Path safety
+            if base_dir_resolved not in target.parents:
+                return web.json_response({"error": "Invalid path"}, status=400)
+
+            if not target.exists() or not target.is_file():
+                return web.json_response({"error": "File not found"}, status=404)
+
+            try:
+                payload = json.loads(target.read_text(encoding="utf-8"))
+            except Exception as e:
+                return web.json_response({"error": f"Invalid JSON: {e}"}, status=500)
+
+            return web.json_response({"filename": filename, "data": payload})
+
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
+
     async def get_config(self, request):
         try:
             cfg = load_config()
@@ -469,6 +515,60 @@ class McpAPI:
         except Exception as e:
             self.log.error(f"[MCP] Failed to save config: {e}")
             return web.json_response({"error": str(e)}, status=500)
+
+    async def cti_run(self, request):
+        try:
+            data = await request.json()
+
+            # Accept multi-select (authoritative)
+            files = data.get("files")
+
+            # Backward compatibility (optional)
+            if not files:
+                single = data.get("filename")
+                if single:
+                    files = [single]
+
+            if not files or not isinstance(files, list):
+                return web.json_response(
+                    {"error": "Missing files list"},
+                    status=400
+                )
+
+            plugin_root = Path(__file__).resolve().parents[1]
+            raw_dir = plugin_root / "data" / "raw" / "uploads"
+
+            # Resolve paths once
+            input_paths = []
+            missing = []
+
+            for fname in files:
+                p = raw_dir / fname
+                if p.exists():
+                    input_paths.append(p)
+                else:
+                    missing.append(fname)
+
+            if not input_paths:
+                return web.json_response(
+                    {"error": "No valid files found", "missing": missing},
+                    status=404
+                )
+
+            # SINGLE CALL — backend handles threading
+            self.log.info(f"[MCP] Starting CTI processing for {len(input_paths)} files")
+
+            # await self.cti_pipeline.run(input_paths)
+
+            return web.json_response({
+                "started": [p.name for p in input_paths],
+                "missing": missing
+            })
+
+        except Exception as e:
+            self.log.error(f"[MCP] CTI run failed: {e}")
+            return web.json_response({"error": str(e)}, status=500)
+
 
 def setup_routes(app, mcp_api: McpAPI):
     app.router.add_post("/plugin/mcp/execute", mcp_api.execute)

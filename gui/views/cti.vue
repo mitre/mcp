@@ -212,22 +212,94 @@
         </tbody>
 
       </table>
+      <div class="buttons">
+        <button
+          class="button is-primary is-small"
+          :disabled="!selectedRaw.size"
+          @click="runPipelineForSelected"
+        >
+          Run Pipeline
+        </button>
+        <button
+          class="button is-danger is-small"
+          :disabled="!selectedRaw.size"
+          @click="deleteSelected"
+        >
+          Delete Selected CTI
+        </button>
+      </div>
+    </div>
+    <div class="box mt-4">
+      <h3 class="title is-6">Generated STIX Objects</h3>
 
+      <table class="table is-fullwidth is-striped is-hoverable">
+        <thead>
+          <tr>
+            <th>File</th>
+            <th class="has-text-right">Size</th>
+            <th style="width: 70px;">View</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr v-for="f in stixFiles" :key="f.name">
+            <td>
+              <input
+                type="checkbox"
+                :checked="selectedStix.has(f.name)"
+                @change="e => {
+                  e.target.checked
+                    ? selectedStix.add(f.name)
+                    : selectedStix.delete(f.name)
+                }"
+              />
+              📦 {{ f.name }}
+            </td>
+
+            <td class="has-text-right">
+              {{ (f.size / 1024).toFixed(1) }} KB
+            </td>
+            <!-- VIEW BUTTON -->
+            <td>
+              <button
+                class="button is-small is-light"
+                @click.stop="viewStix(f.name)"
+              >
+                View
+              </button>
+            </td>
+          </tr>
+
+          <tr v-if="!stixFiles.length">
+            <td colspan="2" class="has-text-grey has-text-centered">
+              No STIX objects generated yet
+            </td>
+          </tr>
+        </tbody>
+      </table>
       <button
         class="button is-danger is-small"
-        :disabled="!selectedRaw.size"
-        @click="deleteSelected"
+        :disabled="!selectedStix.size"
+        @click="deleteStix"
       >
-        Delete Selected
-      </button>
+      Delete Selected STIX
+    </button>
+
     </div>
+      <StixViewerModal
+      v-if="showStixModal"
+      :filename="stixFilename"
+      :stix="stixData"
+      @close="showStixModal = false"
+    />
+
   </div>
   
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, watch, computed } from 'vue'
-
+import StixViewerModal from './stixViewer.vue'
 /* ---------------------------------
  * UI state
  * --------------------------------- */
@@ -238,6 +310,13 @@ const ctiFile = ref(null)
 const ctiStatus = ref('')
 const rawFiles = ref([])
 const selectedRaw = reactive(new Set())
+const stixFiles = ref([])
+const selectedStix = reactive(new Set())
+
+// STIX viewer modal state
+const showStixModal = ref(false)
+const stixData = ref(null)
+const stixFilename = ref('')
 
 /* ---------------------------------
  * Config state
@@ -263,9 +342,6 @@ const effectiveConfig = computed(() =>
   useOverride.value ? overrideConfig : backendConfig.value || {}
 )
 
-// const expandedDirs = reactive({})
-// const expandedDirs = reactive(new Set())
-// const expandedDirs = ref(new Set())
 const expandedDirs = ref({})
 
 const visibleRows = computed(() => {
@@ -452,6 +528,64 @@ async function uploadCti() {
   loadRawFiles()
 }
 
+async function loadStixFiles() {
+  const res = await fetch('/plugin/mcp/stix/list')
+  if (!res.ok) return
+  const data = await res.json()
+  stixFiles.value = (data.files || [])
+    .filter(f => f.filename.endsWith('.json'))
+    .map(f => ({
+      name: f.filename,
+      size: f.size
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+async function deleteStix() {
+  if (!selectedStix.size) return
+
+  await fetch('/plugin/mcp/stix/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ files: Array.from(selectedStix) })
+  })
+
+  selectedStix.clear()
+  loadStixFiles()
+}
+
+async function runPipelineForSelected() {
+  if (!selectedRaw.size) return
+
+  await fetch('/plugin/mcp/cti/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      files: Array.from(selectedRaw),
+      config: useOverride.value ? overrideConfig : null
+    })
+  })
+
+  ctiStatus.value = 'CTI pipeline started for selected files.'
+}
+
+// Single stix view modal
+async function viewStix(filename) {
+  const res = await fetch('/plugin/mcp/stix/get_stix', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename })
+  })
+
+  const out = await res.json()
+  if (!res.ok) throw new Error(out?.error || 'Failed to load STIX')
+
+  stixData.value = out.data
+  stixFilename.value = out.filename
+  showStixModal.value = true
+}
+
+
 /* ---------------------------------
  * Lifecycle
  * --------------------------------- */
@@ -459,6 +593,7 @@ onMounted(async () => {
   await loadBackendConfig()
   initOverridesFromBackend()
   loadRawFiles()
+  loadStixFiles()
 })
 
 </script>

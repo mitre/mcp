@@ -115,10 +115,14 @@ async def enable(services):
     
     app.router.add_route("POST", "/plugin/mcp/stix/upload", mcp_api.upload_stix_cti)
     app.router.add_route("GET", "/plugin/mcp/stix/list", mcp_api.list_stix_cti)
+    app.router.add_route("POST", "/plugin/mcp/stix/delete", mcp_api.delete_stix_cti)
+    app.router.add_route("POST", "/plugin/mcp/stix/get_stix", mcp_api.get_stix_cti)
+
     
     app.router.add_route("POST", "/plugin/mcp/cti/upload", mcp_api.upload_cti_raw)
     app.router.add_route("GET","/plugin/mcp/cti/raw", mcp_api.list_cti_raw)
     app.router.add_route("POST", "/plugin/mcp/cti/raw/delete", mcp_api.delete_cti_raw)
+    app.router.add_route("POST", "/plugin/mcp/cti/run", mcp_api.cti_run)
     
   
 
