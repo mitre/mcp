@@ -1,0 +1,464 @@
+<!-- CTI Ingest Page -->
+<template>
+  <div class="content">
+    <div class="columns" style="margin: 0 1rem;">
+
+      <!-- LEFT: CTI INGEST -->
+      <div class="column is-two-thirds">
+        <div class="box">
+          <div class="is-flex is-justify-content-space-between mb-4">
+            <h2 class="title is-4 has-text-primary">CTI Ingest Pipeline</h2>
+            <button class="button is-light is-small" @click="$emit('back')">
+              ← Back
+            </button>
+          </div>
+
+          <p class="mb-4">
+            Upload raw CTI reports (.txt, .md, .html). The pipeline extracts entities,
+            behaviors, MITRE techniques, and produces STIX for RAG.
+          </p>
+
+          <input
+            type="file"
+            class="input"
+            accept=".txt,.md,.html,.pdf" 
+            @change="onCtiFileSelected"
+          />
+
+          <div class="is-flex is-justify-content-flex-end mt-4">
+            <button
+              class="button is-primary"
+              :disabled="!ctiFile"
+              @click="uploadCti"
+            >
+              Upload CTI & Run Pipeline
+            </button>
+          </div>
+
+          <div v-if="ctiStatus" class="notification is-info mt-4">
+            {{ ctiStatus }}
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: CTI MODEL CONFIG -->
+      <div class="column is-one-third">
+        <div class="box" style="position: sticky; top: 1rem;">
+
+          <!-- Header / Toggle -->
+          <div
+            class="is-flex is-justify-content-space-between is-align-items-center mb-3"
+            style="cursor: pointer;"
+            @click="useOverride = !useOverride"
+          >
+            <h3 class="title is-5 has-text-primary mb-0">
+              CTI Model Override
+            </h3>
+
+            <span class="icon">
+              <svg v-if="useOverride" viewBox="0 0 448 512">
+                <path fill="currentColor"
+                  d="M432 256c0 17.7-14.3 32-32 32H48c-17.7 0-32-14.3-32-32s14.3-32 32-32h352c17.7 0 32 14.3 32 32z" />
+              </svg>
+              <svg v-else viewBox="0 0 448 512">
+                <path fill="currentColor"
+                  d="M256 80c17.7 0 32 14.3 32 32v112h112c17.7 0 32 14.3 32 32s-14.3 32-32 32H288v112c0 17.7-14.3 32-32 32s-32-14.3-32-32V288H112c-17.7 0-32-14.3-32-32s14.3-32 32-32h112V112c0-17.7 14.3-32 32-32z" />
+              </svg>
+            </span>
+          </div>
+
+          <!-- Override Content -->
+          <div v-if="useOverride">
+            <!-- Provider -->
+            <div class="field">
+              <label class="label">Provider</label>
+              <input class="input" v-model="overrideConfig.provider" />
+            </div>
+
+            <!-- Model -->
+            <div class="field">
+              <label class="label">Model</label>
+              <input class="input" v-model="overrideConfig.model" />
+            </div>
+
+            <!-- API Base -->
+            <div class="field">
+              <label class="label">API Base URL</label>
+              <input class="input" v-model="overrideConfig.api_base" />
+            </div>
+
+            <!-- API Key -->
+            <div class="field">
+              <label class="label">API Key</label>
+              <input class="input" type="password" v-model="overrideConfig.api_key" />
+            </div>
+            
+            <div class="field">
+              <label class="label">Temperature</label>
+              <input
+                class="input"
+                type="number"
+                step="0.1"
+                min="0"
+                max="1"
+                v-model.number="overrideConfig.temperature"
+              />
+            </div>
+
+            <div class="field">
+              <label class="label">Top-P</label>
+              <input
+                class="input"
+                type="number"
+                step="0.1"
+                min="0"
+                max="1"
+                v-model.number="overrideConfig.top_p"
+              />
+            </div>
+
+            <div class="field">
+              <label class="checkbox">
+                <input type="checkbox" v-model="overrideConfig.stream" />
+                Stream responses
+              </label>
+            </div>
+            <!-- Flags -->
+            <div class="field">
+              <label class="checkbox">
+                <input type="checkbox" v-model="overrideConfig.offline" />
+                Offline mode
+              </label>
+            </div>
+
+            <div class="field">
+              <label class="checkbox">
+                <input type="checkbox" v-model="overrideConfig.use_mock" />
+                Use mock responses
+              </label>
+            </div>
+
+            <!-- Timeout -->
+            <div class="field">
+              <label class="label">Timeout (seconds)</label>
+              <input class="input" type="number" v-model.number="overrideConfig.timeout" />
+            </div>
+
+            <!-- Max Tokens -->
+            <div class="field">
+              <label class="label">Max Tokens</label>
+              <input class="input" type="number" v-model.number="overrideConfig.max_tokens" />
+            </div>
+          </div>
+          <div class="is-flex is-justify-content-flex-end mt-3">
+            <button
+              class="button is-success is-small"
+              :disabled="!useOverride"
+              @click="saveCTIConfig"
+            >
+              Save
+            </button>
+        </div>
+        </div>
+      </div>
+    </div>
+    <div class="box mt-4">
+      <h3 class="title is-6">Raw CTI Inputs</h3>
+
+      <table class="table is-fullwidth is-striped is-hoverable">
+        <thead>
+          <tr>
+            <th></th>
+            <th>File</th>
+            <th class="has-text-right">Size</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="row in visibleRows"
+            :key="row._rowKey"
+            @click="row._kind === 'parent' && row.type === 'dir' && toggleDir(row.name)"
+          >
+            <td>
+              <input
+                type="checkbox"
+                @click.stop
+                :checked="
+                  row._kind === 'parent'
+                    ? selectedRaw.has(row.name)
+                    : selectedRaw.has(itemPath(row._parent, row.name))
+                "
+              />
+            </td>
+
+            <td>
+              <span v-if="row._kind === 'parent' && row.type === 'dir'">
+                {{ expandedDirs[row.name] ? '📂' : '📁' }} {{ row.name }}
+              </span>
+
+              <span v-else-if="row._kind === 'parent'">
+                📄 {{ row.name }}
+              </span>
+
+              <span v-else class="pl-5">
+                📄 {{ row.name }}
+              </span>
+            </td>
+
+            <td class="has-text-right">
+              {{ row.size ? (row.size / 1024).toFixed(1) + ' KB' : '—' }}
+            </td>
+          </tr>
+        </tbody>
+
+      </table>
+
+      <button
+        class="button is-danger is-small"
+        :disabled="!selectedRaw.size"
+        @click="deleteSelected"
+      >
+        Delete Selected
+      </button>
+    </div>
+  </div>
+  
+</template>
+
+<script setup>
+import { ref, reactive, onMounted, watch, computed } from 'vue'
+
+/* ---------------------------------
+ * UI state
+ * --------------------------------- */
+const emit = defineEmits(['back'])
+const useOverride = ref(false)
+
+const ctiFile = ref(null)
+const ctiStatus = ref('')
+const rawFiles = ref([])
+const selectedRaw = reactive(new Set())
+
+/* ---------------------------------
+ * Config state
+ * --------------------------------- */
+const backendConfig = ref(null)
+const overrideConfig = reactive({
+  provider: null,
+  model: null,
+  api_key: null,
+  api_base: null,
+
+  offline: false,
+  use_mock: false,
+
+  timeout: 120,
+  max_tokens: 4000,
+  temperature: 0.0,
+  top_p: 1.0,
+  stream: false
+})
+
+const effectiveConfig = computed(() =>
+  useOverride.value ? overrideConfig : backendConfig.value || {}
+)
+
+// const expandedDirs = reactive({})
+// const expandedDirs = reactive(new Set())
+// const expandedDirs = ref(new Set())
+const expandedDirs = ref({})
+
+const visibleRows = computed(() => {
+  const rows = []
+
+  for (const f of rawFiles.value) {
+    rows.push({
+      ...f,
+      _kind: 'parent',
+      _rowKey: `dir:${f.name}`
+    })
+
+    if (f.type === 'dir' && expandedDirs.value[f.name]) {
+      console.log('[ADDING CHILDREN FOR]', f.name, f.children?.length)
+      for (const child of f.children ?? []) {
+        rows.push({
+          ...child,
+          _kind: 'child',
+          _parent: f.name,
+          _rowKey: `file:${f.name}/${child.name}`
+        })
+      }
+    }
+  }
+  console.log('[visibleRows COMPUTED]', rows.length)
+  return rows
+})
+
+function toggleDir(name) {
+  expandedDirs.value = {
+    ...expandedDirs.value,
+    [name]: !expandedDirs.value[name]
+  }
+  console.log('[expandedDirs]', expandedDirs.value)
+  console.log('[visibleRows AFTER toggle]', visibleRows.value.length)
+}
+
+function itemPath(dirName, childName) {
+  return `${dirName}/${childName}`
+}
+
+/* ---------------------------------
+ * Raw CTI file handling
+ * --------------------------------- */
+async function loadRawFiles() {
+  const res = await fetch('/plugin/mcp/cti/raw')
+  const data = await res.json()
+  rawFiles.value = (data.items || [])
+  .map(item => {
+    if (item.type === 'dir') {
+      const kids = item.children || []
+
+      return {
+        ...item,
+        // keep children, but make it safe to render
+        children: kids
+      }
+    }
+    return item
+  })
+  .sort((a, b) => {
+    if (a.type !== b.type) return a.type === 'dir' ? -1 : 1
+    return a.name.localeCompare(b.name)
+  })
+
+  console.log('[RAW ITEMS]', data.items)
+
+}
+
+async function deleteSelected() {
+  if (!selectedRaw.size) return
+
+  await fetch('/plugin/mcp/cti/raw/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ files: Array.from(selectedRaw) })
+  })
+
+  selectedRaw.clear()
+  loadRawFiles()
+}
+
+function onCtiFileSelected(e) {
+  ctiFile.value = e.target.files[0]
+}
+
+/* ---------------------------------
+ * Config loading (CTI → LLM fallback)
+ * --------------------------------- */
+async function loadBackendConfig() {
+  const res = await fetch('/plugin/mcp/get_config')
+  if (!res.ok) throw new Error('Failed to load config')
+
+  const data = await res.json()
+  console.log('[CTI] Raw get_config response:', data)
+
+  const cfg = data?.config ?? data ?? {}
+
+  // 🔑 AUTHORITATIVE FALLBACK ORDER
+  const cti = cfg.cti ?? cfg.llm ?? {}
+
+  backendConfig.value = {
+    provider: cti.provider ?? null,
+    model: cti.model ?? null,
+    api_key: cti.api_key ?? null,
+    api_base: cti.api_base ?? null,
+
+    offline: cti.offline ?? false,
+    use_mock: cti.use_mock ?? false,
+
+    timeout: cti.timeout ?? 120,
+    max_tokens: cti.max_tokens ?? 4000,
+    temperature: cti.temperature ?? 0.0,
+    top_p: cti.top_p ?? 1.0,
+    stream: cti.stream ?? false
+  }
+
+  console.log('[CTI] Backend config resolved:', backendConfig.value)
+}
+
+function initOverridesFromBackend() {
+  if (!backendConfig.value) return
+
+  for (const [k, v] of Object.entries(backendConfig.value)) {
+    if (overrideConfig[k] === undefined || overrideConfig[k] === null) {
+      overrideConfig[k] = v
+    }
+  }
+}
+
+/* ---------------------------------
+ * Persist override (explicit)
+ * --------------------------------- */
+async function saveCTIConfig() {
+  const payload = {
+    llm: {
+      provider: overrideConfig.provider,
+      model: overrideConfig.model,
+      api_base: overrideConfig.api_base,
+      api_key: overrideConfig.api_key,
+      temperature: overrideConfig.temperature,
+      top_p: overrideConfig.top_p,
+      max_tokens: overrideConfig.max_tokens,
+      timeout: overrideConfig.timeout,
+      stream: overrideConfig.stream,
+      offline: overrideConfig.offline,
+      use_mock: overrideConfig.use_mock
+    }
+  }
+
+  await fetch('/plugin/mcp/set_config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+
+  // reload from disk to prove persistence
+  await loadBackendConfig()
+  initOverridesFromBackend()
+}
+
+/* ---------------------------------
+ * Upload CTI
+ * --------------------------------- */
+async function uploadCti() {
+  const form = new FormData()
+  form.append('file', ctiFile.value)
+
+  if (useOverride.value) {
+    form.append('config', JSON.stringify(overrideConfig))
+  }
+
+  ctiStatus.value = 'Uploading and processing CTI…'
+
+  const res = await fetch('/plugin/mcp/cti/upload', {
+    method: 'POST',
+    body: form
+  })
+
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error)
+
+  ctiStatus.value = 'Raw CTI ingestion started successfully.'
+  loadRawFiles()
+}
+
+/* ---------------------------------
+ * Lifecycle
+ * --------------------------------- */
+onMounted(async () => {
+  await loadBackendConfig()
+  initOverridesFromBackend()
+  loadRawFiles()
+})
+
+</script>

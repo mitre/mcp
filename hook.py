@@ -95,7 +95,7 @@ except ImportError as e:
     log.error(f"[MCP] Error importing MCP plugin modules: {e}")
     traceback.print_exc()
 
-# ✅ Enable function stays the same
+
 async def enable(services):
     app = services.get('app_svc').application
 
@@ -106,5 +106,21 @@ async def enable(services):
     mcp_api = McpAPI(services)
     app.router.add_route('POST', '/plugin/mcp/execute', mcp_api.execute)
     app.router.add_route('GET', '/plugin/mcp/status', mcp_api.status)
+    app.router.add_route("GET", "/plugin/mcp/get_config", mcp_api.get_config)
+    app.router.add_route("POST", "/plugin/mcp/set_config", mcp_api.set_config)
+
+    
     app.router.add_route('POST', "/plugin/mcp/rag/upload", mcp_api.upload_rag)
     app.router.add_route('GET', "/plugin/mcp/rag/list", mcp_api.list_rag)
+    
+    app.router.add_route("POST", "/plugin/mcp/stix/upload", mcp_api.upload_stix_cti)
+    app.router.add_route("GET", "/plugin/mcp/stix/list", mcp_api.list_stix_cti)
+    
+    app.router.add_route("POST", "/plugin/mcp/cti/upload", mcp_api.upload_cti_raw)
+    app.router.add_route("GET","/plugin/mcp/cti/raw", mcp_api.list_cti_raw)
+    app.router.add_route("POST", "/plugin/mcp/cti/raw/delete", mcp_api.delete_cti_raw)
+    
+  
+
+
+

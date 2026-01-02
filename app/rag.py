@@ -1,6 +1,7 @@
 import dspy
 import json
-from typing import List, Dict
+from typing import List, Dict, Optional
+
 import logging
 import os
 import glob
@@ -25,11 +26,11 @@ class RAGService:
             self.load_stix_bundle(stix_bundle_path)
     
     def load_stix_bundle(
-        self,
-        stix_bundle_path: str,
-        embed_model: str = 'openai/text-embedding-3-small',
-        cti_dir: str = 'plugins/mcp/data/stix_cti'
-    ):
+            self,
+            stix_bundle_path: str,
+            embed_model: str = 'openai/text-embedding-3-small',
+            cti_dir: str = 'plugins/mcp/data/outputs_stix/'
+        ):
         """Load base STIX bundle + any CTI STIX bundles from dir, then build embeddings."""
         bundles = []
 
@@ -44,6 +45,7 @@ class RAGService:
             raise ValueError(f"Invalid JSON in STIX bundle: {stix_bundle_path}")
 
         # Extra CTI-derived bundles from CTI MCP (if directory exists)
+        cti_dir = os.path.abspath(cti_dir)
         if os.path.isdir(cti_dir):
             for path in glob.glob(os.path.join(cti_dir, '*.json')):
                 try:
@@ -165,6 +167,72 @@ class RAGService:
             "query": task,
             "thoughts": thoughts  # <-- used for Stage/Thoughts display
         }
+
+    async def upload_stix_cti(self, request):
+        try:
+            reader = await request.multipart()
+            part = await reader.next()
+            if not part or part.name != "file":
+                return web.json_response({"error": 'Missing "file" field in form-data'}, status=400)
+
+            raw_filename = part.filename or "cti.stix.json"
+            filename = os.path.basename(raw_filename)
+
+            if not filename.lower().endswith(".json"):
+                return web.json_response({"error": "Only .json files are allowed"}, status=400)
+
+            # IMPORTANT: this is the directory rag.py already loads from
+            base_dir = (Path(__file__).resolve().parent.parent / "plugins" / "mcp" / "data" / "stix_cti")
+            base_dir.mkdir(parents=True, exist_ok=True)
+
+            target_path = base_dir / filename
+            if target_path.exists():
+                ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                stem = Path(filename).stem
+                suffix = Path(filename).suffix
+                filename = f"{stem}_{ts}{suffix}"
+                target_path = base_dir / filename
+
+            file_bytes = await part.read()
+            try:
+                _ = json.loads(file_bytes.decode("utf-8"))
+            except Exception as e:
+                return web.json_response({"error": f"Invalid JSON: {e}"}, status=400)
+
+            with open(target_path, "wb") as f:
+                f.write(file_bytes)
+
+            stat = target_path.stat()
+            self.log.info(f"[MCP] Uploaded CTI STIX bundle to {target_path} ({stat.st_size} bytes)")
+            return web.json_response({
+                "message": "CTI STIX bundle uploaded",
+                "filename": filename,
+                "size": stat.st_size,
+                "path": str(target_path)
+            })
+        except Exception as e:
+            self.log.error(f"[MCP] Error uploading CTI STIX bundle: {e}")
+            return web.json_response({"error": str(e)}, status=500)
+
+    async def list_stix_cti(self, request):
+        try:
+            base_dir = (Path(__file__).resolve().parent.parent / "plugins" / "mcp" / "data" / "stix_cti")
+            files = []
+            if base_dir.exists():
+                for p in base_dir.glob("*.json"):
+                    try:
+                        stat = p.stat()
+                        files.append({
+                            "filename": p.name,
+                            "size": stat.st_size,
+                            "modified": datetime.utcfromtimestamp(stat.st_mtime).isoformat() + "Z"
+                        })
+                    except Exception:
+                        continue
+            return web.json_response({"files": sorted(files, key=lambda x: x["filename"].lower())})
+        except Exception as e:
+            self.log.error(f"[MCP] Error listing CTI STIX bundles: {e}")
+            return web.json_response({"error": str(e)}, status=500)
 
     
 # Legacy functions for backward compatibility

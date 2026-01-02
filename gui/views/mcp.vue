@@ -39,7 +39,21 @@
               </button>
             </div>
           </div>
-
+          <!-- CTI Ingest Page -->
+          <div class="box" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div style="flex-grow: 1;">
+              <h3 class="title is-5">Upload CTI</h3>
+              <p>
+                Upload raw Cyber Threat Intelligence reports and convert them into structured STIX
+                for RAG-powered planning and ability generation.
+              </p>
+            </div>
+            <div class="is-flex is-justify-content-flex-end mt-4">
+              <button class="button is-primary" @click="selectedPath = 'cti'">
+                Start CTI Ingest
+              </button>
+            </div>
+          </div>
           <!-- History -->
           <div class="box" style="display: flex; flex-direction: column; justify-content: space-between;">
             <div style="flex-grow: 1;">
@@ -72,107 +86,179 @@
         </div>
       </div>
 
-      <!-- Right Side: Global Model Configuration (Pinned) -->
+      <!-- RIGHT: GLOBAL MODEL CONFIG -->
       <div class="column is-one-third">
         <div class="box" style="position: sticky; top: 1rem;">
-          <h3 class="title is-5 has-text-primary mb-4">Global Model Config</h3>
 
-          <div class="field">
-            <label class="label">Model</label>
-            <div class="control">
+          <!-- Header / Toggle -->
+          <div
+            class="is-flex is-justify-content-space-between is-align-items-center mb-3"
+            style="cursor: pointer;"
+            @click="useGlobalOverride = !useGlobalOverride"
+          >
+            <h3 class="title is-5 has-text-primary mb-0">
+              Global Model Override
+            </h3>
+
+            <span class="icon">
+              <svg v-if="useGlobalOverride" viewBox="0 0 448 512">
+                <path fill="currentColor"
+                  d="M432 256c0 17.7-14.3 32-32 32H48c-17.7 0-32-14.3-32-32s14.3-32 32-32h352c17.7 0 32 14.3 32 32z" />
+              </svg>
+              <svg v-else viewBox="0 0 448 512">
+                <path fill="currentColor"
+                  d="M256 80c17.7 0 32 14.3 32 32v112h112c17.7 0 32 14.3 32 32s-14.3 32-32 32H288v112c0 17.7-14.3 32-32 32s-32-14.3-32-32V288H112c-17.7 0-32-14.3-32-32s14.3-32 32-32h112V112c0-17.7 14.3-32 32-32z" />
+              </svg>
+            </span>
+          </div>
+
+          <!-- Override Content -->
+          <div v-if="useGlobalOverride">
+
+            <!-- Provider -->
+            <div class="field">
+              <label class="label">Provider</label>
+              <input class="input" v-model="overrideConfig.provider" />
+            </div>
+
+            <!-- Model -->
+            <div class="field">
+              <label class="label">Model</label>
+              <input class="input" v-model="overrideConfig.model" />
+            </div>
+
+            <!-- API Base -->
+            <div class="field">
+              <label class="label">API Base URL</label>
               <input
                 class="input"
                 type="text"
-                v-model="globalConfig.modelName"
-                placeholder="e.g., gpt-4o"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+                v-model="overrideConfig.api_base"
               />
             </div>
-          </div>
 
-          <div class="field">
-            <label class="label">Temperature</label>
-            <div class="control">
+            <!-- API Key -->
+            <div class="field">
+              <label class="label">API Key</label>
+              <input
+                class="input"
+                type="text"
+                autocomplete="new-password"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+                v-model="overrideConfig.api_key"
+              />
+            </div>
+
+
+            <div class="field">
+              <label class="label">Temperature</label>
               <input
                 class="input"
                 type="number"
-                v-model.number="globalConfig.temperature"
                 step="0.1"
-                min="0.1"
+                min="0"
                 max="1"
+                v-model.number="overrideConfig.temperature"
               />
             </div>
-          </div>
 
-          <div class="field">
-            <label class="label">API Key</label>
-            <div class="control">
-              <input
-                class="input"
-                type="password"
-                v-model="globalConfig.apiKey"
-                placeholder="Enter API key"
-              />
-            </div>
-          </div>
-
-          <div class="field">
-            <label class="label">Max Tool Calls</label>
-            <div class="control">
+            <div class="field">
+              <label class="label">Top-P</label>
               <input
                 class="input"
                 type="number"
-                v-model.number="globalConfig.maxToolCalls"
-                min="1"
-                step="1"
+                step="0.1"
+                min="0"
+                max="1"
+                v-model.number="overrideConfig.top_p"
               />
             </div>
-          </div>
 
-          <div class="field">
-            <label class="label">Max Tokens</label>
-            <div class="control">
+            <div class="field">
+              <label class="checkbox">
+                <input type="checkbox" v-model="overrideConfig.stream" />
+                Stream responses
+              </label>
+            </div>
+
+            <!-- Flags -->
+            <div class="field">
+              <label class="checkbox">
+                <input type="checkbox" v-model="overrideConfig.offline" />
+                Offline mode
+              </label>
+            </div>
+
+            <div class="field">
+              <label class="checkbox">
+                <input type="checkbox" v-model="overrideConfig.use_mock" />
+                Use mock responses
+              </label>
+            </div>
+
+            <!-- Timeout -->
+            <div class="field">
+              <label class="label">Timeout (seconds)</label>
+              <input class="input" type="number" v-model.number="overrideConfig.timeout" />
+            </div>
+
+            <!-- Max Tokens -->
+            <div class="field">
+              <label class="label">Max Tokens</label>
+              <input class="input" type="number" v-model.number="overrideConfig.max_tokens" />
+            </div>
+            <!-- Max Tool Calls (Planner REQUIRED) -->
+            <div class="field">
+              <label class="label">Max Tool Calls</label>
               <input
                 class="input"
                 type="number"
-                v-model.number="globalConfig.maxTokens"
-                min="1000"
-                step="1000"
+                v-model.number="overrideConfig.max_tool_calls"
               />
             </div>
-          </div>
 
-          <div class="field">
-            <label class="label">RAG TopK</label>
-            <div class="control">
+            <!-- RAG Embed Model -->
+            <div class="field">
+              <label class="label">RAG Embed Model</label>
+              <input class="input" v-model="overrideConfig.rag_embed_model" />
+            </div>
+
+            <!-- RAG Top-K -->
+            <div class="field">
+              <label class="label">RAG Top-K</label>
               <input
                 class="input"
                 type="number"
-                v-model.number="globalConfig.ragTopK"
-                min="1"
-                max="30"
-                step="1"
+                v-model.number="overrideConfig.rag_top_k"
               />
             </div>
+
+          </div>
+          <div class="is-flex is-justify-content-flex-end mt-3">
+            <button
+              class="button is-success is-small"
+              :disabled="!useGlobalOverride"
+              @click="saveGlobalConfig"
+            >
+              Save
+            </button>
           </div>
 
-          <div class="field">
-            <label class="label">RAG Embed Model</label>
-            <div class="control">
-              <input
-                class="input"
-                type="text"
-                v-model="globalConfig.ragEmbedModel"
-                placeholder="openai/text-embedding-3-small"
-              />
-            </div>
-          </div>
         </div>
       </div>
-    </div>
+    </div>  
 
     <McpPromptFactory v-if="selectedPath === 'factory'" @back="selectedPath = null" />
     <McpPromptPlanner v-if="selectedPath === 'planner'" @back="selectedPath = null" />
     <McpHistory v-if="selectedPath === 'history'" @back="selectedPath = null" />
+    <McpCti v-if="selectedPath === 'cti'" @back="selectedPath = null" />
+
 
     <!-- Embedded Extension Guide -->
     <div v-if="selectedPath === 'guide'" class="is-flex is-justify-content-center" style="width: 100%;">
@@ -401,11 +487,11 @@ async function handleCustomSubmit() {
         text: customInput.value,
         type: 'custom',  // Must match ExecuteStyle enum value
         config: {
-          model: globalConfig.modelName,
-          api_key: globalConfig.apiKey,
-          temperature: globalConfig.temperature,
-          max_tokens: globalConfig.maxTokens,
-          max_tool_calls: globalConfig.maxToolCalls
+          model: overrideConfig.model,
+          api_key: overrideConfig.api_key,
+          temperature: overrideConfig.temperature,
+          max_tokens: overrideConfig.max_tokens,
+          max_tool_calls: overrideConfig.max_tool_calls
         }
       })
     })
@@ -438,77 +524,121 @@ async function handleCustomSubmit() {
 </template>
 
 <script setup>
-import { ref, provide, reactive, watch, onMounted } from 'vue'
+import { ref, provide, reactive, watch, onMounted, computed } from 'vue'
 import McpPromptFactory from './local_mcp_ability_factory.vue'
 import McpPromptPlanner from './public_mcp_ability_factory.vue'
 import McpHistory from './mcp_history.vue'
-
+import McpCti from './cti.vue'
+   
 const selectedPath = ref(null)
-const LOCAL_STORAGE_KEY = 'mcp_global_config'
+const useGlobalOverride = ref(false)
+const backendConfig = ref(null)        // read-only truth
+const overrideConfig = reactive({
+  provider: null,
+  model: null,
+  api_key: null,
+  api_base: null,
 
-// Load saved config from localStorage
-function loadConfig() {
-  try {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY)
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      console.log('[MCP] Loaded config from localStorage:', {
-        modelName: parsed.modelName,
-        temperature: parsed.temperature,
-        hasApiKey: !!parsed.apiKey,
-        apiKeyLength: parsed.apiKey?.length || 0,
-        maxToolCalls: parsed.maxToolCalls,
-        maxTokens: parsed.maxTokens,
-        ragEmbedModel: parsed.ragEmbedModel,
-        ragTopK: parsed.ragTopK
-      })
-      return parsed
-    } else {
-      console.log('[MCP] No saved config found in localStorage')
-    }
-  } catch (e) {
-    console.warn('[MCP] Failed to load saved config:', e)
-  }
-  return null
-}
+  offline: false,
+  use_mock: false,
 
-// Save config to localStorage
-function saveConfig(config) {
-  try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(config))
-    console.log('[MCP] Saved config to localStorage:', {
-      modelName: config.modelName,
-      temperature: config.temperature,
-      hasApiKey: !!config.apiKey,
-      apiKeyLength: config.apiKey?.length || 0,
-      maxToolCalls: config.maxToolCalls,
-      maxTokens: config.maxTokens,
-      ragEmbedModel: config.ragEmbedModel,
-      ragTopK: config.ragTopK
-    })
-  } catch (e) {
-    console.warn('[MCP] Failed to save config:', e)
-  }
-}
-
-// Global configuration that will be shared with all child components
-// Load from localStorage if available, otherwise use defaults
-const savedConfig = loadConfig()
-const globalConfig = reactive({
-  modelName: savedConfig?.modelName || 'gpt-4o',
-  temperature: savedConfig?.temperature ?? 0.5,
-  apiKey: savedConfig?.apiKey || '',
-  maxToolCalls: savedConfig?.maxToolCalls || 5,
-  maxTokens: savedConfig?.maxTokens || 10000,
-  ragEmbedModel: savedConfig?.ragEmbedModel || 'openai/text-embedding-3-small',
-  ragTopK: savedConfig?.ragTopK ?? 5
+  timeout: 120,
+  max_tokens: 4000,
+  temperature: 0.0,
+  top_p: 1.0,
+  stream: false
 })
 
-// Watch for changes and save to localStorage
-watch(globalConfig, (newConfig) => {
-  saveConfig(newConfig)
-}, { deep: true })
+
+const effectiveConfig = computed(() =>
+  useGlobalOverride.value
+    ? overrideConfig
+    : backendConfig.value || {}
+)
+
+async function loadBackendConfig() {
+  const res = await fetch('/plugin/mcp/get_config')
+  if (!res.ok) throw new Error('Failed to load config')
+
+  const data = await res.json()
+  console.log('[MCP] Raw get_config response:', data)
+
+  const cfg = data?.config ?? data ?? {}
+  const cti = cfg.cti ?? cfg.llm ?? {}
+  const rag = cfg.rag ?? {}
+
+  backendConfig.value = {
+    // CTI MODEL SETTINGS (AUTHORITATIVE)
+    provider: cti.provider ?? null,
+    model: cti.model ?? null,
+    api_base: cti.api_base ?? null,
+    api_key: cti.api_key ?? null,
+
+    temperature: cti.temperature ?? null,
+    top_p: cti.top_p ?? null,
+    max_tokens: cti.max_tokens ?? null,
+
+    timeout: cti.timeout ?? null,
+    stream: cti.stream ?? null,
+    offline: cti.offline ?? null,
+    use_mock: cti.use_mock ?? null,
+
+    // Planner / RAG adjuncts (optional)
+    max_tool_calls: cti.max_tool_calls ?? 12,
+    rag_embed_model: rag.embed_model ?? null,
+    rag_top_k: rag.top_k ?? null
+  }
+
+  console.log('[MCP] Backend CTI config loaded:', backendConfig.value)
+}
+
+function initOverridesFromBackend() {
+  if (!backendConfig.value) return
+
+  // Only fill keys that are currently null/undefined in overrideConfig
+  for (const [k, v] of Object.entries(backendConfig.value)) {
+    if (overrideConfig[k] === null || overrideConfig[k] === undefined) {
+      overrideConfig[k] = v
+    }
+  }
+}
+
+async function saveGlobalConfig() {
+  const payload = {
+    llm: {
+      provider: overrideConfig.provider,
+      model: overrideConfig.model,
+      api_base: overrideConfig.api_base,
+      api_key: overrideConfig.api_key,
+      temperature: overrideConfig.temperature,
+      top_p: overrideConfig.top_p,
+      max_tokens: overrideConfig.max_tokens,
+      timeout: overrideConfig.timeout,
+      stream: overrideConfig.stream,
+      offline: overrideConfig.offline,
+      use_mock: overrideConfig.use_mock
+    }
+  }
+
+  await fetch('/plugin/mcp/set_config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+
+  // reload from disk to prove persistence
+  await loadBackendConfig()
+  initOverridesFromBackend()
+}
+
+onMounted(async () => {
+  await loadBackendConfig()
+  initOverridesFromBackend()
+})
 
 // Provide the global config to all child components
-provide('mcpGlobalConfig', globalConfig)
+provide('mcpGlobalConfig', {
+  enabled: useGlobalOverride,
+  config: effectiveConfig
+})
 </script>

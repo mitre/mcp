@@ -13,13 +13,13 @@ factory:
   use_mock: false
   temperature: 0.4
 
-cti:
-  model: ollama/gemma3n:latest 
-  api_key: "ollama"
-  api_base: http://127.0.0.1:11434
-  offline: false
-  use_mock: false
-  temperature: 0.1
+# cti:
+#   model: ollama/gemma3n:latest 
+#   api_key: "ollama"
+#   api_base: http://127.0.0.1:11434
+#   offline: false
+#   use_mock: false
+#   temperature: 0.1
 
 # cti:
 #   model: Qwen/Qwen3-32B

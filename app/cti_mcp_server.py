@@ -96,7 +96,7 @@ def upload_cti_text(filename: str, content: str) -> Dict:
     Returns:
       {
         "bundle_id": "<uuid>",
-        "stix_path": "plugins/mcp/data/stix_cti/<bundle_id>.json"
+        "stix_path": "plugins/mcp/data/outputs_stix/<bundle_id>.json"
       }
     """
     bundle_id = str(uuid.uuid4())

@@ -10,11 +10,24 @@ from functools import lru_cache
 
 @lru_cache(maxsize=1)
 def load_config() -> dict:
-    cfg_path = Path(__file__).resolve().parents[2] / "conf" / "local.yml"
-    if not cfg_path.exists():
-        raise FileNotFoundError(f"Missing config: {cfg_path}")
-    with cfg_path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+    """
+    Load effective config with precedence:
+    - conf/local.yml if present
+    - else conf/default.yml
+    """
+    base_dir = Path(__file__).resolve().parents[2]
+    default_path = base_dir / "conf" / "default.yml"
+    local_path = base_dir / "conf" / "local.yml"
+
+    if local_path.exists():
+        with local_path.open("r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+
+    if default_path.exists():
+        with default_path.open("r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+
+    raise FileNotFoundError("No config found (default.yml or local.yml)")
 
 # ------------------------------------------------------
 # Central LLM Client
