@@ -1,11 +1,17 @@
 <template>
   <div class="is-flex is-justify-content-center" style="width: 100%;">
     <div style="width: 75%;">
+
+      <!-- MAIN TWO-COLUMN LAYOUT -->
       <div class="columns is-variable is-4">
+
+        <!-- LEFT: PROMPT -->
         <div class="column is-two-thirds">
+
+          <!-- PROMPT BOX -->
           <div class="box">
             <div class="is-flex is-align-items-center is-justify-content-space-between mb-3">
-              <h2 class="title is-4 has-text-primary mb-0">LLM Operation Planner</h2>
+              <h2 class="title is-4 has-text-primary mb-0">LLM Ability Factory</h2>
               <span class="icon is-clickable" @click="collapsibleBoxOpen = !collapsibleBoxOpen">
                 <font-awesome-icon :icon="['fas', collapsibleBoxOpen ? 'minus' : 'plus']" />
               </span>
@@ -15,7 +21,7 @@
               <div v-if="uiPhase === 'idle' || uiPhase === 'finished'">
                 <strong>Example Starting Prompt:</strong>
                 <blockquote class="example-prompt">
-                  Find some abilities that constitute a stealer adversary for linux which includes credential-access and exfiltration, then create an adversary with those abilities, then create an operation with the adversary.
+                  I want to create a few abilities related to persistence with WMI for Windows, then create an adversary with those abilities. Please create more than one ability.
                 </blockquote>
 
                 <div class="field">
@@ -24,16 +30,13 @@
                       v-model="inputText"
                       class="textarea"
                       rows="4"
-                      placeholder="Describe the complete adversary operation you'd like to plan and execute..."
+                      placeholder="Describe the adversary or abilities you'd like to create..."
                     ></textarea>
                   </div>
                 </div>
 
                 <div class="is-flex is-justify-content-space-between is-align-items-center mt-4">
-                  <button class="button is-light is-small" @click="$emit('back')">
-                    ← Back
-                  </button>
-                  
+                  <button class="button is-light is-small" @click="$emit('back')">← Back</button>
                   <button class="button is-primary" @click="handleSubmit" :disabled="!inputText || isLoading">
                     <span v-if="isLoading">Processing...</span>
                     <span v-else>Submit</span>
@@ -41,189 +44,121 @@
                 </div>
               </div>
             </div>
-
-            <div class="mt-3" v-if="responseMessage || errorMessage || submittedPrompt || pollReasoning">
-              <div v-if="responseMessage" class="notification is-success">
-                {{ responseMessage }}
-              </div>
-              <div v-if="errorMessage" class="notification is-danger">
-                {{ errorMessage }}
-              </div>
-
-              <div v-if="uiPhase !== 'idle' && (submittedPrompt || pollPrompt)" class="notification is-info is-light">
-                <strong>Prompt:</strong>
-                <p class="mt-1">{{ submittedPrompt || pollPrompt }}</p>
-              </div>
-
-              <div v-if="uiPhase !== 'idle' && pollReasoning" class="reasoning-panel mt-2">
-                <strong class="reasoning-title">Reasoning</strong>
-                <pre class="reasoning-pre">{{ pollReasoning }}</pre>
-              </div>
-            </div>
-
-            <div v-if="!collapsibleBoxOpen" class="mt-3">
-              <button class="button is-light is-small" @click="$emit('back')">
-                ← Back
-              </button>
-            </div>
           </div>
         </div>
 
+        <!-- RIGHT: RAG CONFIGURATION -->
         <div class="column is-one-third">
-          <div class="box">
-            <div class="is-flex is-align-items-center is-justify-content-space-between mb-3">
-              <h3 class="title is-5 has-text-primary mb-0">RAG Data</h3>
-              <span class="icon is-clickable" @click="ragBoxOpen = !ragBoxOpen">
-                <font-awesome-icon :icon="['fas', ragBoxOpen ? 'minus' : 'plus']" />
-              </span>
+          <div class="box" style="position: sticky; top: 1rem;">
+            <h3 class="title is-5 has-text-primary">RAG Configuration</h3>
+
+            <div class="field">
+              <label class="label">Embedding Model</label>
+              <input
+                class="input"
+                v-model="globalConfig.ragEmbedModel"
+                placeholder="e.g. text-embedding-3-large"
+              />
             </div>
 
-            <div v-show="ragBoxOpen" class="field">
-              <div class="file has-name is-fullwidth">
-                <label class="file-label">
-                  <input
-                    class="file-input"
-                    type="file"
-                    accept=".json,application/json"
-                    @change="onFileSelected"
-                    :disabled="isUploading || isLoading"
-                  />
-                  <span class="file-cta">
-                    <span class="file-icon">
-                      <font-awesome-icon :icon="['fas', 'plus']" />
-                    </span>
-                    <span class="file-label">
-                      Choose a JSON file…
-                    </span>
-                  </span>
-                  <span class="file-name">
-                    {{ selectedFile ? selectedFile.name : 'No file chosen' }}
-                  </span>
-                </label>
-              </div>
+            <div class="field">
+              <label class="label">Top-K Chunks</label>
+              <input
+                class="input"
+                type="number"
+                min="1"
+                max="50"
+                v-model.number="globalConfig.ragTopK"
+              />
             </div>
 
-            <div v-show="ragBoxOpen" class="buttons">
-              <button class="button is-primary"
-                      @click="uploadRag"
-                      :disabled="!selectedFile || isUploading">
-                <span v-if="isUploading">Uploading...</span>
-                <span v-else>Upload</span>
-              </button>
-              <button class="button"
-                      @click="fetchRagFiles"
-                      :disabled="isUploading || isLoading">
-                Refresh
-              </button>
-            </div>
+            <p class="is-size-7 has-text-grey mt-2">
+              These settings affect retrieval only, not generation.
+            </p>
+          </div>
+        </div>
+      </div>
+      <!-- RAG CONTEXT (BELOW PROMPT) -->
+      <div class="box mt-5">
+        <div class="is-flex is-align-items-center is-justify-content-space-between mb-3">
+          <h3 class="title is-5 has-text-primary mb-0">RAG Context</h3>
+          <span class="icon is-clickable" @click="ragBoxOpen = !ragBoxOpen">
+            <font-awesome-icon :icon="['fas', ragBoxOpen ? 'minus' : 'plus']" />
+          </span>
+        </div>
 
-            <div v-show="ragBoxOpen" v-if="uploadMessage" class="notification is-success">
-              {{ uploadMessage }}
-            </div>
-            <div v-show="ragBoxOpen" v-if="uploadError" class="notification is-danger">
-              {{ uploadError }}
-            </div>
+        <div v-show="ragBoxOpen">
+          <h4 class="title is-6">CTI Context (STIX Bundles)</h4>
 
-            <div v-show="ragBoxOpen" class="mt-3">
-              <strong>Uploaded Files</strong>
-              <div class="mt-2" style="max-height: 240px; overflow: auto;">
-                <label
-                  v-for="f in ragFiles"
-                  :key="f.filename"
-                  class="checkbox mb-2 is-block"
-                >
+          <table class="table is-fullwidth is-striped is-hoverable">
+            <thead>
+              <tr>
+                <th></th>
+                <th>File</th>
+                <th>Model</th>
+                <th class="has-text-right">Size</th>
+                <th class="has-text-centered">View</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="f in ragFiles" :key="f.filename">
+                <td>
                   <input
                     type="checkbox"
                     :value="f.filename"
                     v-model="selectedRag"
-                    :disabled="isUploading || isLoading"
+                    :disabled="isLoading"
                   />
-                  <span class="ml-2">{{ f.filename }}</span>
-                  <span class="is-size-7 has-text-grey"> ({{ formatBytes(f.size) }}, {{ formatDate(f.modified) }})</span>
-                </label>
-              </div>
-              <p v-if="ragFiles.length === 0" class="has-text-grey">No files found.</p>
-              <p v-else-if="selectedRag.length" class="mt-2 is-size-7">
-                Selected: {{ selectedRag.length }} file(s)
-              </p>
-            </div>
-          </div>
+                </td>
+                <td>📦 {{ f.filename }}</td>
+                <td class="has-text-grey">
+                  <span v-if="f.model">
+                    {{ f.provider ? `${f.provider} / ${f.model}` : f.model }}
+                  </span>
+                  <span v-else>—</span>
+                </td>
+                <td class="has-text-right">
+                  {{ (f.size / 1024).toFixed(1) }} KB
+                </td>
+                <!-- VIEW BUTTON -->
+                <td>
+                  <div class="buttons is-centered are-small">
+                  <button
+                    class="button is-primary is-small is-light"
+                    @click.stop="viewStix(f.filename)"
+                  >
+                    View
+                  </button>
+                  </div>
+                </td>
+              </tr>
+
+              <tr v-if="!ragFiles.length">
+                <td colspan="4" class="has-text-grey has-text-centered">
+                  No STIX bundles available
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p v-if="selectedRag.length" class="mt-2 is-size-7 has-text-grey">
+            Selected: {{ selectedRag.length }} bundle(s)
+          </p>
         </div>
       </div>
-
-      <div v-if="uiPhase === 'running' || uiPhase === 'finished'" class="mt-4">
-        <p v-if="displayedStage && displayedStage.toLowerCase() !== 'completed'" class="is-size-5 has-text-weight-medium">
-          <strong>Stage: </strong> {{ displayedStage }}
-        </p>
-
-        <p><strong>Status: </strong>
-          <span v-if="pollStatus === 'RUNNING'">{{ animatedStatus }}</span>
-          <span v-else>{{ pollStatus }}</span>
-        </p>
-      </div>
-
-      <div v-if="uiPhase === 'running' || uiPhase === 'finished'" class="mt-5" v-show="thoughts.length">
-        <div class="box">
-          <h3 class="title is-5">Thoughts</h3>
-          <div class="reasoning-box">
-            <template v-for="(thought, idx) in thoughts" :key="idx">
-              <div v-for="(sentence, sIdx) in splitSentences(thought)" :key="sIdx">
-                <p v-if="!isInjectedSentence(sentence)" class="thought-line">• {{ sentence }}</p>
-
-                <div v-if="lastAbilitySentenceKeys.has(`${idx}-${sIdx}`)">
-                  <div
-                    v-for="(line, aIdx) in parsedAbilityLines"
-                    :key="'ability-' + sIdx + '-' + aIdx"
-                    class="notification is-success mt-4 is-inline-block"
-                    style="margin-left: 3rem;"
-                  >
-                    {{ line }}
-                  </div>
-                  <br>
-                </div>
-
-                <div v-if="lastAdversarySentenceKeys.has(`${idx}-${sIdx}`)">
-                  <div
-                    class="notification is-success mt-4 is-inline-block"
-                    style="margin-left: 2rem;"
-                  >
-                    {{ parsedAdversaryLine.name }} - {{ parsedAdversaryLine.uuid }}
-                    <div v-if="parsedAbilityLines.length" class="mt-2">
-                      <div
-                        v-for="(line, i) in parsedAbilityLines"
-                        :key="'adv-ability-' + sIdx + '-' + i"
-                        style="margin-left: 2rem;"
-                      >
-                        {{ line }}
-                      </div>
-                    </div>
-                  </div>
-                  <br>
-                </div>
-
-                <!-- If operation creation sentence -->
-                <div v-if="lastOperationSentenceKeys.has(`${idx}-${sIdx}`)">
-                  <div
-                    class="notification is-info mt-4"
-                    style="margin-left: 2rem;"
-                  >
-                    {{ parsedOperationLine.name }}
-                  </div>
-                </div>
-                <br>
-              </div>
-            </template>
-          </div>
-        </div>
-      </div>
-
     </div>
+    <StixViewerModal
+      v-if="showStixModal"
+      :filename="stixFilename"
+      :stix="stixData"
+      @close="showStixModal = false"
+    />
   </div>
 </template>
 
-
 <script setup>
 import { inject, ref, watch, computed, onMounted } from "vue"
+import StixViewerModal from './stixViewer.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faPlus, faMinus } from '@fortawesome/free-solid-svg-icons'
 
@@ -247,7 +182,6 @@ const uiPhase = ref('idle')
 const animatedStatus = ref('RUNNING')
 const parsedAbilityLines = ref([])
 const parsedAdversaryLine = ref('')
-const parsedOperationLine = ref('')
 const collapsibleBoxOpen = ref(true)
 const ragBoxOpen = ref(true)
 const stageQueue = ref([])
@@ -261,7 +195,6 @@ const selectedRag = ref([])
 let dotCount = 0
 let dotInterval = null
 
-// Break each thought into individual sentences
 function splitSentences(thought) {
   return thought.split(/[.?!]\s+/).map(s => s.trim()).filter(Boolean)
 }
@@ -285,7 +218,7 @@ async function handleSubmit() {
   pollFinalResult.value = ''
   pollTrajectory.value = {}
   runId.value = null
-  responseMessage.value = 'Started creation of the operation.'
+  responseMessage.value = 'Started ability creation process.'
   displayedStage.value = ''
   hasShownInitialMessage = false
   stageQueue.value = []
@@ -300,7 +233,7 @@ async function handleSubmit() {
     const useRag = selectedRag.value.length > 0
 
     // Debug: Log global config state
-    console.log("[MCP Planner] Global config state:", {
+    console.log("[MCP Factory] Global config state:", {
       modelName: globalConfig.modelName,
       temperature: globalConfig.temperature,
       hasApiKey: !!globalConfig.apiKey,
@@ -313,7 +246,7 @@ async function handleSubmit() {
 
     const payload = {
       text: inputText.value,
-      type: useRag ? 'rag_planner' : 'planner',
+      type: useRag ? 'rag_factory' : 'factory',
       config: {
         model: globalConfig.modelName,
         temperature: globalConfig.temperature,
@@ -327,7 +260,7 @@ async function handleSubmit() {
     }
 
     // Debug: Log payload with redacted API key
-    console.log("[MCP Planner] Submitting payload:", {
+    console.log("[MCP Factory] Submitting payload:", {
       ...payload,
       config: {
         ...payload.config,
@@ -337,7 +270,7 @@ async function handleSubmit() {
     const response = await $api.post('/plugin/mcp/execute', payload)
 
     runId.value = response.data.run_id
-
+    
     pollStatusUpdates(runId.value)
     inputText.value = ''
   } catch (err) {
@@ -486,29 +419,6 @@ function pollStatusUpdates(id) {
         })
         .filter(Boolean);
 
-      // Find operation creation entry
-      const opToolEntry = Object.entries(traj).find(
-        ([k, v]) => k.startsWith('tool_name_') && v === 'create_operation'
-      );
-
-      if (opToolEntry) {
-        const opIdx = opToolEntry[0].split('_')[2];
-        let opArgs = traj[`tool_args_${opIdx}`];
-
-        try {
-          if (typeof opArgs === 'string') opArgs = JSON.parse(opArgs);
-        } catch {
-          opArgs = null;
-        }
-
-        if (opArgs?.operation_name) {
-          parsedOperationLine.value = {
-            name: opArgs.operation_name,
-            adversaryName: opArgs.adversary_name || 'unknown'
-          };
-        }
-      }
-
     } catch (e) {
       clearInterval(pollInterval);
       pollInterval = null;
@@ -570,13 +480,6 @@ const adversarySentenceKeys = computed(() =>
   )
 );
 
-const operationSentenceKeys = computed(() =>
-  getMatchingSentenceKeys((s) =>
-    (s.toLowerCase().includes('create') || s.toLowerCase().includes('created')) &&
-    s.toLowerCase().includes('operation')
-  )
-);
-
 function assignInjectLocations() {
   const used = new Set();
   const injects = {};
@@ -598,7 +501,6 @@ function assignInjectLocations() {
 
   place('ability', abilitySentenceKeys.value);
   place('adversary', adversarySentenceKeys.value);
-  place('operation', operationSentenceKeys.value);
 
   return injects;
 }
@@ -607,7 +509,6 @@ const resolvedInjects = computed(assignInjectLocations);
 
 const lastAbilitySentenceKeys = computed(() => (resolvedInjects.value?.ability ?? new Set()));
 const lastAdversarySentenceKeys = computed(() => (resolvedInjects.value?.adversary ?? new Set()));
-const lastOperationSentenceKeys = computed(() => (resolvedInjects.value?.operation ?? new Set()));
 
 watch(responseMessage, (newVal, oldVal) => {
   if (newVal && newVal !== oldVal) {
@@ -628,51 +529,25 @@ const isUploading = ref(false)
 const ragFiles = ref([])
 const uploadMessage = ref('')
 const uploadError = ref('')
-
-function onFileSelected(e) {
-  uploadMessage.value = ''
-  uploadError.value = ''
-  const file = e.target.files?.[0]
-  if (!file) {
-    selectedFile.value = null
-    return
-  }
-  const isJson = file.type === 'application/json' || file.name.toLowerCase().endsWith('.json')
-  if (!isJson) {
-    selectedFile.value = null
-    uploadError.value = 'Please select a .json file.'
-    return
-  }
-  selectedFile.value = file
-}
-
-async function uploadRag() {
-  if (!selectedFile.value) return
-  isUploading.value = true
-  uploadMessage.value = ''
-  uploadError.value = ''
-  try {
-    const fd = new FormData()
-    fd.append('file', selectedFile.value)
-    const res = await $api.post('/plugin/mcp/rag/upload', fd)
-    uploadMessage.value = `Uploaded ${res.data.filename} (${formatBytes(res.data.size)})`
-    selectedFile.value = null
-    await fetchRagFiles()
-  } catch (err) {
-    uploadError.value = err?.response?.data?.error || 'Upload failed.'
-  } finally {
-    isUploading.value = false
-  }
-}
+// STIX viewer modal state
+const showStixModal = ref(false)
+const stixData = ref(null)
+const stixFilename = ref('')
 
 async function fetchRagFiles() {
   try {
-    const res = await $api.get('/plugin/mcp/rag/list')
-    ragFiles.value = res.data.files || []
+    const res = await fetch('/plugin/mcp/stix/list')
+    if (!res.ok) throw new Error('Failed to fetch STIX list')
+
+    const data = await res.json()
+
+    ragFiles.value = data.files || []
+
     const available = new Set(ragFiles.value.map(f => f.filename))
     selectedRag.value = selectedRag.value.filter(name => available.has(name))
+
   } catch (err) {
-    uploadError.value = err?.response?.data?.error || 'Failed to fetch RAG files.'
+    uploadError.value = err.message || 'Failed to fetch RAG files.'
   }
 }
 
@@ -694,8 +569,33 @@ function formatDate(iso) {
   }
 }
 
+// Single stix view modal
+async function viewStix(filename) {
+  const res = await fetch('/plugin/mcp/stix/get_stix', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename })
+  })
+
+  const out = await res.json()
+  if (!res.ok) throw new Error(out?.error || 'Failed to load STIX')
+
+  stixData.value = out.data
+  stixFilename.value = out.filename
+  showStixModal.value = true
+}
+
 onMounted(() => {
   fetchRagFiles()
+
+  // Ensure RAG config fields are initialized so v-model renders
+  if (globalConfig.ragEmbedModel == null) {
+    globalConfig.ragEmbedModel = ''
+  }
+
+  if (globalConfig.ragTopK == null) {
+    globalConfig.ragTopK = 5
+  }
 })
 </script>
 <style scoped>
@@ -703,30 +603,29 @@ onMounted(() => {
   border-left: 4px solid #7a00cc;
   padding: 1rem;
   background-color: #f4f4f4;
-  color: #222; /* darker text for better contrast */
+  color: #222;
   font-style: italic;
 }
 
 .title.is-5 + .title.is-5 {
-  margin-top: 2rem; /* Ensure vertical spacing between Thoughts and Reasoning headings */
+  margin-top: 2rem;
 }
 .reasoning-box p {
-  margin-left: 1rem; /* indent bullet-pointed sentences */
+  margin-left: 1rem;
 }
 .reasoning-box .notification {
-  margin-bottom: .5rem; /* Adjust spacing between items */
+  margin-bottom: .5rem;
 }
 .icon.is-clickable i {
   color: white !important;
   font-size: 1.25rem;
 }
 .thought-line {
-  margin-left: 1.5rem;  /* indent */
-  margin-bottom: 0.5rem;  /* vertical spacing between bullets */
-  line-height: 1.4;  /* slightly more legible */
+  margin-left: 1.5rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
 }
 
-/* Reasoning panel to match palette */
 .reasoning-panel {
   border-left: 4px solid #7a00cc;
   background-color: #f4f4f4;

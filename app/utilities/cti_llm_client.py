@@ -1,9 +1,19 @@
-# utilities/cti_llm_client.py
+"""
+cti_llm_client.py — Centralized, deterministic LLM access layer
+
+Responsibilities:
+- Load effective MCP config (local.yml → default.yml)
+- Provide a single async LLM client
+- Support offline + mock modes
+- Expose deterministic provenance for STIX / CTI artifacts
+"""
 
 import aiohttp
 import yaml
 from pathlib import Path
 from functools import lru_cache
+from plugins.mcp.app.utilities.paths import get_mcp_root
+
 # ------------------------------------------------------
 # Config loader (local, explicit, deterministic)
 # ------------------------------------------------------
@@ -12,12 +22,14 @@ from functools import lru_cache
 def load_config() -> dict:
     """
     Load effective config with precedence:
-    - conf/local.yml if present
-    - else conf/default.yml
+    1. conf/local.yml (if present)
+    2. conf/default.yml
+
+    This function is deterministic and cached.
     """
-    base_dir = Path(__file__).resolve().parents[2]
-    default_path = base_dir / "conf" / "default.yml"
-    local_path = base_dir / "conf" / "local.yml"
+    root_dir = get_mcp_root()
+    default_path = root_dir / "conf" / "default.yml"
+    local_path = root_dir / "conf" / "local.yml"
 
     if local_path.exists():
         with local_path.open("r", encoding="utf-8") as f:
@@ -30,10 +42,43 @@ def load_config() -> dict:
     raise FileNotFoundError("No config found (default.yml or local.yml)")
 
 # ------------------------------------------------------
+# Provenance (Stage 2 / STIX support)
+# ------------------------------------------------------
+
+def get_llm_provenance(profile: str = "llm") -> dict:
+    """
+    Return deterministic LLM provenance metadata.
+
+    This MUST NOT make network calls and MUST be safe in
+    offline / mock modes.
+    """
+    cfg = load_config()
+    llm = cfg.get(profile, {}) or {}
+
+    return {
+        "provider": llm.get("provider"),
+        "model": llm.get("model"),
+        "offline": llm.get("offline", False),
+        "use_mock": llm.get("use_mock", False),
+        "temperature": llm.get("temperature"),
+        "top_p": llm.get("top_p"),
+        "max_tokens": llm.get("max_tokens"),
+    }
+
+# ------------------------------------------------------
 # Central LLM Client
 # ------------------------------------------------------
 
 class LLMClient:
+    """
+    Central async LLM client.
+
+    Guarantees:
+    - No calls when offline or mock enabled
+    - Provider routing by config only
+    - No hard dependency on OpenAI SDKs
+    """
+
     def __init__(self):
         self.cfg = load_config()
 
@@ -42,6 +87,7 @@ class LLMClient:
         if not llm_cfg:
             raise KeyError(f"No LLM profile '{profile}' in config")
 
+        # Deterministic early exit
         if llm_cfg.get("offline") or llm_cfg.get("use_mock"):
             return None
 
@@ -52,17 +98,18 @@ class LLMClient:
         if not model or not api_base:
             raise ValueError("LLM config missing model or api_base")
 
-        # --------------------------------------------------
-        # Provider routing (string-based, no imports)
-        # --------------------------------------------------
-
         provider = llm_cfg.get("provider", "openai_compatible")
 
         if provider == "ollama":
             if not model.startswith("ollama/"):
-                raise ValueError(f"Ollama provider requires model prefix 'ollama/': {model}")
+                raise ValueError(
+                    f"Ollama provider requires model prefix 'ollama/': {model}"
+                )
             return await self._ollama_generate(
-                prompt, model.split("/", 1)[1], api_base, temperature
+                prompt,
+                model.split("/", 1)[1],
+                api_base,
+                temperature,
             )
 
         if provider == "openai_compatible":
@@ -93,15 +140,15 @@ class LLMClient:
             ) as resp:
                 data = await resp.json()
                 return data.get("response")
-            
+
     async def _openai_compatible_generate(
-            self,
-            prompt: str,
-            model: str,
-            api_base: str,
-            temperature: float,
-            llm_cfg: dict,
-        ) -> str | None:
+        self,
+        prompt: str,
+        model: str,
+        api_base: str,
+        temperature: float,
+        llm_cfg: dict,
+    ) -> str | None:
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {llm_cfg.get('api_key') or ''}",
@@ -109,9 +156,7 @@ class LLMClient:
 
         payload = {
             "model": model,
-            "messages": [
-                {"role": "user", "content": prompt}
-            ],
+            "messages": [{"role": "user", "content": prompt}],
             "temperature": temperature,
             "max_tokens": llm_cfg.get("max_tokens", 1024),
         }
@@ -132,13 +177,23 @@ class LLMClient:
                 choices = data.get("choices", [])
                 if not choices:
                     return None
+
                 return choices[0]["message"].get("content")
 
 # ------------------------------------------------------
-# Singleton
+# Singleton helpers
 # ------------------------------------------------------
 
-_llm_client = LLMClient()
+_llm_client = None
+
+def get_llm_client() -> LLMClient:
+    global _llm_client
+    if _llm_client is None:
+        _llm_client = LLMClient()
+    return _llm_client
 
 async def llm_generate(prompt: str, profile: str = "llm") -> str | None:
-    return await _llm_client.generate(prompt, profile)
+    """
+    Convenience wrapper used throughout the CTI pipeline.
+    """
+    return await get_llm_client().generate(prompt, profile)

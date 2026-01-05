@@ -18,9 +18,9 @@ import aiofiles
 import aiofiles.os
 import aiofiles.ospath
 import math
-import spacy
+# import spacy
 
-_nlp = spacy.load("en_core_web_lg")
+# _nlp = spacy.load("en_core_web_lg")
 
 # Limit async concurrency
 SEMAPHORE = asyncio.Semaphore(8)
@@ -170,11 +170,15 @@ async def clean_raw_directory_async(raw_dir: Path, clean_dir: Path, images_dir: 
         for path in raw_dir.rglob("*")
         if path.is_file()
     ]
-
+    print(f"[DEBUG] raw_dir={raw_dir}")
+    print(f"[DEBUG] clean_dir={clean_dir}")
+    print(f"[DEBUG] images_dir={images_dir}")
     results = await asyncio.gather(*tasks)
 
     for line in results:
         print("   ", line)
+    clean_count = len(list(clean_dir.glob("*.txt")))
+    print(f"[DEBUG] clean txt count={clean_count}")
 
     print("[+] Async raw-to-clean complete.")
 
@@ -208,7 +212,14 @@ def _is_linguistically_dominant(text: str) -> bool:
     Rejects:
     - Code-only or minified blobs
     """
-    doc = _nlp(text)
+    # doc = _nlp(text)
+    import spacy
+
+    # Lazy-load inside function to avoid fork corruption
+    if not hasattr(_is_linguistically_dominant, "_nlp"):
+        _is_linguistically_dominant._nlp = spacy.load("en_core_web_lg")
+
+    doc = _is_linguistically_dominant._nlp(text)
 
     word_tokens = [t for t in doc if t.is_alpha]
     verb_tokens = [t for t in doc if t.pos_ == "VERB"]

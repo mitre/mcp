@@ -327,12 +327,29 @@ def make_relationship(rel_type: str, src_id: str, dst_id: str) -> dict:
 # Bundle
 # ----------------------------------------------------------------------
 
-def make_bundle(objects: list) -> dict:
+def make_bundle(
+        objects: list,
+        *,
+        model: str | None = None,
+        provider: str | None = None,
+        config: dict | None = None,
+    ) -> dict:
     """
     Pure JSON bundle — no stix2 library — fully serializable.
     """
-    return {
+    bundle = {
         "type": "bundle",
         "id": new_stix_id("bundle"),
         "objects": objects,
     }
+
+    # ---- CTI provenance (STIX-safe extensions) ----
+    if model:
+        bundle["x_cti_model"] = model
+    if provider:
+        bundle["x_cti_provider"] = provider
+    if config:
+        bundle["x_cti_config"] = config
+
+
+    return bundle

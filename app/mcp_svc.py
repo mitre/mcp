@@ -65,10 +65,10 @@ class MCPService(BaseService):
         return {"run_id": run_id}
 
     def _build_rag_service_from_files(self, filenames, api_key: str, embed_model: str, topk: int):
-        base_dir = Path(__file__).resolve().parent.parent / "data"
+        data_dir = self.base_dir/"data"
         bundles = []
         for name in filenames or []:
-            path = base_dir / name
+            path = data_dir / name
             if not path.exists():
                 raise FileNotFoundError(f"RAG file not found: {path}")
             with open(path, "r", encoding="utf-8") as f:

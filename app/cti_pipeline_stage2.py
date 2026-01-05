@@ -4,7 +4,7 @@ Phase 2: IR → STIX 2.1 (Deterministic)
 No LLM calls occur here.
 
 Input:
-    data/outputs_ir/complete_*.json  (primary)
+    data/outputs_ir/complete/*.json  (primary)
     data/outputs_ir/*.ir-only.json   (fallback testing)
 
 Output:
@@ -31,9 +31,9 @@ from nltk.corpus import wordnet as wn
 
 
 # ----------------- Imports from utilities -----------------
-from utilities.cti_linguistics import normalize_behavior_text
+from plugins.mcp.app.utilities.cti_linguistics import normalize_behavior_text
 
-from utilities.cti_stix_builders import (
+from plugins.mcp.app.utilities.cti_stix_builders import (
     make_bundle,
     make_malware,
     make_tool,
@@ -44,23 +44,27 @@ from utilities.cti_stix_builders import (
     make_relationship,
 )
 
-from utilities.cti_taxonomy_loader import (
+from plugins.mcp.app.utilities.cti_taxonomy_loader import (
     load_mitre_taxonomy,
     lookup_name,
     lookup_attack_id
 )
 
-from utilities.cti_stix_validation import validate_bundle
-from utilities.cti_stix_report_writer import render_stix_report
-from utilities.cti_defend_enricher import enrich_stix_bundle_with_defend
-from utilities.cti_mitre_extract import hashes_to_stix_observed_data
+from plugins.mcp.app.utilities.cti_stix_validation import validate_bundle
+from plugins.mcp.app.utilities.cti_stix_report_writer import render_stix_report
+from plugins.mcp.app.utilities.cti_defend_enricher import enrich_stix_bundle_with_defend
+from plugins.mcp.app.utilities.cti_mitre_extract import hashes_to_stix_observed_data
+from plugins.mcp.app.utilities.cti_llm_client import get_llm_provenance
+
 
 # -----------------------------------------------------------
 # Directories
 # -----------------------------------------------------------
 
-HERE = Path(__file__).resolve().parent
-DEFAULT_BASE_DIR = HERE.parent / "data"
+from plugins.mcp.app.utilities.paths import get_mcp_data_dir, get_mcp_root
+
+base_dir = get_mcp_data_dir()
+root_dir = get_mcp_root()
 
 OUTPUTS_IR_DIR   = "outputs_ir/complete"
 OUTPUTS_STIX_DIR = "outputs_stix"
@@ -227,22 +231,22 @@ def convert_ir_to_stix(ir: dict, debug: dict, taxonomy: dict) -> dict:
 
         norm_text = normalize_behavior_text(behavior_text)
 
-        obj = make_observed_data(norm_text)
-        if not obj:
-            continue
+        # obj = make_observed_data(norm_text)
+        # if not obj:
+        #     continue
 
-        if isinstance(obs, dict):
-            if "confidence" in obs:
-                obj["x_cti_confidence"] = obs["confidence"]
-            if "evidence" in obs:
-                obj["x_cti_evidence"] = obs["evidence"]
-            # Preserve execution-ready metadata for MCP RAG / AE / IaC
-            if "x_cti_configuration" in obs:
-                obj["x_cti_configuration"] = obs["x_cti_configuration"]
-            if "x_cti_sequence" in obs:
-                obj["x_cti_sequence"] = obs["x_cti_sequence"]
+        # if isinstance(obs, dict):
+        #     if "confidence" in obs:
+        #         obj["x_cti_confidence"] = obs["confidence"]
+        #     if "evidence" in obs:
+        #         obj["x_cti_evidence"] = obs["evidence"]
+        #     # Preserve execution-ready metadata for MCP RAG / AE / IaC
+        #     if "x_cti_configuration" in obs:
+        #         obj["x_cti_configuration"] = obs["x_cti_configuration"]
+        #     if "x_cti_sequence" in obs:
+        #         obj["x_cti_sequence"] = obs["x_cti_sequence"]
 
-        stix_objects.append(obj)
+        # stix_objects.append(obj)
 
     # -------------------------------------------------------
     # Build relationships
@@ -365,7 +369,19 @@ def convert_ir_to_stix(ir: dict, debug: dict, taxonomy: dict) -> dict:
     # -------------------------------------------------------
     # Final STIX Bundle
     # -------------------------------------------------------
-    bundle = make_bundle(stix_objects)
+    provenance = ir.get("provenance")
+    if not provenance:
+        raise ValueError("Missing provenance in IR (rerun Stage-1 to regenerate IR with provenance)")
+
+    model = provenance.get("model")
+    provider = provenance.get("provider")
+
+    bundle = make_bundle(
+        stix_objects,
+        model=model,
+        provider=provider,
+        config=provenance,
+    )
     debug["bundle_id"] = bundle["id"]
 
     return bundle
@@ -473,8 +489,12 @@ def run_phase2(base_dir: Path):
         # -------------------------------------------------------
         # Write CAD Graph Preview for Visualizer Testing
         # -------------------------------------------------------
-        defense_root = HERE / "utilities" / "D3fend_CAD"
-        enriched_bundle, ontology_info = enrich_stix_bundle_with_defend(bundle, defense_root)
+        defense_root = root_dir / "plugins" / "mcp" / "utilities" / "D3fend_CAD"
+        try:
+            enriched_bundle, ontology_info = enrich_stix_bundle_with_defend(bundle, defense_root)
+        except FileNotFoundError as e:
+            log(f"[D3FEND] Skipping enrichment (missing assets): {e}")
+            ontology_info = {}
         log("        → performed D3FEND enrichment")
         log("ontology_info keys:")
         log(", ".join(ontology_info.keys()))
@@ -492,17 +512,22 @@ def run_phase2(base_dir: Path):
         # -------------------------------------------------------
         log("\n===== D3FEND ENRICHMENT DEBUG =====")
 
-        log(f"[Ontology] Loaded {len(ontology_info['ontology_modules'])} ontology_modules:")
-        for m in ontology_info["ontology_modules"]:
-            log(f"   - {m}")
+        if ontology_info:
+            modules = ontology_info.get("ontology_modules", [])
+            log(f"[Ontology] Loaded {len(modules)} ontology_modules:")
+            for m in modules:
+                log(f"   - {m}")
 
-        log(f"\n[CAD Schema] {ontology_info['cad_schema']}")
+            log(f"\n[CAD Schema] {ontology_info.get('cad_schema')}")
 
-        log("\n[Dynamic D3FEND Class Mappings]:")
-        for k, v in ontology_info["mappings_used"].items():
-            log(f"   {k:20s} → {v}")
+            log("\n[Dynamic D3FEND Class Mappings]:")
+            for k, v in ontology_info.get("mappings_used", {}).items():
+                log(f"   {k:20s} → {v}")
+        else:
+            log("[D3FEND] Enrichment skipped — ontology assets not available")
 
         log("===== END D3FEND ENRICHMENT DEBUG =====\n")
+
 
 # -----------------------------------------------------------
 # STIX → CAD Enrichment Only Runner
@@ -522,7 +547,7 @@ def run_stix_to_cad_only(base_dir: Path):
         log("[!] No .stix.json files found in outputs_stix/.")
         return
 
-    defense_root = HERE / "utilities" / "D3fend_CAD"
+    defense_root = root_dir / "utilities" / "D3fend_CAD"
 
     for stix_file in stix_files:
         log(f"    [*] Enriching {stix_file.name}")

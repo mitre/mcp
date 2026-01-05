@@ -29,6 +29,7 @@ import json
 import asyncio
 import time
 import os
+import shutil
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -36,33 +37,38 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 # Core Utilities
 # =============================================================
 
-from utilities.cti_raw_cleaner import clean_raw_directory
-from utilities.cti_parsing import extract_ir, render_ir_summary
-from utilities.cti_mitre_extract import extract_mitre_techniques, convert_sets
-from utilities.cti_taxonomy_loader import build_normalized_attack_patterns
-from utilities.cti_entity_validator import validate_entities, repair_entities
+from plugins.mcp.app.utilities.cti_raw_cleaner import clean_raw_directory
+from plugins.mcp.app.utilities.cti_parsing import extract_ir, render_ir_summary
+from plugins.mcp.app.utilities.cti_mitre_extract import extract_mitre_techniques, convert_sets
+from plugins.mcp.app.utilities.cti_taxonomy_loader import build_normalized_attack_patterns
+from plugins.mcp.app.utilities.cti_entity_validator import validate_entities, repair_entities
 
-from utilities.cti_relationships import (
+from plugins.mcp.app.utilities.cti_relationships import (
     normalize_and_qualify_behaviors,
     extract_all_relationships,
     REL_REJECTIONS,
 )
 
-from utilities.cti_linguistics import extract_dynamic_techniques, extract_commands, extract_hashes
+from plugins.mcp.app.utilities.cti_linguistics import extract_dynamic_techniques, extract_commands, extract_hashes
+from plugins.mcp.app.utilities.cti_llm_client import get_llm_provenance
+
 
 # =============================================================
 # NLP Enhancement Layers
 # =============================================================
 
-from utilities.nlp.cti_nlp_enhancements import clean_ir_nlp_layer1
-from utilities.nlp.cti_semantic_enrichment import clean_ir_nlp_layer2
-from utilities.nlp.cti_behavior_expansion import recover_nominalized_behaviors
+from plugins.mcp.app.utilities.nlp.cti_nlp_enhancements import clean_ir_nlp_layer1
+from plugins.mcp.app.utilities.nlp.cti_semantic_enrichment import clean_ir_nlp_layer2
+from plugins.mcp.app.utilities.nlp.cti_behavior_expansion import recover_nominalized_behaviors
 
 # =============================================================
 # Directory Constants
 # =============================================================
 
-RAW_DIR_NAME    = "raw"
+RAW_ROOT_DIR = "raw"
+RAW_UPLOADS_DIR = "uploads"
+RAW_PROCESSED_DIR = "processed"
+
 CLEAN_DIR_NAME  = "clean"
 OUTPUTS_IR_DIR  = "outputs_ir"
 IMAGES_DIR_NAME = "images"
@@ -78,15 +84,18 @@ def ensure_dirs(base_dir: Path):
     Returns:
         (raw_dir, clean_dir, outputs_dir, images_dir)
     """
-    raw_dir   = base_dir / RAW_DIR_NAME
+    raw_root      = base_dir / RAW_ROOT_DIR
+    raw_uploads   = raw_root / RAW_UPLOADS_DIR
+    raw_processed = raw_root / RAW_PROCESSED_DIR
+
     clean_dir = base_dir / CLEAN_DIR_NAME
     outputs   = base_dir / OUTPUTS_IR_DIR
     images    = base_dir / IMAGES_DIR_NAME
 
-    for d in (raw_dir, clean_dir, outputs, images):
+    for d in (raw_uploads, raw_processed, clean_dir, outputs, images):
         d.mkdir(parents=True, exist_ok=True)
 
-    return raw_dir, clean_dir, outputs, images
+    return raw_uploads, raw_processed, clean_dir, outputs, images
 
 # =============================================================
 # Stage 1.1 — Raw → Clean
@@ -103,8 +112,15 @@ def step_raw_to_clean(base_dir: Path):
 
     No NLP occurs here.
     """
-    raw_dir, clean_dir, _, images_dir = ensure_dirs(base_dir)
-    clean_raw_directory(base_dir, raw_dir, clean_dir, images_dir)
+    raw_uploads, _, clean_dir, _, images_dir = ensure_dirs(base_dir)
+    clean_raw_directory(base_dir, raw_uploads, clean_dir, images_dir)
+
+
+def move_raw_to_processed(raw_path: Path, processed_dir: Path):
+    target = processed_dir / raw_path.name
+    if target.exists():
+        return
+    raw_path.rename(target)
 
 # =============================================================
 # Stage 1.2 — Clean → IR (PARALLEL)
@@ -120,8 +136,9 @@ def step_parse_to_ir(base_dir: Path, stop_after: str | None = None):
         • No shared state
     """
     start_time = time.perf_counter()
+    _, _, clean_dir, outputs, _ = ensure_dirs(base_dir)
 
-    _, clean_dir, outputs, _ = ensure_dirs(base_dir)
+
 
     ir_dir    = outputs / "debug_ir"
     final_dir = outputs / "complete"
@@ -133,8 +150,10 @@ def step_parse_to_ir(base_dir: Path, stop_after: str | None = None):
     if not files:
         print("[!] No clean files found.")
         return
-
-    workers = max(1, (os.cpu_count() or 4) - 1)
+    if os.cpu_count() > 2:
+        workers = max(1, (os.cpu_count() or 4) - 2)
+    else:
+        workers = 1
     print(f"[+] Stage1 starting: {len(files)} files | {workers} workers")
 
     # --------------------------------------------------
@@ -151,14 +170,24 @@ def step_parse_to_ir(base_dir: Path, stop_after: str | None = None):
             ): path
             for path in files
         }
-
+        raw_uploads, raw_processed, _, _, _ = ensure_dirs(base_dir)
         for fut in as_completed(futures):
-            path = futures[fut]
+            clean_path = futures[fut]
+            raw_path = None
+            for p in raw_uploads.iterdir():
+                if p.is_file() and p.stem == clean_path.stem:
+                    raw_path = p
+                    break
             try:
                 fut.result()
-                print(f"[OK] {path.name}")
+                print(f"[OK] {clean_path.name}")
+
+                # MOVE RAW INPUT ONLY AFTER SUCCESS
+                if raw_path and raw_path.exists():
+                    move_raw_to_processed(raw_path, raw_processed)
+
             except Exception as e:
-                print(f"[ERR] {path.name}: {e}")
+                print(f"[ERR] {clean_path.name}: {e}")
 
     elapsed = time.perf_counter() - start_time
     print(f"\n[STAGE1] completed in {elapsed:.2f}s")
@@ -205,7 +234,12 @@ async def process_file(
 
     recovered = recover_nominalized_behaviors(text)
     if recovered:
-        ir["behaviors"].extend(recovered)
+        seen = {(b.get("verb"), b.get("object")) for b in ir["behaviors"]}
+        for b in recovered:
+            key = (b.get("verb"), b.get("object"))
+            if key not in seen:
+                ir["behaviors"].append(b)
+                seen.add(key)
 
     if len(ir["behaviors"]) < pre_beh:
         raise RuntimeError("NLP Layer 1 removed behaviors (forbidden)")
@@ -295,7 +329,7 @@ async def process_file(
     # 7. Output
     # ---------------------------------------------------------
     final = convert_sets(ir)
-
+    final["provenance"] = ir.get("provenance")
     (final_dir / f"{path.stem}.json").write_text(
         json.dumps(final, indent=2),
         encoding="utf-8",
@@ -322,9 +356,7 @@ def process_one_file_sync(path, ir_dir, final_dir, stop_after):
 
     # Load spaCy per worker (MANDATORY)
     import spacy
-    try:
-        spacy.load("en_core_web_lg")
-    except OSError:
+    if not spacy.util.is_package("en_core_web_lg"):
         pass
 
     asyncio.run(process_file(path, ir_dir, final_dir, stop_after))
@@ -344,12 +376,21 @@ async def load_or_extract_ir(path: Path, text: str, ir_dir: Path) -> dict:
     ir_path = ir_dir / f"{path.stem}.ir-only.json"
 
     if ir_path.exists():
-        print(f"[IR] Resumed {path.stem}")
-        return json.loads(ir_path.read_text())
+        with ir_path.open("r", encoding="utf-8") as f:
+            cached_ir = json.load(f)
+
+        cached_prov = cached_ir.get("provenance")
+        current_prov = get_llm_provenance(profile="cti")
+
+        if cached_prov == current_prov:
+            print(f"[SKIP] IR up-to-date: {ir_path.name}")
+            return cached_ir
+
+        print(f"[REGEN] IR provenance changed: {ir_path.name}")
 
     ir = await extract_ir(text)
     ir = convert_sets(ir)
-
+    ir["provenance"] = get_llm_provenance(profile="cti")
     ir_path.write_text(json.dumps(ir, indent=2), encoding="utf-8")
     (ir_dir / f"{path.stem}.ir-only.txt").write_text(
         render_ir_summary(ir),
@@ -378,3 +419,35 @@ def rag_safe_relationships(rels: list[dict], min_conf: float = 0.55) -> list[dic
         if r.get("confidence", 0.0) >= min_conf
         and r.get("source_context") in {"behavior", "sentence"}
     ]
+
+def prepare_raw_uploads(base_dir: Path, selected: list[dict]):
+    uploads = base_dir / "raw" / "uploads"
+    inbox = base_dir / "raw" / "inbox"
+    processed = base_dir / "raw" / "processed"
+    SUPPORTED_EXTS = {".html", ".htm", ".pdf", ".txt", ".md"}
+
+
+    uploads.mkdir(parents=True, exist_ok=True)
+
+    for item in selected:
+        name = item["name"]
+        location = item["location"]
+
+        src_root = inbox if location == "inbox" else processed
+        src = src_root / name
+
+        if not src.exists():
+            continue
+
+        if src.is_file():
+            _copy_if_needed(src, uploads / src.name)
+
+        elif src.is_dir():
+            for f in src.rglob("*"):
+                if f.suffix.lower() in SUPPORTED_EXTS:
+                    _copy_if_needed(f, uploads / f.name)
+
+def _copy_if_needed(src: Path, dst: Path):
+    if dst.exists():
+        return
+    shutil.copy2(src, dst)

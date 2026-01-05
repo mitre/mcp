@@ -15,8 +15,8 @@ import spacy, re
 from functools import lru_cache
 from nltk.corpus import wordnet as wn
 
-from utilities.cti_mitre_extract import cosine_sim
-from utilities.cti_linguistics import normalize_behavior_text, canonicalize_relationship_endpoints
+from plugins.mcp.app.utilities.cti_mitre_extract import cosine_sim
+from plugins.mcp.app.utilities.cti_linguistics import normalize_behavior_text, canonicalize_relationship_endpoints
 
 # ============================================================
 # NLP MODEL (GLOBAL, SINGLE LOAD)

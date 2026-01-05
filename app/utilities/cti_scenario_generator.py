@@ -19,7 +19,7 @@ import json
 import asyncio
 from pathlib import Path
 
-from utilities.cti_llm_client import llm_generate
+from plugins.mcp.app.utilities.cti_llm_client import llm_generate
 
 
 # --------------------------------------------------------------------

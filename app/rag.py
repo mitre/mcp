@@ -1,11 +1,14 @@
 import dspy
 import json
 from typing import List, Dict, Optional
+from aiohttp import web
 
 import logging
 import os
 import glob
 from app.utility.base_world import BaseWorld
+from plugins.mcp.app.utilities.paths import get_mcp_data_dir
+
 
 class RAGService:
     """RAG service for CTI (Cyber Threat Intelligence) data retrieval using STIX bundles."""
@@ -18,7 +21,7 @@ class RAGService:
         self.search = None
         self.api_key = api_key
         self.log = log or logging.getLogger("plugins.mcp")
-        
+        self.base_dir = get_mcp_data_dir()
         self.log.info(f"Loading STIX bundle from: {stix_bundle_path}")
         
         # Initialize with STIX bundle if provided (single file)
@@ -113,15 +116,15 @@ class RAGService:
         self.log.debug(f" Retrieved top {len(topK)} results")
         self.log.info(f"topK: {topK}")
         names = []
-        if len(topK) > 5:
+        if len(topK.passages) > 5:
             names = [f"{x.split(' | ')[0]}" for x in topK.passages[5:30]]
-            topK = topK[:5]
+            topK = topK.passages[:5]
             self.log.info(f"names: {names}")
         else:
             names = [f"{x.split(' | ')[0]}" for x in topK.passages]
             topK = topK
             self.log.info(f"names: {names}")
-        return topK.passages
+        return topK
     
     def search_cti_data_by_title(self, name: str) -> str:
         """Returns the full CTI data for a given name."""
@@ -182,16 +185,16 @@ class RAGService:
                 return web.json_response({"error": "Only .json files are allowed"}, status=400)
 
             # IMPORTANT: this is the directory rag.py already loads from
-            base_dir = (Path(__file__).resolve().parent.parent / "plugins" / "mcp" / "data" / "stix_cti")
-            base_dir.mkdir(parents=True, exist_ok=True)
+            stix_dir = self.base_dir / "stix_cti"
+            stix_dir.mkdir(parents=True, exist_ok=True)
 
-            target_path = base_dir / filename
+            target_path = stix_dir / filename
             if target_path.exists():
                 ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
                 stem = Path(filename).stem
                 suffix = Path(filename).suffix
                 filename = f"{stem}_{ts}{suffix}"
-                target_path = base_dir / filename
+                target_path = stix_dir / filename
 
             file_bytes = await part.read()
             try:
@@ -216,10 +219,10 @@ class RAGService:
 
     async def list_stix_cti(self, request):
         try:
-            base_dir = (Path(__file__).resolve().parent.parent / "plugins" / "mcp" / "data" / "stix_cti")
+            stix_dir = self.base_dir / "stix_cti"
             files = []
-            if base_dir.exists():
-                for p in base_dir.glob("*.json"):
+            if stix_dir.exists():
+                for p in stix_dir.glob("*.json"):
                     try:
                         stat = p.stat()
                         files.append({

@@ -19,6 +19,7 @@
           </p>
 
           <input
+            ref="ctiFileInput"
             type="file"
             class="input"
             accept=".txt,.md,.html,.pdf" 
@@ -31,7 +32,7 @@
               :disabled="!ctiFile"
               @click="uploadCti"
             >
-              Upload CTI & Run Pipeline
+              Upload CTI
             </button>
           </div>
 
@@ -158,7 +159,7 @@
             >
               Save
             </button>
-        </div>
+          </div>
         </div>
       </div>
     </div>
@@ -170,6 +171,7 @@
           <tr>
             <th></th>
             <th>File</th>
+            <th>Status</th>
             <th class="has-text-right">Size</th>
           </tr>
         </thead>
@@ -183,11 +185,8 @@
               <input
                 type="checkbox"
                 @click.stop
-                :checked="
-                  row._kind === 'parent'
-                    ? selectedRaw.has(row.name)
-                    : selectedRaw.has(itemPath(row._parent, row.name))
-                "
+                @change="toggleRawSelection(row)"
+                :checked="isRowSelected(row)"
               />
             </td>
 
@@ -204,7 +203,15 @@
                 📄 {{ row.name }}
               </span>
             </td>
-
+            <td>
+              <span
+                v-if="row.type === 'file'"
+                class="tag"
+                :class="row.status === 'processed' ? 'is-success' : 'is-warning'"
+              >
+                {{ row.status || 'pending'}}
+              </span>
+            </td>
             <td class="has-text-right">
               {{ row.size ? (row.size / 1024).toFixed(1) + ' KB' : '—' }}
             </td>
@@ -236,6 +243,7 @@
         <thead>
           <tr>
             <th>File</th>
+            <th>Model</th>
             <th class="has-text-right">Size</th>
             <th style="width: 70px;">View</th>
           </tr>
@@ -255,18 +263,25 @@
               />
               📦 {{ f.name }}
             </td>
-
+            <td>
+              <span class="has-text-grey" v-if="!f.model">
+                {{ (f.model) }}
+              </span>
+              <span v-else>{{ f.provider ? `${f.provider} / ${f.model}` : f.model }}</span>
+            </td>
             <td class="has-text-right">
               {{ (f.size / 1024).toFixed(1) }} KB
             </td>
             <!-- VIEW BUTTON -->
             <td>
+              <div class="buttons is-centered are-small">
               <button
-                class="button is-small is-light"
+                class="button is-primary is-small is-light"
                 @click.stop="viewStix(f.name)"
               >
                 View
               </button>
+              </div>
             </td>
           </tr>
 
@@ -277,13 +292,23 @@
           </tr>
         </tbody>
       </table>
-      <button
-        class="button is-danger is-small"
-        :disabled="!selectedStix.size"
-        @click="deleteStix"
-      >
-      Delete Selected STIX
-    </button>
+      <div class="buttons">
+        <button
+          class="button is-primary is-small"
+          :disabled="!selectedStix.size"
+          @click="downloadStix(Array.from(selectedStix))"
+        >
+          Download Selected
+        </button>
+
+        <button
+          class="button is-danger is-small"
+          :disabled="!selectedStix.size"
+          @click="deleteStix"
+        >
+          Delete Selected STIX
+        </button>
+      </div>
 
     </div>
       <StixViewerModal
@@ -305,6 +330,7 @@ import StixViewerModal from './stixViewer.vue'
  * --------------------------------- */
 const emit = defineEmits(['back'])
 const useOverride = ref(false)
+const ctiFileInput = ref(null)
 
 const ctiFile = ref(null)
 const ctiStatus = ref('')
@@ -347,26 +373,27 @@ const expandedDirs = ref({})
 const visibleRows = computed(() => {
   const rows = []
 
-  for (const f of rawFiles.value) {
+  for (const item of rawFiles.value) {
+    // parent row
     rows.push({
-      ...f,
+      ...item,
       _kind: 'parent',
-      _rowKey: `dir:${f.name}`
+      _rowKey: item.name
     })
 
-    if (f.type === 'dir' && expandedDirs.value[f.name]) {
-      console.log('[ADDING CHILDREN FOR]', f.name, f.children?.length)
-      for (const child of f.children ?? []) {
+    // child rows (only if expanded and children exist)
+    if (item.type === 'dir' && expandedDirs.value[item.name] && Array.isArray(item.children)) {
+      for (const child of item.children) {
         rows.push({
           ...child,
           _kind: 'child',
-          _parent: f.name,
-          _rowKey: `file:${f.name}/${child.name}`
+          _parent: item.name,
+          _rowKey: `${item.name}/${child.name}`
         })
       }
     }
   }
-  console.log('[visibleRows COMPUTED]', rows.length)
+
   return rows
 })
 
@@ -428,6 +455,18 @@ function onCtiFileSelected(e) {
   ctiFile.value = e.target.files[0]
 }
 
+function isRowSelected(row) {
+  if (row._kind === 'parent') {
+    return selectedRaw.has(row.name)
+  }
+  return selectedRaw.has(itemPath(row._parent, row.name))
+}
+
+function toggleRawSelection(row) {
+  selectedRaw.has(row.name)
+    ? selectedRaw.delete(row.name)
+    : selectedRaw.add(row.name)
+}
 /* ---------------------------------
  * Config loading (CTI → LLM fallback)
  * --------------------------------- */
@@ -514,7 +553,7 @@ async function uploadCti() {
     form.append('config', JSON.stringify(overrideConfig))
   }
 
-  ctiStatus.value = 'Uploading and processing CTI…'
+  ctiStatus.value = 'Uploading CTI…'
 
   const res = await fetch('/plugin/mcp/cti/upload', {
     method: 'POST',
@@ -524,19 +563,27 @@ async function uploadCti() {
   const data = await res.json()
   if (!res.ok) throw new Error(data.error)
 
-  ctiStatus.value = 'Raw CTI ingestion started successfully.'
+  ctiStatus.value = 'Raw CTI ingestion successfull.'
+  ctiFile.value = null
+  if (ctiFileInput.value) {
+    ctiFileInput.value.value = ''
+  }
   loadRawFiles()
 }
 
 async function loadStixFiles() {
   const res = await fetch('/plugin/mcp/stix/list')
   if (!res.ok) return
+
   const data = await res.json()
+
   stixFiles.value = (data.files || [])
     .filter(f => f.filename.endsWith('.json'))
     .map(f => ({
       name: f.filename,
-      size: f.size
+      size: f.size,
+      model: f.model || null,
+      provider: f.provider || null
     }))
     .sort((a, b) => a.name.localeCompare(b.name))
 }
@@ -554,6 +601,37 @@ async function deleteStix() {
   loadStixFiles()
 }
 
+async function downloadStix(target) {
+  const files = Array.isArray(target) ? target : [target]
+  if (!files.length) return
+
+  for (const filename of files) {
+    const res = await fetch('/plugin/mcp/stix/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename })
+    })
+
+    if (!res.ok) {
+      const err = await res.json()
+      console.error('[STIX DOWNLOAD FAILED]', filename, err)
+      continue
+    }
+
+    const blob = await res.blob()
+    const url = window.URL.createObjectURL(blob)
+
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  }
+}
+
 async function runPipelineForSelected() {
   if (!selectedRaw.size) return
 
@@ -562,11 +640,27 @@ async function runPipelineForSelected() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       files: Array.from(selectedRaw),
+      step: 'all',
       config: useOverride.value ? overrideConfig : null
     })
   })
 
   ctiStatus.value = 'CTI pipeline started for selected files.'
+  selectedRaw.clear()
+
+
+  // refresh raw immediately
+  loadRawFiles()
+
+  // poll STIX until new files appear (max ~60s)
+  const start = Date.now()
+  const poll = setInterval(async () => {
+    await loadStixFiles()
+
+    if (stixFiles.value.length > 0 || Date.now() - start > 60000) {
+      clearInterval(poll)
+    }
+  }, 2000)
 }
 
 // Single stix view modal
@@ -584,7 +678,6 @@ async function viewStix(filename) {
   stixFilename.value = out.filename
   showStixModal.value = true
 }
-
 
 /* ---------------------------------
  * Lifecycle

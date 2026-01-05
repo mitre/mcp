@@ -5,11 +5,13 @@ import os
 import json
 import yaml
 import shutil
+import asyncio
 from pathlib import Path
 from datetime import datetime
 import subprocess
 from plugins.mcp.app.utilities.cti_llm_client import load_config
-
+from plugins.mcp.app.cti_ingest_svc import CTIIngestService
+from plugins.mcp.app.utilities.paths import get_mcp_data_dir, get_mcp_root
 class McpAPI:
 
     def __init__(self, services):
@@ -17,7 +19,9 @@ class McpAPI:
         self.mcp_svc = services.get("mcp_svc")
         self.log = logging.getLogger("plugins.mcp")
         self.log.info("[MCP] Initialized McpAPI")
-        self.base_dir = (Path(__file__).resolve().parents[1])
+        self.base_dir = get_mcp_data_dir()
+        self.root_dir = get_mcp_root()
+
 
     async def execute(self, request):
         self.log.info("[MCP] Executing request")
@@ -86,16 +90,15 @@ class McpAPI:
             if not filename.lower().endswith(".json"):
                 return web.json_response({"error": "Only .json files are allowed"}, status=400)
 
-            base_dir = (Path(__file__).resolve().parent.parent / "data")
-            base_dir.mkdir(parents=True, exist_ok=True)
+            self.base_dir.mkdir(parents=True, exist_ok=True)
 
-            target_path = base_dir / filename
+            rag_dir = self.base_dir / "stix_cti"
+            rag_dir.mkdir(parents=True, exist_ok=True)
+
+            target_path = rag_dir / filename
             if target_path.exists():
                 ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-                stem = Path(filename).stem
-                suffix = Path(filename).suffix
-                filename = f"{stem}_{ts}{suffix}"
-                target_path = base_dir / filename
+                target_path = rag_dir / f"{target_path.stem}_{ts}.json"
 
             file_bytes = await part.read()
             try:
@@ -116,26 +119,6 @@ class McpAPI:
             })
         except Exception as e:
             self.log.error(f"[MCP] Error uploading RAG file: {e}")
-            return web.json_response({"error": str(e)}, status=500)
-
-    async def list_rag(self, request):
-        try:
-            base_dir = (Path(__file__).resolve().parent.parent / "data")
-            files = []
-            if base_dir.exists():
-                for p in base_dir.glob("*.json"):
-                    try:
-                        stat = p.stat()
-                        files.append({
-                            "filename": p.name,
-                            "size": stat.st_size,
-                            "modified": datetime.utcfromtimestamp(stat.st_mtime).isoformat() + "Z"
-                        })
-                    except Exception:
-                        continue
-            return web.json_response({"files": sorted(files, key=lambda x: x["filename"].lower())})
-        except Exception as e:
-            self.log.error(f"[MCP] Error listing RAG files: {e}")
             return web.json_response({"error": str(e)}, status=500)
 
     async def list_runs(self, request):
@@ -234,6 +217,59 @@ class McpAPI:
             return web.json_response({"error": str(e)}, status=500)
 
     # CTI vue
+    async def cti_run(self, request):
+        try:
+            data = await request.json()
+            files = data.get("files")
+            step = data.get("step", "all")
+
+            if not files or not isinstance(files, list):
+                return web.json_response(
+                    {"error": "Missing files list"},
+                    status=400
+                )
+
+            uploads = self.base_dir / "raw" / "uploads"
+            processed = self.base_dir / "raw" / "processed"
+
+            uploads.mkdir(parents=True, exist_ok=True)
+            processed.mkdir(parents=True, exist_ok=True)
+
+            # 1️⃣ Rehydrate selected items (for re-runs)
+            svc = CTIIngestService()
+
+            uploads_dir = self.base_dir / "raw" / "uploads"
+            processed_dir = self.base_dir / "raw" / "processed"
+
+            # Only rehydrate files that are NOT already pending
+            to_rehydrate = []
+
+            for name in files:
+                if not (uploads_dir / name).exists() and (processed_dir / name).exists():
+                    to_rehydrate.append(name)
+
+            if to_rehydrate:
+                svc.prepare_uploads(self.base_dir, to_rehydrate)
+
+            # 2️⃣ Run pipeline (NON-BLOCKING)
+            loop = asyncio.get_running_loop()
+            loop.run_in_executor(
+                None,
+                svc.run_stage,
+                self.base_dir,
+                step
+            )
+
+            return web.json_response({
+                "status": "started",
+                "files": files,
+                "step": step
+            })
+
+        except Exception as e:
+            self.log.error(f"[MCP] CTI run failed: {e}")
+            return web.json_response({"error": str(e)}, status=500)
+
     async def upload_stix_cti(self, request):
         try:
             reader = await request.multipart()
@@ -247,16 +283,14 @@ class McpAPI:
             if not filename.lower().endswith(".json"):
                 return web.json_response({"error": "Only .json files are allowed"}, status=400)
 
-            base_dir = (
-                Path(__file__).resolve().parents[2]
-                / "plugins" / "mcp" / "data" / "stix_cti"
-            )
-            base_dir.mkdir(parents=True, exist_ok=True)
+            self.base_dir.mkdir(parents=True, exist_ok=True)
 
-            target_path = base_dir / filename
+            rag_dir = self.base_dir / "stix_cti"
+            rag_dir.mkdir(parents=True, exist_ok=True)
+            target_path = rag_dir / filename
             if target_path.exists():
                 ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-                target_path = base_dir / f"{target_path.stem}_{ts}.json"
+                target_path = rag_dir / f"{target_path.stem}_{ts}.json"
 
             data = await part.read()
             json.loads(data.decode("utf-8"))  # validate JSON
@@ -275,26 +309,48 @@ class McpAPI:
             return web.json_response({"error": str(e)}, status=500)
 
     async def list_stix_cti(self, request):
-        stix_dir = self.base_dir /( Path(__file__).resolve().parents[1]
-            / "data" / "outputs_stix")
-        files = []
-        if stix_dir.exists():
-            for p in stix_dir.glob("*.json"):
-                stat = p.stat()
-                files.append({
-                    "filename": p.name,
-                    "size": stat.st_size,
-                    "modified": datetime.utcfromtimestamp(stat.st_mtime).isoformat() + "Z"
-                })
-        print(" listing stix cti files: %s "%files)
+        try:
+            stix_dir = self.base_dir / "outputs_stix"
 
-        return web.json_response({"files": files})
+            files = []
+
+            if stix_dir.exists():
+                for p in stix_dir.glob("*.json"):
+                    stat = p.stat()
+
+                    # ⬇️ READ BUNDLE METADATA SAFELY
+                    model = None
+                    provider = None
+
+                    try:
+                        with p.open("r", encoding="utf-8") as f:
+                            bundle = json.load(f)
+                            model = bundle.get("x_cti_model")
+                            provider = bundle.get("x_cti_provider")
+                    except Exception:
+                        # Do NOT fail listing if one file is malformed
+                        pass
+
+                    files.append({
+                        "filename": p.name,
+                        "size": stat.st_size,
+                        "modified": datetime.utcfromtimestamp(stat.st_mtime).isoformat() + "Z",
+                        "model": model,
+                        "provider": provider,
+                    })
+
+            self.log.info(f"[MCP] listing stix cti files: {files}")
+
+            return web.json_response({"files": files})
+
+        except Exception as e:
+            self.log.error(f"[MCP] list_stix_cti failed: {e}")
+            return web.json_response({"error": str(e)}, status=500)
 
     async def delete_stix_cti(self, request):
         data = await request.json()
         files = data.get("files", [])
-        stix_dir = self.base_dir /( Path(__file__).resolve().parents[1]
-            / "data" / "outputs_stix")
+        stix_dir = self.base_dir /"outputs_stix"
 
         for fname in files:
             p = stix_dir / fname
@@ -320,8 +376,7 @@ class McpAPI:
                 return web.json_response({"error": "Unsupported file type"}, status=400)
 
             # 1️⃣ Save raw input (streaming, safe)
-            plugin_root = Path(__file__).resolve().parents[1]
-            input_dir = (plugin_root / "data/raw/uploads").resolve()
+            input_dir = self.base_dir / "raw" / "uploads"
             input_dir.mkdir(parents=True, exist_ok=True)
             input_path = input_dir / filename
 
@@ -349,42 +404,66 @@ class McpAPI:
 
     async def list_cti_raw(self, request):
         try:
-            plugin_root = Path(__file__).resolve().parents[1]
-            raw_dir = plugin_root / "data/raw/uploads"
-
-            if not raw_dir.exists():
-                return web.json_response({"items": []})
+            uploads_dir   = self.base_dir / "raw" / "uploads"
+            processed_dir = self.base_dir / "raw" / "processed"
+            ir_complete   = self.base_dir / "outputs_ir" / "complete"
 
             items = []
+            seen = set()
 
-            # 1️⃣ Directories first
-            for p in sorted(raw_dir.iterdir(), key=lambda x: x.name.lower()):
-                if p.is_dir():
-                    children = []
-                    for c in sorted(p.iterdir(), key=lambda x: x.name.lower()):
-                        if c.is_file():
-                            stat = c.stat()
+            def file_status(p: Path) -> str:
+                ir_path = ir_complete / f"{p.stem}.json"
+                if not ir_path.exists():
+                    return "pending"
+                return (
+                    "processed"
+                    if ir_path.stat().st_mtime >= p.stat().st_mtime
+                    else "pending"
+                )
+
+            def collect(dir_path: Path, status_for_files: str | None):
+                out = []
+                if not dir_path.exists():
+                    return out
+
+                for p in sorted(dir_path.iterdir(), key=lambda x: x.name.lower()):
+                    # -------------------------
+                    # DIRECTORY (NO STATUS)
+                    # -------------------------
+                    if p.is_dir():
+                        children = []
+                        for c in sorted(p.iterdir(), key=lambda x: x.name.lower()):
+                            if not c.is_file():
+                                continue
                             children.append({
                                 "name": c.name,
-                                "size": stat.st_size,
+                                "size": c.stat().st_size,
                                 "type": "file",
+                                "status": status_for_files,
                             })
+                        out.append({
+                            "name": p.name,
+                            "type": "dir",
+                            "size": None,
+                            "children": children,
+                        })
+                        continue
 
-                    items.append({
+                    # -------------------------
+                    # FILE
+                    # -------------------------
+                    out.append({
                         "name": p.name,
-                        "type": "dir",
-                        "children": children,
-                    })
-
-            # 2️⃣ Then loose files
-            for p in sorted(raw_dir.iterdir(), key=lambda x: x.name.lower()):
-                if p.is_file():
-                    stat = p.stat()
-                    items.append({
-                        "name": p.name,
-                        "size": stat.st_size,
                         "type": "file",
+                        "size": p.stat().st_size,
+                        "status": status_for_files,
                     })
+
+                return out
+
+            # uploads first, processed second (UI expectation)
+            items.extend(collect(uploads_dir, "pending"))
+            items.extend(collect(processed_dir, "processed"))
 
             return web.json_response({"items": items})
 
@@ -400,25 +479,31 @@ class McpAPI:
             if not names:
                 return web.json_response({"error": "No files provided"}, status=400)
 
-            plugin_root = Path(__file__).resolve().parents[1]
-            raw_dir = plugin_root / "data/raw/uploads"
+            uploads_dir   = self.base_dir / "raw" / "uploads"
+            processed_dir = self.base_dir / "raw" / "processed"
 
             deleted = []
 
+            def try_delete(base: Path, name: str) -> bool:
+                target = (base / name).resolve()
+                base_resolved = base.resolve()
+
+                # hard safety: no traversal
+                if base_resolved not in target.parents and target != base_resolved:
+                    return False
+
+                if target.exists():
+                    if target.is_file():
+                        target.unlink()
+                    else:
+                        shutil.rmtree(target)
+                    return True
+
+                return False
+
             for name in names:
-                # resolve and hard-anchor to uploads dir (no traversal)
-                target = (raw_dir / name).resolve()
-                raw_dir_resolved = raw_dir.resolve()
-
-                if raw_dir_resolved not in target.parents and target != raw_dir_resolved:
-                    continue
-
-                if target.is_file():
-                    target.unlink()
-                    deleted.append(name)
-
-                elif target.is_dir():
-                    shutil.rmtree(target)
+                # try uploads first, then processed
+                if try_delete(uploads_dir, name) or try_delete(processed_dir, name):
                     deleted.append(name)
 
             return web.json_response({"deleted": deleted})
@@ -435,16 +520,10 @@ class McpAPI:
             if not filename:
                 return web.json_response({"error": "Missing filename"}, status=400)
 
-            base_dir = (
-                Path(__file__).resolve().parents[1]
-                / "data" / "outputs_stix"
-            )
+            stix_dir = self.base_dir / "outputs_stix"
+            target = (stix_dir / filename).resolve()
 
-            target = (base_dir / filename).resolve()
-            base_dir_resolved = base_dir.resolve()
-
-            # 🔒 Path safety
-            if base_dir_resolved not in target.parents:
+            if stix_dir.resolve() not in target.parents:
                 return web.json_response({"error": "Invalid path"}, status=400)
 
             if not target.exists() or not target.is_file():
@@ -482,8 +561,7 @@ class McpAPI:
                     status=400
                 )
 
-            plugin_root = Path(__file__).resolve().parents[1]  # plugins/mcp
-            conf_dir = plugin_root / "conf"
+            conf_dir = self.root_dir / "conf"
             conf_dir.mkdir(exist_ok=True)
 
             local_path = conf_dir / "local.yml"
@@ -516,62 +594,39 @@ class McpAPI:
             self.log.error(f"[MCP] Failed to save config: {e}")
             return web.json_response({"error": str(e)}, status=500)
 
-    async def cti_run(self, request):
+    async def download_stix_cti(self, request):
         try:
             data = await request.json()
+            filename = data.get("filename")
 
-            # Accept multi-select (authoritative)
-            files = data.get("files")
+            if not filename:
+                return web.json_response({"error": "Missing filename"}, status=400)
 
-            # Backward compatibility (optional)
-            if not files:
-                single = data.get("filename")
-                if single:
-                    files = [single]
+            stix_dir = self.base_dir / "outputs_stix"
 
-            if not files or not isinstance(files, list):
-                return web.json_response(
-                    {"error": "Missing files list"},
-                    status=400
-                )
+            target = (stix_dir / filename).resolve()
 
-            plugin_root = Path(__file__).resolve().parents[1]
-            raw_dir = plugin_root / "data" / "raw" / "uploads"
+            # Hard safety check (no traversal)
+            if stix_dir.resolve() not in target.parents:
+                return web.json_response({"error": "Invalid path"}, status=400)
 
-            # Resolve paths once
-            input_paths = []
-            missing = []
+            if not target.exists() or not target.is_file():
+                return web.json_response({"error": "File not found"}, status=404)
 
-            for fname in files:
-                p = raw_dir / fname
-                if p.exists():
-                    input_paths.append(p)
-                else:
-                    missing.append(fname)
-
-            if not input_paths:
-                return web.json_response(
-                    {"error": "No valid files found", "missing": missing},
-                    status=404
-                )
-
-            # SINGLE CALL — backend handles threading
-            self.log.info(f"[MCP] Starting CTI processing for {len(input_paths)} files")
-
-            # await self.cti_pipeline.run(input_paths)
-
-            return web.json_response({
-                "started": [p.name for p in input_paths],
-                "missing": missing
-            })
+            return web.FileResponse(
+                path=target,
+                headers={
+                    "Content-Disposition": f'attachment; filename="{filename}"'
+                }
+            )
 
         except Exception as e:
-            self.log.error(f"[MCP] CTI run failed: {e}")
+            self.log.error(f"[MCP] download_stix_cti failed: {e}")
             return web.json_response({"error": str(e)}, status=500)
+
 
 
 def setup_routes(app, mcp_api: McpAPI):
     app.router.add_post("/plugin/mcp/execute", mcp_api.execute)
     app.router.add_get("/plugin/mcp/status", mcp_api.status)
     app.router.add_post("/plugin/mcp/rag/upload", mcp_api.upload_rag)
-    app.router.add_get("/plugin/mcp/rag/list", mcp_api.list_rag)

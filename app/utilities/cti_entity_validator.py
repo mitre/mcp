@@ -12,9 +12,9 @@ Responsibilities:
 import json
 import re
 from collections import defaultdict
-from utilities.cti_llm_client import llm_generate
+from plugins.mcp.app.utilities.cti_llm_client import llm_generate
 from functools import lru_cache
-from utilities.cti_taxonomy_loader import load_mitre_taxonomy
+from plugins.mcp.app.utilities.cti_taxonomy_loader import load_mitre_taxonomy
 
 
 # ============================================================

@@ -97,7 +97,7 @@
             @click="useGlobalOverride = !useGlobalOverride"
           >
             <h3 class="title is-5 has-text-primary mb-0">
-              Global Model Override
+              Global Model Config
             </h3>
 
             <span class="icon">
@@ -525,8 +525,8 @@ async function handleCustomSubmit() {
 
 <script setup>
 import { ref, provide, reactive, watch, onMounted, computed } from 'vue'
-import McpPromptFactory from './local_mcp_ability_factory.vue'
-import McpPromptPlanner from './public_mcp_ability_factory.vue'
+import McpPromptFactory from './mcp_ability_factory.vue'
+import McpPromptPlanner from './mcp_planner.vue'
 import McpHistory from './mcp_history.vue'
 import McpCti from './cti.vue'
    
