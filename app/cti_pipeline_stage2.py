@@ -54,7 +54,7 @@ from plugins.mcp.app.utilities.cti_stix_validation import validate_bundle
 from plugins.mcp.app.utilities.cti_stix_report_writer import render_stix_report
 from plugins.mcp.app.utilities.cti_defend_enricher import enrich_stix_bundle_with_defend
 from plugins.mcp.app.utilities.cti_mitre_extract import hashes_to_stix_observed_data
-from plugins.mcp.app.utilities.cti_llm_client import get_llm_provenance
+from plugins.mcp.app.utilities.llm_client import get_llm_provenance
 
 
 # -----------------------------------------------------------

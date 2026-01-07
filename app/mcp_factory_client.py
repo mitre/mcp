@@ -5,51 +5,17 @@ from mcp.client.stdio import stdio_client
 import json
 import sys
 import mlflow
-from app.utility.base_world import BaseWorld
 import traceback
 from mlflow.tracking import MlflowClient
 import asyncio
 import copy
+from plugins.mcp.app.utilities.llm_client import load_config, init_mlflow
 
-def get_llm_config():
-    """
-    Load LLM settings from plugins/mcp/conf/default.yml.
 
-    Prefer the 'factory' section if present, otherwise fall back to 'llm'.
-    """
-    try:
-        config = BaseWorld.strip_yml('plugins/mcp/conf/default.yml')[0]
-        # Prefer a factory-specific config if present
-        return config.get('factory') or config.get('llm', {})
-    except Exception as e:
-        print(f"[MCP] Failed to load LLM config: {e}")
-        return {}
-
-def configure_llm(llm_config, use_mock=False):
-    """
-    Optional GLOBAL DSpy LM config.
-
-    Not strictly needed for this client since we use dspy.context() in run(),
-    but can be reused by other code that wants a global default LM.
-    """
-    if use_mock:
-        class MockLM:
-            def __call__(self, prompt):
-                return "Mocked response"
-        dspy.configure(lm=MockLM())
-        return
-
-    if llm_config.get("offline", False):
-        os.environ["LITELLM_MODEL_METADATA_LOCAL_PATH"] = "/path/to/local.json"
-
-    lm = {
-        "model": llm_config.get("model", ""),
-        "api_key": llm_config.get("api_key", ""),
-        "api_base": llm_config.get("api_base")
-    }
-
-    dspy.configure(lm=lm)
-
+class FactoryResult(dspy.Signature):
+    reasoning: str
+    process_result: str
+    
 def get_env(lm_settings=None):
     env = os.environ.copy()
     venv_site_packages = os.path.join(sys.prefix, "Lib", "site-packages")
@@ -68,9 +34,6 @@ def get_env(lm_settings=None):
         env['DSPY_MAX_TOKENS'] = str(lm_settings.get('max_tokens') or 10000)
 
     return env
-
-mlflow.set_tracking_uri("http://localhost:5000")
-mlflow.set_experiment("caldera-mcp-FACTORY-client-1")
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -135,6 +98,7 @@ def format_rag_context(rag_context):
     return "\n".join(formatted_parts)
 
 async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_id=None):
+    init_mlflow(profile="factory")
     # Build LM settings safely (support defaults)
     lm_settings = {}
     max_tool_calls = 5  # Default value
@@ -150,7 +114,8 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
         }
         max_tool_calls = lm_obj_safe.get("max_tool_calls") or 5
     else:
-        llm_config = get_llm_config()
+        cfg = load_config()
+        llm_config = cfg.get("factory") or cfg.get("llm", {})
         lm_settings = {
             "model": llm_config.get("model") or "gpt-4o",
             "api_key": llm_config.get("api_key") or "",
@@ -219,17 +184,45 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
                         mlflow.set_tag("cti_detailed_context_count", len(rag_context.get("detailed_context", [])))
                         print(f"[MCP] Passing CTI context to LLM ({len(formatted_context)} chars)")
 
-                        react = dspy.ReAct(signature, tools=dspy_tools, max_iters=max_tool_calls)
+                        react = dspy.ReAct(
+                            DSPyCalderaFactoryClientWithRAG,
+                            signature=FactoryResult,
+                            tools=dspy_tools,
+                            max_iters=max_tool_calls,
+                        )
                         mlflow.set_tag("stage", "executing DSPy ReAct with RAG")
                         result = await react.acall(
                             adversary_emulation_task=adversary_emulation_task,
                             cti_context=formatted_context
                         )
                     else:
-                        signature = DSPyCalderaFactoryClient
-                        react = dspy.ReAct(signature, tools=dspy_tools, max_iters=max_tool_calls)
+                        with dspy.configure(
+                            instructions="""
+                                Return ONLY valid JSON with EXACT keys:
+
+                                {
+                                "reasoning": "...",
+                                "process_result": "..."
+                                }
+
+                                Do not add keys.
+                                Do not remove keys.
+                                Do not change key names.
+                                Do not use markdown.
+                                Do not wrap in backticks.
+                                """
+                            )
+                        react = dspy.ReAct(
+                            DSPyCalderaFactoryClient,
+                            signature=FactoryResult,
+                            tools=dspy_tools,
+                            max_iters=max_tool_calls,
+                        )
                         mlflow.set_tag("stage", "executing DSPy ReAct")
+                        
                         result = await react.acall(adversary_emulation_task=adversary_emulation_task)
+                        if hasattr(result, "process_result") and not hasattr(result, "process_result"):
+                            result.process_result = result.process_result
 
                 mlflow.set_tag("stage", "completed")
                 mlflow.set_tag("status", "complete")

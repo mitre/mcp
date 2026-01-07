@@ -47,8 +47,6 @@ def kill_existing_mlflow(port=5000):
             print(f"[MCP] Unexpected error while checking connections: {e}")
             continue
 
-
-
 def is_port_open(port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         return sock.connect_ex(('127.0.0.1', port)) == 0
@@ -86,15 +84,18 @@ else:
 
 # ✅ Now import modules that depend on MLflow
 try:
+    log.debug("[MCP] Importing MCP plugin modules...")
     from plugins.mcp.app.mcp_svc import MCPService
+    log.debug("[MCP] 1")
     from plugins.mcp.app.mcp_gui import McpGUI
+    log.debug("[MCP] 2")
     from plugins.mcp.app.mcp_api import McpAPI
+    log.debug("[MCP] 3")
     logging.getLogger("litellm_logging").setLevel(logging.ERROR)
 
 except ImportError as e:
     log.error(f"[MCP] Error importing MCP plugin modules: {e}")
     traceback.print_exc()
-
 
 async def enable(services):
     app = services.get('app_svc').application
@@ -116,15 +117,11 @@ async def enable(services):
     app.router.add_route("GET", "/plugin/mcp/stix/list", mcp_api.list_stix_cti)
     app.router.add_route("POST", "/plugin/mcp/stix/delete", mcp_api.delete_stix_cti)
     app.router.add_route("POST", "/plugin/mcp/stix/get_stix", mcp_api.get_stix_cti)
-    app.router.add_route("POST","/plugin/mcp/stix/download", mcp_api.download_stix_cti)
+    app.router.add_route("POST", "/plugin/mcp/stix/download", mcp_api.download_stix_cti)
 
     
     app.router.add_route("POST", "/plugin/mcp/cti/upload", mcp_api.upload_cti_raw)
-    app.router.add_route("GET","/plugin/mcp/cti/raw", mcp_api.list_cti_raw)
+    app.router.add_route("GET", "/plugin/mcp/cti/raw", mcp_api.list_cti_raw)
     app.router.add_route("POST", "/plugin/mcp/cti/raw/delete", mcp_api.delete_cti_raw)
     app.router.add_route("POST", "/plugin/mcp/cti/run", mcp_api.cti_run)
     
-  
-
-
-

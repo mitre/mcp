@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Dict, List
 
 from plugins.mcp.app.utilities.cti_stix_builders import new_stix_id, now
-from plugins.mcp.app.utilities.cti_llm_client import llm_generate
+from plugins.mcp.app.utilities.llm_client import llm_generate
 from plugins.mcp.app.utilities.cti_infra_aggregation import aggregate_infrastructure_hypotheses
 
 

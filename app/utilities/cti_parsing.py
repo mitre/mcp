@@ -15,7 +15,7 @@ import json
 import re
 from pathlib import Path
 
-from plugins.mcp.app.utilities.cti_llm_client import llm_generate
+from plugins.mcp.app.utilities.llm_client import llm_generate
 
 # Give the repair engine more chances
 MAX_REPAIR_ATTEMPTS = 3

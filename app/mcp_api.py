@@ -9,7 +9,7 @@ import asyncio
 from pathlib import Path
 from datetime import datetime
 import subprocess
-from plugins.mcp.app.utilities.cti_llm_client import load_config
+from plugins.mcp.app.utilities.llm_client import load_config
 from plugins.mcp.app.cti_ingest_svc import CTIIngestService
 from plugins.mcp.app.utilities.paths import get_mcp_data_dir, get_mcp_root
 class McpAPI:

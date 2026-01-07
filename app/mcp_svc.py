@@ -4,7 +4,7 @@ from app.utility.base_service import BaseService
 
 from plugins.mcp.app.mcp_factory_client import run as factory_run
 from plugins.mcp.app.mcp_planner_client import run as planner_run
-from plugins.mcp.app.range_planner_client import run as range_planner_run
+# from plugins.mcp.app.range_planner_client import run as range_planner_run
 
 from plugins.mcp.app.rag import RAGService
 from enum import Enum
@@ -23,12 +23,12 @@ class ExecuteStyle(Enum):
 class MCPService(BaseService):
     def __init__(self, services):
         super().__init__()
+        self.log = logging.getLogger("plugins.mcp")
         self.services = services
         self.data_svc = services.get("data_svc")
         self.file_svc = services.get("file_svc")
         self.auth_svc = services.get("auth_svc")
-        self.log = logging.getLogger("plugins.mcp")
-
+    
         # Build RAG per run when requested
         self.rag_service = None
         self.log.info("[MCP] Initialized MCPService")

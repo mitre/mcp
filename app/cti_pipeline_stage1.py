@@ -50,7 +50,7 @@ from plugins.mcp.app.utilities.cti_relationships import (
 )
 
 from plugins.mcp.app.utilities.cti_linguistics import extract_dynamic_techniques, extract_commands, extract_hashes
-from plugins.mcp.app.utilities.cti_llm_client import get_llm_provenance
+from plugins.mcp.app.utilities.llm_client import get_llm_provenance
 
 
 # =============================================================

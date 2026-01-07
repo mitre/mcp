@@ -5,18 +5,11 @@ from mcp.client.stdio import stdio_client
 import json
 import sys
 import mlflow
-from app.utility.base_world import BaseWorld
 import traceback
 from mlflow.tracking import MlflowClient
 import asyncio
+from plugins.mcp.app.utilities.llm_client import load_config, init_mlflow
 
-def get_llm_config():
-    try:
-        config = BaseWorld.strip_yml('plugins/mcp/conf/default.yml')[0]
-        return config.get('llm', {})
-    except Exception as e:
-        print(f"[MCP] Failed to load LLM config: {e}")
-        return {}
 
 def build_lm_from_dict(settings: dict) -> dspy.LM:
     # Support offline mode if present
@@ -61,9 +54,6 @@ def get_env(lm_settings=None):
 
     return env
 
-mlflow.set_tracking_uri("http://localhost:5000")
-mlflow.set_experiment("caldera-mcp-client-1")
-mlflow.dspy.autolog()
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 class DSPyCalderaPlannerClient(dspy.Signature):
@@ -129,6 +119,7 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
       - a dspy.LM instance
       - None, to fall back to config from default.yml
     """
+    init_mlflow(profile="planner")
     # Resolve LM configuration
     max_tool_calls = 5  # Default value
     if isinstance(lm_obj, dspy.LM):
@@ -139,10 +130,11 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
         lm_settings = lm_obj
         max_tool_calls = lm_obj.get("max_tool_calls") or 5
     else:
-        cfg = get_llm_config()
-        lm_instance = build_lm_from_dict(cfg)
-        lm_settings = cfg
-        max_tool_calls = cfg.get("max_tool_calls") or 5
+        cfg = load_config()
+        llm_config = cfg.get("planner") or cfg.get("llm", {})
+        lm_instance = build_lm_from_dict(llm_config)
+        lm_settings = llm_config
+        max_tool_calls = llm_config.get("max_tool_calls") or 5
 
     # Start or resume MLflow run
     if run_id:

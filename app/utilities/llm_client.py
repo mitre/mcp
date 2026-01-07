@@ -1,5 +1,5 @@
 """
-cti_llm_client.py — Centralized, deterministic LLM access layer
+llm_client.py — Centralized, deterministic LLM access layer
 
 Responsibilities:
 - Load effective MCP config (local.yml → default.yml)
@@ -13,6 +13,33 @@ import yaml
 from pathlib import Path
 from functools import lru_cache
 from plugins.mcp.app.utilities.paths import get_mcp_root
+import mlflow
+import dspy
+
+def init_mlflow(profile: str):
+    """
+    Initialize MLflow deterministically from config.
+    Safe to call multiple times.
+    Must only be called at runtime (never import-time).
+    """
+    cfg = load_config()
+    mlflow_cfg = cfg.get("mlflow", {})
+
+    if not mlflow_cfg.get("enabled", False):
+        return
+
+    tracking_uri = mlflow_cfg.get("tracking_uri")
+    if tracking_uri:
+        mlflow.set_tracking_uri(tracking_uri)
+
+    experiment_cfg = mlflow_cfg.get("experiment", {})
+    experiment_name = experiment_cfg.get(profile)
+    if experiment_name:
+        mlflow.set_experiment(experiment_name)
+
+    autolog_cfg = mlflow_cfg.get("autolog", {})
+    if autolog_cfg.get("dspy", False):
+        mlflow.dspy.autolog()
 
 # ------------------------------------------------------
 # Config loader (local, explicit, deterministic)
