@@ -17,7 +17,7 @@ data/images
 data/outputs_cad
 data/outputs_ir
 data/outputs_stix
-data/raw/
+data/raw
 data/scenario
 app/debug_mitre.log
 conf/local.yml
