@@ -6,10 +6,8 @@ import json
 import sys
 import mlflow
 import traceback
-from mlflow.tracking import MlflowClient
 import asyncio
 from plugins.mcp.app.utilities.llm_client import load_config, init_mlflow
-
 
 def build_lm_from_dict(settings: dict) -> dspy.LM:
     # Support offline mode if present
@@ -22,12 +20,16 @@ def build_lm_from_dict(settings: dict) -> dspy.LM:
     # Validate API key is provided
     if not api_key:
         raise ValueError("API key is required but not provided. Please set your API key in the Global Model Configuration.")
-
+    api_base = settings.get("api_base")
+    if not api_base:
+        raise ValueError("api_base is required for openai-compatible models")
     lm_kwargs = {
         "model": settings.get("model") or "gpt-4o",
         "api_key": api_key,
-        "api_base": settings.get("api_base"),
+        "api_base": api_base,
+        "provider": settings.get("provider"),
     }
+    
     # Optional params if provided
     if settings.get("temperature") is not None:
         lm_kwargs["temperature"] = settings.get("temperature")
@@ -138,8 +140,8 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
 
     # Start or resume MLflow run
     if run_id:
-        mlflow.end_run()  # Ensure no active run
-        mlflow.start_run(run_id=run_id)
+        # Attach to existing run WITHOUT starting a new one
+        mlflow.set_tag("planner_attached", "true")
     else:
         run = mlflow.start_run(run_name="MCP Planner Run")
         run_id = run.info.run_id
@@ -194,16 +196,23 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
                         result = await react.acall(
                             adversary_emulation_task=adversary_emulation_task
                         )
+                parsed = None
+                try:
+                    parsed = PydanticModel.model_validate_json(result.process_result)
+                except Exception:
+                    # Log but do not fail the run
+                    mlflow.set_tag("output_format", "unstructured")
 
                 mlflow.set_tag("stage", "completed")
                 mlflow.set_tag("status", "complete")
-                mlflow.set_tag("reasoning", result.reasoning)
+                if hasattr(result, "reasoning"):
+                    mlflow.set_tag("reasoning", result.reasoning)
+
                 mlflow.set_tag("process_result", result.process_result)
                 for k, v in result.trajectory.items():
                     mlflow.set_tag(k, json.dumps(v) if isinstance(v, (dict, list)) else str(v))
 
                 mlflow.log_param("result_summary", result.process_result)
-                mlflow.end_run()
                 print(json.dumps(result.toDict(), indent=4))
                 return {"process_result": result.process_result}
 
@@ -215,7 +224,6 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
         mlflow.set_tag("stage", "error")
         mlflow.log_param("error", str(e))
         mlflow.log_param("traceback", tb)
-        mlflow.end_run()
         raise
 
     # Optional streaming updates (if desired for parity)
@@ -236,3 +244,4 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
             client.set_tag(run_id, "frontend_observation", latest_observation)
 
         await asyncio.sleep(2)
+        

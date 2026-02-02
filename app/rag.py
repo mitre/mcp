@@ -13,31 +13,31 @@ from plugins.mcp.app.utilities.paths import get_mcp_data_dir
 class RAGService:
     """RAG service for CTI (Cyber Threat Intelligence) data retrieval using STIX bundles."""
     
-    def __init__(self, stix_bundle_path: Optional[str] = None, api_key: Optional[str] = None, log: Optional[logging.Logger] = None):
+    def __init__(self, stix_bundle_path: Optional[str] = None, embed_model: Optional[str] = None, api_key: Optional[str] = None, log: Optional[logging.Logger] = None, provider: Optional[str] = None, cti_dir: Optional[str] = None):
         self.max_characters = 6000
         self.topk_objects_to_retrieve = 5
         self.corpus = []
         self.adv_step = {}
         self.search = None
         self.api_key = api_key
+        if not api_key:
+            raise ValueError("RAGService requires api_key (provided by MCPService)")
+        self.provider = provider
+        self.embed_model = embed_model
         self.log = log or logging.getLogger("plugins.mcp")
         self.base_dir = get_mcp_data_dir()
         self.log.info(f"Loading STIX bundle from: {stix_bundle_path}")
         
         # Initialize with STIX bundle if provided (single file)
         if stix_bundle_path:
-            self.load_stix_bundle(stix_bundle_path)
+            self.load_stix_bundle(stix_bundle_path, embed_model=self.embed_model, provider=self.provider)
     
-    def load_stix_bundle(
-            self,
-            stix_bundle_path: str,
-            embed_model: str = 'openai/text-embedding-3-small',
-            cti_dir: str = 'plugins/mcp/data/outputs_stix/'
-        ):
+    def load_stix_bundle(self, stix_bundle_path: str, *, embed_model: str, provider: str):
         """Load base STIX bundle + any CTI STIX bundles from dir, then build embeddings."""
+        if not provider:
+            raise ValueError("provider is required when loading STIX bundle for RAG")
         bundles = []
 
-        # Base bundle (the one you pass in)
         try:
             with open(stix_bundle_path, 'r') as f:
                 base_bundle = json.load(f)
@@ -48,7 +48,8 @@ class RAGService:
             raise ValueError(f"Invalid JSON in STIX bundle: {stix_bundle_path}")
 
         # Extra CTI-derived bundles from CTI MCP (if directory exists)
-        cti_dir = os.path.abspath(cti_dir)
+        # I think this is dead Code
+        cti_dir = os.path.abspath(cti_dir) if cti_dir else None
         if os.path.isdir(cti_dir):
             for path in glob.glob(os.path.join(cti_dir, '*.json')):
                 try:
@@ -59,10 +60,12 @@ class RAGService:
                     self.log.warning(f"[RAG] Failed to load CTI STIX bundle {path}: {ex}")
 
         # One call, reusing your existing multi-bundle initializer
-        self.initialize_from_bundles(bundles, embed_model=embed_model)
+        self.initialize_from_bundles(bundles, embed_model=embed_model, provider=provider)
 
     
-    def initialize_from_bundles(self, stix_bundles: List[dict], embed_model: str = 'openai/text-embedding-3-small'):
+    def initialize_from_bundles(self, stix_bundles: List[dict], *, embed_model: str, provider: str):
+        if not embed_model:
+            raise ValueError("embed_model is required for RAG initialization")
         """Initialize the RAG service with multiple STIX bundles and create retriever."""
         all_corpus = []
         all_adv_step = {}
@@ -75,7 +78,15 @@ class RAGService:
         self.adv_step = all_adv_step
         
         self.log.info("Initializing embeddings and retriever for STIX corpus")
-        embedder = dspy.Embedder(embed_model, api_key=self.api_key)
+        if not provider:
+            raise ValueError("provider is required for RAG embeddings")
+
+        qualified_embed_model = f"{provider}/{embed_model}"
+
+        embedder = dspy.Embedder(
+            qualified_embed_model,
+            api_key=self.api_key,
+        )
         self.search = dspy.retrievers.Embeddings(
             corpus=self.corpus,
             embedder=embedder, 

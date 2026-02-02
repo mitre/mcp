@@ -1,26 +1,26 @@
-llm:
-  model: ollama/gemma3n:latest
-  api_key: "ollama"
-  api_base: http://127.0.0.1:11434
-  offline: false
-  use_mock: false
+# llm:
+#   model: ollama/gemma3n:latest
+#   api_key: "ollama"
+#   api_base: http://127.0.0.1:11434
+#   offline: false
+#   use_mock: false
 
-factory:
-  model: ollama/gemma3n:latest
-  api_key: "ollama"
-  api_base: http://127.0.0.1:11434
-  offline: false
-  use_mock: false
-  temperature: 0.4
+# factory:
+#   model: ollama/gemma3n:latest
+#   api_key: "ollama"
+#   api_base: http://127.0.0.1:11434
+#   offline: false
+#   use_mock: false
+#   temperature: 0.4
 
-mlflow:
-  enabled: true
-  tracking_uri: "http://localhost:5000"
-  experiment:
-    planner: "caldera-mcp-client-1"
-    factory: "caldera-mcp-FACTORY-client-1"
-  autolog:
-    dspy: true
+# mlflow:
+#   enabled: true
+#   tracking_uri: "http://localhost:5000"
+#   experiment:
+#     planner: "caldera-mcp-client-1"
+#     factory: "caldera-mcp-FACTORY-client-1"
+#   autolog:
+#     dspy: true
 
 # cti:
 #   model: Qwen/Qwen3-32B

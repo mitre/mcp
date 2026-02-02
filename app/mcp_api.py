@@ -22,7 +22,6 @@ class McpAPI:
         self.base_dir = get_mcp_data_dir()
         self.root_dir = get_mcp_root()
 
-
     async def execute(self, request):
         self.log.info("[MCP] Executing request")
         try:
@@ -623,8 +622,6 @@ class McpAPI:
         except Exception as e:
             self.log.error(f"[MCP] download_stix_cti failed: {e}")
             return web.json_response({"error": str(e)}, status=500)
-
-
 
 def setup_routes(app, mcp_api: McpAPI):
     app.router.add_post("/plugin/mcp/execute", mcp_api.execute)

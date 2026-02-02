@@ -6,15 +6,14 @@ import json
 import sys
 import mlflow
 import traceback
-from mlflow.tracking import MlflowClient
 import asyncio
 import copy
+import logging
 from plugins.mcp.app.utilities.llm_client import load_config, init_mlflow
 
-
 class FactoryResult(dspy.Signature):
-    reasoning: str
-    process_result: str
+    reasoning: str = dspy.OutputField()
+    process_result: str = dspy.OutputField()
     
 def get_env(lm_settings=None):
     env = os.environ.copy()
@@ -136,7 +135,6 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
         mlflow.set_tag("stage", "error")
         mlflow.log_param("error", error_msg)
         mlflow.log_param("prompt", adversary_emulation_task)
-        mlflow.end_run()
         raise ValueError(error_msg)
 
     created_local_run = False
@@ -196,22 +194,7 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
                             cti_context=formatted_context
                         )
                     else:
-                        with dspy.configure(
-                            instructions="""
-                                Return ONLY valid JSON with EXACT keys:
-
-                                {
-                                "reasoning": "...",
-                                "process_result": "..."
-                                }
-
-                                Do not add keys.
-                                Do not remove keys.
-                                Do not change key names.
-                                Do not use markdown.
-                                Do not wrap in backticks.
-                                """
-                            )
+                        
                         react = dspy.ReAct(
                             DSPyCalderaFactoryClient,
                             signature=FactoryResult,
@@ -221,8 +204,6 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
                         mlflow.set_tag("stage", "executing DSPy ReAct")
                         
                         result = await react.acall(adversary_emulation_task=adversary_emulation_task)
-                        if hasattr(result, "process_result") and not hasattr(result, "process_result"):
-                            result.process_result = result.process_result
 
                 mlflow.set_tag("stage", "completed")
                 mlflow.set_tag("status", "complete")

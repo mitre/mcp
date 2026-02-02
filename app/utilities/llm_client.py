@@ -8,13 +8,14 @@ Responsibilities:
 - Expose deterministic provenance for STIX / CTI artifacts
 """
 
+import logging
 import aiohttp
 import yaml
+import dspy
 from pathlib import Path
 from functools import lru_cache
+
 from plugins.mcp.app.utilities.paths import get_mcp_root
-import mlflow
-import dspy
 
 def init_mlflow(profile: str):
     """
@@ -22,6 +23,8 @@ def init_mlflow(profile: str):
     Safe to call multiple times.
     Must only be called at runtime (never import-time).
     """
+    import mlflow
+    import dspy
     cfg = load_config()
     mlflow_cfg = cfg.get("mlflow", {})
 
@@ -38,8 +41,12 @@ def init_mlflow(profile: str):
         mlflow.set_experiment(experiment_name)
 
     autolog_cfg = mlflow_cfg.get("autolog", {})
+    # DSPy autolog is NOT safe in async / multi-task execution.
+    # DSPy must be controlled via dspy.context() only.
     if autolog_cfg.get("dspy", False):
-        mlflow.dspy.autolog()
+        logging.getLogger("plugins.mcp").warning(
+            "[MCP] mlflow.dspy.autolog() is disabled (unsafe with async tasks)"
+        )
 
 # ------------------------------------------------------
 # Config loader (local, explicit, deterministic)
@@ -68,29 +75,80 @@ def load_config() -> dict:
 
     raise FileNotFoundError("No config found (default.yml or local.yml)")
 
+def reload_config():
+    """Force reload MCP config from disk."""
+    load_config.cache_clear()
+    return load_config()
+
 # ------------------------------------------------------
 # Provenance (Stage 2 / STIX support)
 # ------------------------------------------------------
 
-def get_llm_provenance(profile: str = "llm") -> dict:
+def get_llm_provenance(profile: str = "llm", *, runtime: bool = False) -> dict:
     """
-    Return deterministic LLM provenance metadata.
+    Provenance metadata for logging + deterministic audit.
 
-    This MUST NOT make network calls and MUST be safe in
-    offline / mock modes.
+    If runtime=True, include runtime fields required to execute (api_key, api_base).
+    Keep runtime=False as safe-to-log (no secrets).
     """
     cfg = load_config()
     llm = cfg.get(profile, {}) or {}
 
-    return {
-        "provider": llm.get("provider"),
+    base = {
+        "provider": llm.get("provider", "openai_compatible"),
         "model": llm.get("model"),
         "offline": llm.get("offline", False),
         "use_mock": llm.get("use_mock", False),
         "temperature": llm.get("temperature"),
         "top_p": llm.get("top_p"),
         "max_tokens": llm.get("max_tokens"),
+        "timeout": llm.get("timeout", 60),
+        # Optional: allow config to specify embedding model explicitly
+        "embed_model": llm.get("embed_model") or llm.get("model"),
     }
+
+    if not runtime:
+        return base
+
+    # Runtime-only fields (do NOT log these)
+    base["api_key"] = llm.get("api_key")
+    base["api_base"] = llm.get("api_base")
+
+    if not base["api_key"]:
+        raise ValueError(f"{profile}.api_key missing from MCP config")
+    if base["provider"] == "openai_compatible" and not base["api_base"]:
+        raise ValueError(f"{profile}.api_base missing from MCP config")
+
+    return base
+
+def build_dspy_lm(profile: str = "llm") -> dspy.LM:
+    """
+    Build a DSPy LM instance from MCP config.
+    Must only be called at runtime.
+    """
+    llm_rt = get_llm_provenance(profile, runtime=True)
+
+    # Deterministic early exit
+    if llm_rt.get("offline") or llm_rt.get("use_mock"):
+        raise RuntimeError(f"LLM profile '{profile}' is offline/mock; cannot build DSPy LM")
+
+    kwargs = {
+        "model": llm_rt["model"],
+        "api_key": llm_rt["api_key"],
+        "provider": llm_rt["provider"],
+    }
+
+    # If your provider uses a gateway/base URL, pass it through
+    if llm_rt.get("api_base"):
+        kwargs["api_base"] = llm_rt["api_base"]
+
+    # Only include if explicitly set (DSPy/LiteLLM can behave oddly with None)
+    if llm_rt.get("temperature") is not None:
+        kwargs["temperature"] = llm_rt["temperature"]
+    if llm_rt.get("max_tokens") is not None:
+        kwargs["max_tokens"] = llm_rt["max_tokens"]
+
+    return dspy.LM(**kwargs)
 
 # ------------------------------------------------------
 # Central LLM Client

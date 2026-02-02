@@ -9,9 +9,16 @@ import psutil
 from app.utility.base_world import BaseWorld
 
 name = 'mcp'
-description = 'Attachment for Model Context Protocol'
 address = '/plugin/mcp/gui'
 access = BaseWorld.Access.APP
+description = {
+    "name": "mcp",
+    "version": "1.0.0",
+    "author": "MITRE",
+    "description": "MCP LLM + RAG plugin",
+    "services": ["MCPService"],
+}
+
 
 # Set global logging level
 logging.basicConfig(level=logging.INFO)
@@ -86,11 +93,8 @@ else:
 try:
     log.debug("[MCP] Importing MCP plugin modules...")
     from plugins.mcp.app.mcp_svc import MCPService
-    log.debug("[MCP] 1")
     from plugins.mcp.app.mcp_gui import McpGUI
-    log.debug("[MCP] 2")
     from plugins.mcp.app.mcp_api import McpAPI
-    log.debug("[MCP] 3")
     logging.getLogger("litellm_logging").setLevel(logging.ERROR)
 
 except ImportError as e:
@@ -107,6 +111,7 @@ async def enable(services):
     mcp_api = McpAPI(services)
     app.router.add_route('POST', '/plugin/mcp/execute', mcp_api.execute)
     app.router.add_route('GET', '/plugin/mcp/status', mcp_api.status)
+    app.router.add_route('GET', '/plugin/mcp/history', mcp_api.list_runs)
     app.router.add_route("GET", "/plugin/mcp/get_config", mcp_api.get_config)
     app.router.add_route("POST", "/plugin/mcp/set_config", mcp_api.set_config)
 

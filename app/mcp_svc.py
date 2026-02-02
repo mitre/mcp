@@ -1,17 +1,25 @@
-import logging
-import dspy
-from app.utility.base_service import BaseService
+# plugins/mcp/app/mcp_svc.py
 
+import logging
+import json
+import asyncio
+from enum import Enum
+
+import dspy
+import mlflow
+
+from app.utility.base_service import BaseService
 from plugins.mcp.app.mcp_factory_client import run as factory_run
 from plugins.mcp.app.mcp_planner_client import run as planner_run
-# from plugins.mcp.app.range_planner_client import run as range_planner_run
-
 from plugins.mcp.app.rag import RAGService
-from enum import Enum
-import mlflow
-import asyncio
-import json
-from pathlib import Path
+from plugins.mcp.app.utilities.paths import get_mcp_data_dir
+from plugins.mcp.app.utilities.llm_client import (
+    init_mlflow,
+    get_llm_provenance,
+    build_dspy_lm,
+)
+
+log = logging.getLogger("plugins.mcp")
 
 class ExecuteStyle(Enum):
     LLMfactory = "factory"
@@ -28,183 +36,160 @@ class MCPService(BaseService):
         self.data_svc = services.get("data_svc")
         self.file_svc = services.get("file_svc")
         self.auth_svc = services.get("auth_svc")
-    
-        # Build RAG per run when requested
         self.rag_service = None
         self.log.info("[MCP] Initialized MCPService")
 
-    def _create_dspy_client(self, model_config: dict):
-        lm = {
-            "model": model_config.get("model"),
-            "api_key": model_config.get("api_key"),
-            "temperature": model_config.get("temperature"),
-            "max_tokens": model_config.get("max_tokens"),
-            "max_tool_calls": model_config.get("max_tool_calls"),
-        }
-        return lm
-
+    # -----------------------------
+    # Public entrypoint
+    # -----------------------------
     async def execute(self, focus: str, prompt: str, model_config: dict, file: dict = None):
-        """Start MLflow run and launch async execution."""
+        """
+        Creates the MLflow run, ends it immediately so the UI can poll,
+        then resumes/updates the same run inside the async worker.
+        """
+        # IMPORTANT: ensure tracking URI/experiment are set BEFORE creating run
+        init_mlflow(profile="service")
+
+        # Create run and close immediately (polling can begin)
         run = mlflow.start_run(run_name="MCP Execution")
         run_id = run.info.run_id
-        mlflow.end_run()  # Immediately end run so polling can begin
+        mlflow.set_tag("status", "queued")
+        mlflow.set_tag("stage", "queued")
+        mlflow.log_param("prompt", prompt)
+        mlflow.end_run()
 
-        api_key = (model_config or {}).get("api_key")
-        dspy_client = None
-        if api_key:
-            dspy_client = self._create_dspy_client(model_config)
-
-        # Launch background run, pass full config for RAG options
         asyncio.create_task(self._run_execution(
             focus=focus,
             prompt=prompt,
             run_id=run_id,
-            lm_obj=dspy_client,
-            run_config=model_config or {}
+            run_config=model_config or {},
         ))
+
         return {"run_id": run_id}
 
-    def _build_rag_service_from_files(self, filenames, api_key: str, embed_model: str, topk: int):
-        data_dir = self.base_dir/"data"
+    # -----------------------------
+    # RAG builder (config-driven)
+    # -----------------------------
+    def _build_rag_service_from_files(self, filenames, embed_model: str | None, topk: int | None):
+        data_dir = get_mcp_data_dir()
         bundles = []
+
         for name in filenames or []:
-            path = data_dir / name
+            path = data_dir / "outputs_stix" / name
             if not path.exists():
                 raise FileNotFoundError(f"RAG file not found: {path}")
-            with open(path, "r", encoding="utf-8") as f:
+            with path.open("r", encoding="utf-8") as f:
                 bundles.append(json.load(f))
 
-        rag = RAGService(api_key=api_key, log=self.log)
+        # Single source of truth: config
+        llm_rt = get_llm_provenance("llm", runtime=True)
+
+        # Treat empty string as unset
+        embed_model = (embed_model or "").strip() or llm_rt.get("embed_model")
+
+        # HARD FAIL instead of silently using OpenAI default embeddings
+        if not embed_model:
+            raise ValueError(
+                "No embedding model configured. Set llm.embed_model in config or pass rag_embed_model from UI."
+            )
+
+        self.log.debug(
+            "[MCP] Building RAG via llm_client | provider=%s model=%s embed_model=%s topk=%s files=%s",
+            llm_rt.get("provider"),
+            llm_rt.get("model"),
+            embed_model,
+            topk,
+            filenames,
+        )
+
+        rag = RAGService(
+            api_key=llm_rt["api_key"],
+            log=self.log,
+        )
+
         if topk:
             rag.topk_objects_to_retrieve = int(topk)
-        rag.initialize_from_bundles(bundles, embed_model=embed_model or 'openai/text-embedding-3-small')
+
+        rag.initialize_from_bundles(bundles, embed_model=embed_model, provider=llm_rt.get("provider"))
         return rag
 
-    async def _run_execution(self, focus, prompt, run_id, lm_obj=None, run_config: dict = None):
-        """Executes the full DSPy logic in background and tracks via MLflow."""
-        run_config = run_config or {}
-        try:
-            # Force clear any stale MLflow context from main thread
-            mlflow.end_run()
-            with mlflow.start_run(run_id=run_id):
-                mlflow.set_tag("stage", "initializing")
-                mlflow.log_param("prompt", prompt)
+    # -----------------------------
+    # Background worker
+    # -----------------------------
+    async def _run_execution(self, focus: str, prompt: str, run_id: str, run_config: dict):
+        init_mlflow(profile="service")
 
-                # Configure LM globally if provided
-                if lm_obj and lm_obj.get("api_key"):
-                    try:
-                        dspy.configure(lm=dspy.LM(
-                            model=lm_obj.get("model"),
-                            api_key=lm_obj.get("api_key"),
-                            temperature=lm_obj.get("temperature"),
-                            max_tokens=lm_obj.get("max_tokens"),
-                        ))
-                    except Exception as e:
-                        self.log.warning(f"[MCP] Failed to configure LM: {e}")
+        # Defensive: ensure no stale active run in this task context
+        try:
+            mlflow.end_run()
+        except Exception:
+            pass
+
+        try:
+            # Resume the existing run created in execute()
+            with mlflow.start_run(run_id=run_id):
+                mlflow.set_tag("status", "running")
+                mlflow.set_tag("stage", "initializing")
+
+                # Build DSPy LM from config ONLY
+                lm = build_dspy_lm("llm")
 
                 rag_files = run_config.get("rag_files") or []
-                rag_embed_model = run_config.get("rag_embed_model") or 'openai/text-embedding-3-small'
-                rag_topk = run_config.get("rag_topk")
+                rag_embed_model = (run_config.get("rag_embed_model") or "").strip() or None
+                rag_topk = run_config.get("rag_topk") or 5
 
-                # Use RAG if explicitly requested via focus or if files were selected
                 use_rag = (focus in [ExecuteStyle.RAGplanner.value, ExecuteStyle.RAGfactory.value]) or bool(rag_files)
 
                 rag_context = None
                 if use_rag and rag_files:
+                    mlflow.set_tag("stage", "rag_building")
                     try:
-                        self.log.info(f"[MCP] Building RAG from files: {rag_files}")
+                        self.log.info("[MCP] Building RAG from files: %s", rag_files)
                         rag = self._build_rag_service_from_files(
                             filenames=rag_files,
-                            api_key=(lm_obj or {}).get("api_key"),
                             embed_model=rag_embed_model,
-                            topk=rag_topk or 5
+                            topk=rag_topk,
                         )
                         rag_context = rag.get_context_for_task(prompt)
-                        # Log RAG retrieval process (use different namespace to avoid collision with LLM thoughts)
-                        for i, thought in enumerate(rag_context.get("thoughts", [])):
-                            mlflow.set_tag(f"rag_retrieval_step_{i}", thought)
-
-                        # Log which CTI objects were retrieved
-                        search_results = rag_context.get('search_results', [])
-                        for i, result in enumerate(search_results):
-                            result_name = result.split(" | ")[0] if " | " in result else result[:100]
-                            mlflow.set_tag(f"rag_retrieved_object_{i}", result_name)
-
-                        mlflow.set_tag("rag_tool_name", "get_context_for_task")
-                        mlflow.set_tag("rag_tool_args", json.dumps({"query": prompt, "rag_files": rag_files}))
-                        self.log.info(f"[MCP] RAG retrieved {len(search_results)} CTI objects")
+                        mlflow.set_tag("stage", "rag_ready")
+                        mlflow.set_tag("rag_retrieved_count", str(len(rag_context.get("search_results", []))))
                     except Exception as e:
-                        self.log.warning(f"[MCP] RAG build/error: {e}")
+                        self.log.warning("[MCP] RAG build/error: %s", e)
+                        mlflow.set_tag("rag_error", str(e))
 
-                # Execute appropriate pipeline
+                mlflow.set_tag("stage", "executing")
+
+                # Run DSPy under a scoped context
                 result = {}
-                if use_rag:
-                    match focus:
-                        case ExecuteStyle.LLMplanner.value | ExecuteStyle.RAGplanner.value:
-                            self.log.info(f"[MCP] Executing RAG-enhanced planner with prompt: {prompt}")
-                            result = await planner_run(
-                                prompt,
-                                lm_obj,
-                                rag_context=rag_context,
-                                run_id=run_id,
-                            )
-
-                        case ExecuteStyle.RANGEplanner.value:
-                            self.log.info(f"[MCP] Executing RAG-enhanced RANGE planner with prompt: {prompt}")
-                            result = await range_planner_run(
-                                prompt,
-                                lm_obj,
-                                rag_context=rag_context,
-                                run_id=run_id,
-                            )
-
-                        case _:  # default → RAG factory
-                            self.log.info(f"[MCP] Executing RAG-enhanced factory with prompt: {prompt}")
-                            result = await factory_run(
-                                prompt,
-                                lm_obj,
-                                rag_context=rag_context,
-                                run_id=run_id,
-                            )
-
-                else:
-                    match focus:
-                        case ExecuteStyle.LLMplanner.value:
-                            self.log.info(f"[MCP] Executing planner with prompt: {prompt}")
-                            result = await planner_run(
-                                prompt,
-                                lm_obj,
-                                run_id=run_id,
-                            )
-
-                        case ExecuteStyle.RANGEplanner.value:
-                            self.log.info(f"[MCP] Executing RANGE planner with prompt: {prompt}")
-                            result = await range_planner_run(
-                                prompt,
-                                lm_obj,
-                                run_id=run_id,
-                            )
-
-                        case _:
-                            self.log.info(f"[MCP] Executing factory with prompt: {prompt}")
-                            result = await factory_run(
-                                prompt,
-                                lm_obj,
-                                run_id=run_id,
-                            )
+                with dspy.context(lm=lm):
+                    if use_rag:
+                        if focus in [ExecuteStyle.LLMplanner.value, ExecuteStyle.RAGplanner.value]:
+                            result = await planner_run(prompt, None, rag_context=rag_context, run_id=run_id)
+                        else:
+                            result = await factory_run(prompt, None, rag_context=rag_context, run_id=run_id)
+                    else:
+                        if focus == ExecuteStyle.LLMplanner.value:
+                            result = await planner_run(prompt, None, run_id=run_id)
+                        else:
+                            result = await factory_run(prompt, None, run_id=run_id)
 
                 mlflow.set_tag("stage", "complete")
                 mlflow.set_tag("status", "success")
-                # Store process_result as a tag instead of param to avoid conflicts
-                # (the client already logs it as a param)
+
                 if result.get("process_result"):
-                    mlflow.set_tag("process_result_summary", str(result.get("process_result", ""))[:250])
+                    mlflow.set_tag("process_result_summary", str(result["process_result"])[:250])
 
         except Exception as e:
-            self.log.error(f"[MCP] Execution failed: {e}")
-            mlflow.set_tag("stage", "error")
-            mlflow.set_tag("status", "error")
-            mlflow.log_param("error", str(e))
-
+            self.log.error("[MCP] Execution failed: %s", e)
+            try:
+                with mlflow.start_run(run_id=run_id):
+                    mlflow.set_tag("stage", "error")
+                    mlflow.set_tag("status", "error")
+                    mlflow.log_param("error", str(e))
+            except Exception:
+                pass
         finally:
-            mlflow.end_run()
+            try:
+                mlflow.end_run()
+            except Exception:
+                pass
