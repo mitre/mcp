@@ -54,6 +54,17 @@ def get_env(lm_settings=None):
         env['DSPY_TEMPERATURE'] = str(lm_settings.get('temperature') or 0.5)
         env['DSPY_MAX_TOKENS'] = str(lm_settings.get('max_tokens') or 10000)
 
+    # Pass Caldera connection config to subprocess
+    try:
+        caldera_config = BaseWorld.strip_yml('conf/default.yml')[0]
+        host = caldera_config.get('host', 'localhost')
+        port = caldera_config.get('port', 8888)
+        api_key = caldera_config.get('api_key_red', 'ADMIN123')
+        env['CALDERA_URL'] = f"http://{host}:{port}/api/v2/"
+        env['CALDERA_API_KEY'] = str(api_key)
+    except Exception as e:
+        print(f"[MCP] Failed to load Caldera config for subprocess: {e}")
+
     return env
 
 mlflow.set_tracking_uri("http://localhost:5000")
