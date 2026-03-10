@@ -5,6 +5,7 @@ import time
 import traceback
 import logging
 import psutil
+import atexit
 
 from app.utility.base_world import BaseWorld
 
@@ -53,6 +54,18 @@ def is_port_open(port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         return sock.connect_ex(('127.0.0.1', port)) == 0
 
+_mlflow_proc = None
+
+def _shutdown_mlflow():
+    """Terminate the MLflow server process started by this plugin."""
+    if _mlflow_proc is not None and _mlflow_proc.poll() is None:
+        log.info("[MCP] Shutting down MLflow server...")
+        _mlflow_proc.terminate()
+        try:
+            _mlflow_proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            _mlflow_proc.kill()
+
 # 🔁 Start MLflow server if it's not already running
 if not is_port_open(5000):
     # 🧼 Kill old MLflow server if it exists
@@ -61,13 +74,14 @@ if not is_port_open(5000):
         plugin_dir = os.path.dirname(os.path.abspath(__file__))
         mlruns_path = os.path.join(plugin_dir, 'mlruns')
         db_path = os.path.join(plugin_dir, 'mlruns.db')
-        subprocess.Popen([
+        _mlflow_proc = subprocess.Popen([
             "mlflow", "server",
             "--backend-store-uri", f"sqlite:///{db_path}",
             "--default-artifact-root", mlruns_path,
             "--host", "127.0.0.1",
             "--port", "5000"
         ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        atexit.register(_shutdown_mlflow)
         log.debug("[MCP] Starting MLflow server at http://localhost:5000")
     except Exception as e:
         log.error(f"[MCP] Failed to start MLflow server: {e}")
