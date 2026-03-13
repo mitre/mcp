@@ -322,7 +322,8 @@ async function handleSubmit() {
         max_tokens: globalConfig.maxTokens,
         rag_files: selectedRag.value,
         rag_embed_model: globalConfig.ragEmbedModel,
-        rag_topk: globalConfig.ragTopK
+        rag_topk: globalConfig.ragTopK,
+        api_base: globalConfig.apiBase,
       }
     }
 
