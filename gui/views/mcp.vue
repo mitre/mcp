@@ -114,6 +114,17 @@
               />
             </div>
           </div>
+	  <div class="field">
+            <label class="label">API Base URL</label>
+            <div class="control">
+              <input
+                class="input"
+                type="text"
+                v-model="globalConfig.apiBase"
+                placeholder="https://integrate.api.nvidia.com/v1"
+              />
+            </div>
+          </div>
 
           <div class="field">
             <label class="label">Max Tool Calls</label>
@@ -403,6 +414,7 @@ async function handleCustomSubmit() {
         config: {
           model: globalConfig.modelName,
           api_key: globalConfig.apiKey,
+          api_base: globalConfig.apiBase,
           temperature: globalConfig.temperature,
           max_tokens: globalConfig.maxTokens,
           max_tool_calls: globalConfig.maxToolCalls
@@ -484,7 +496,8 @@ function saveConfig(config) {
       maxToolCalls: config.maxToolCalls,
       maxTokens: config.maxTokens,
       ragEmbedModel: config.ragEmbedModel,
-      ragTopK: config.ragTopK
+      ragTopK: config.ragTopK,
+      apiBase: config.apiBase,
     })
   } catch (e) {
     console.warn('[MCP] Failed to save config:', e)
@@ -498,6 +511,7 @@ const globalConfig = reactive({
   modelName: savedConfig?.modelName || 'gpt-4o',
   temperature: savedConfig?.temperature ?? 0.5,
   apiKey: savedConfig?.apiKey || '',
+  apiBase: savedConfig?.apiBase || '',
   maxToolCalls: savedConfig?.maxToolCalls || 5,
   maxTokens: savedConfig?.maxTokens || 10000,
   ragEmbedModel: savedConfig?.ragEmbedModel || 'nvidia/llama-3.2-nv-embedqa-1b-v2',
