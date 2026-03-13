@@ -1,10 +1,14 @@
 ---
 llm:
-  model: gpt-4o
-  api_key: 
-  offline: true
-  use_mock: false
+  model: moonshotai/kimi-k2-instruct-0905
+  api_key:  
+  api_base: https://integrate.api.nvidia.com/v1  
+  temperature: 0.5
+  max_tokens: 10000
+  max_tool_calls: 10
 factory:
-  model: gpt-4o
+  model: moonshotai/kimi-k2-instruct-0905
+  api_key:  
+  api_base: https://integrate.api.nvidia.com/v1  
   api_key: 
   temperature: 0.4

@@ -36,6 +36,7 @@ class MCPService(BaseService):
             "temperature": model_config.get("temperature"),
             "max_tokens": model_config.get("max_tokens"),
             "max_tool_calls": model_config.get("max_tool_calls"),
+            "api_base": model_config.get("api_base")
         }
         return lm
 
@@ -96,7 +97,6 @@ class MCPService(BaseService):
                             temperature=lm_obj.get("temperature"),
                             max_tokens=lm_obj.get("max_tokens"),
                         )
-                        dspy.context(lm=lm)
                     except Exception as e:
                         self.log.warning(f"[MCP] Failed to configure LM: {e}")
 
@@ -140,18 +140,34 @@ class MCPService(BaseService):
                 if use_rag:
                     if focus in [ExecuteStyle.LLMplanner.value, ExecuteStyle.RAGplanner.value]:
                         self.log.info(f"[MCP] Executing RAG-enhanced planner with prompt: {prompt}")
-                        result = await planner_run(prompt, lm_obj, rag_context=rag_context, run_id=run_id)
+                        if lm:
+                            with dspy.context(lm=lm):  # ✅ Context entered here!
+                                result = await planner_run(prompt, lm_obj, rag_context=rag_context, run_id=run_id)
+                        else:
+                            result = await planner_run(prompt, lm_obj, rag_context=rag_context, run_id=run_id)
                     else:
                         self.log.info(f"[MCP] Executing RAG-enhanced factory with prompt: {prompt}")
-                        result = await factory_run(prompt, lm_obj, rag_context=rag_context, run_id=run_id)
+                        if lm:
+                            with dspy.context(lm=lm):  # ✅ Context entered here!
+                                result = await factory_run(prompt, lm_obj, rag_context=rag_context, run_id=run_id)
+                        else:
+                            result = await factory_run(prompt, lm_obj, rag_context=rag_context, run_id=run_id)
                 else:
                     if focus == ExecuteStyle.LLMplanner.value:
                         self.log.info(f"[MCP] Executing planner with prompt: {prompt}")
-                        result = await planner_run(prompt, lm_obj, run_id=run_id)
+                        if lm:
+                            with dspy.context(lm=lm):  # ✅ Context entered here!
+                                result = await planner_run(prompt, lm_obj, run_id=run_id)
+                        else:
+                            result = await planner_run(prompt, lm_obj, run_id=run_id)
                     else:
                         self.log.info(f"[MCP] Executing factory with prompt: {prompt}")
-                        result = await factory_run(prompt, lm_obj, run_id=run_id)
-
+                        if lm:
+                            with dspy.context(lm=lm):  # ✅ Context entered here!
+                                result = await factory_run(prompt, lm_obj, run_id=run_id)
+                        else:
+                            result = await factory_run(prompt, lm_obj, run_id=run_id)
+                            
                 mlflow.set_tag("stage", "complete")
                 mlflow.set_tag("status", "success")
                 # Store process_result as a tag instead of param to avoid conflicts
