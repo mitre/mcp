@@ -6,11 +6,17 @@ import os
 def configure_dspy_from_env():
     model = os.environ.get('DSPY_MODEL', 'gpt-4o')
     api_key = os.environ.get('DSPY_API_KEY', '')
+    api_base = os.environ.get('DSPY_API_BASE', '') or None
     temperature = float(os.environ.get('DSPY_TEMPERATURE', '0.5'))
     max_tokens = int(os.environ.get('DSPY_MAX_TOKENS', '10000'))
-
-    if api_key:  # Only configure if we have an API key
-        lm = dspy.LM(model=model, api_key=api_key, temperature=temperature, max_tokens=max_tokens)
+    if api_key:
+        lm = dspy.LM(
+            model="openai/" + model,
+            api_key=api_key,
+            api_base=api_base,
+            temperature=temperature,
+            max_tokens=max_tokens
+        )
         dspy.configure(lm=lm)
 
 configure_dspy_from_env()

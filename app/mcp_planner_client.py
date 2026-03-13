@@ -31,7 +31,7 @@ def build_lm_from_dict(settings: dict) -> dspy.LM:
         raise ValueError("API key is required but not provided. Please set your API key in the Global Model Configuration.")
 
     lm_kwargs = {
-        "model": settings.get("model") or "gpt-4o",
+        "model": "openai/" + (settings.get("model") or "gpt-4o"),
         "api_key": api_key,
         "api_base": settings.get("api_base"),
     }
