@@ -60,7 +60,7 @@ class MCPService(BaseService):
         ))
         return {"run_id": run_id}
 
-    def _build_rag_service_from_files(self, filenames, api_key: str, embed_model: str, topk: int):
+    def _build_rag_service_from_files(self, filenames, api_key: str, embed_model: str, topk: int, api_base: str = None):
         base_dir = Path(__file__).resolve().parent.parent / "data"
         bundles = []
         for name in filenames or []:
@@ -70,7 +70,7 @@ class MCPService(BaseService):
             with open(path, "r", encoding="utf-8") as f:
                 bundles.append(json.load(f))
 
-        rag = RAGService(api_key=api_key, api_base=llm_config.get("api_base"), log=self.log)
+        rag = RAGService(api_key=api_key, api_base=api_base, log=self.log)
         if topk:
             rag.topk_objects_to_retrieve = int(topk)
         rag.initialize_from_bundles(bundles, embed_model=embed_model or 'nvidia/llama-3.2-nv-embedqa-1b-v2')
@@ -89,13 +89,14 @@ class MCPService(BaseService):
                 # Configure LM globally if provided
                 if lm_obj and lm_obj.get("api_key"):
                     try:
-                        dspy.configure(lm=dspy.LM(
-                            model=lm_obj.get("model"),
+                        lm = dspy.LM(
+                            model="openai/" + lm_obj.get("model"),
                             api_key=lm_obj.get("api_key"),
-                            api_base=lm_obj.get("api_base"), 
-  			    temperature=lm_obj.get("temperature"),
+                            api_base=lm_obj.get("api_base"),
+                            temperature=lm_obj.get("temperature"),
                             max_tokens=lm_obj.get("max_tokens"),
-                        ))
+                        )
+                        dspy.context(lm=lm)
                     except Exception as e:
                         self.log.warning(f"[MCP] Failed to configure LM: {e}")
 
@@ -113,7 +114,8 @@ class MCPService(BaseService):
                         rag = self._build_rag_service_from_files(
                             filenames=rag_files,
                             api_key=(lm_obj or {}).get("api_key"),
-                            embed_model=rag_embed_model,
+                            api_base=(lm_obj or {}).get("api_base"),
+			    embed_model=rag_embed_model,
                             topk=rag_topk or 5
                         )
                         rag_context = rag.get_context_for_task(prompt)
