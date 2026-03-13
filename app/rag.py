@@ -6,13 +6,14 @@ import logging
 class RAGService:
     """RAG service for CTI (Cyber Threat Intelligence) data retrieval using STIX bundles."""
     
-    def __init__(self, stix_bundle_path: Optional[str] = None, api_key: Optional[str] = None, log: Optional[logging.Logger] = None):
+    def __init__(self, stix_bundle_path: Optional[str] = None, api_key: Optional[str] = None, api_base: Optional[str] = None, log: Optional[logging.Logger] = None):
         self.max_characters = 6000
         self.topk_objects_to_retrieve = 5
         self.corpus = []
         self.adv_step = {}
         self.search = None
         self.api_key = api_key
+        self.api_base = api_base
         self.log = log or logging.getLogger("plugins.mcp")
         
         self.log.info(f"Loading STIX bundle from: {stix_bundle_path}")
@@ -45,7 +46,7 @@ class RAGService:
         self.adv_step = all_adv_step
         
         self.log.info("Initializing embeddings and retriever for STIX corpus")
-        embedder = dspy.Embedder(embed_model, api_key=self.api_key)
+        embedder = dspy.Embedder(embed_model, api_key=self.api_key, api_base=self.api_base)
         self.search = dspy.retrievers.Embeddings(
             corpus=self.corpus,
             embedder=embedder, 

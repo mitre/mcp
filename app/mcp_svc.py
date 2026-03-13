@@ -70,7 +70,7 @@ class MCPService(BaseService):
             with open(path, "r", encoding="utf-8") as f:
                 bundles.append(json.load(f))
 
-        rag = RAGService(api_key=api_key, log=self.log)
+        rag = RAGService(api_key=api_key, api_base=llm_config.get("api_base"), log=self.log)
         if topk:
             rag.topk_objects_to_retrieve = int(topk)
         rag.initialize_from_bundles(bundles, embed_model=embed_model or 'openai/text-embedding-3-small')
