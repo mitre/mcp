@@ -22,7 +22,7 @@ class RAGService:
         if stix_bundle_path:
             self.load_stix_bundle(stix_bundle_path)
     
-    def load_stix_bundle(self, stix_bundle_path: str, embed_model: str = 'openai/text-embedding-3-small'):
+    def load_stix_bundle(self, stix_bundle_path: str, embed_model: str = 'nvidia/llama-3.2-nv-embedqa-1b-v2'):
         """Load STIX bundle from file path and build embeddings."""
         try:
             with open(stix_bundle_path, 'r') as f:
@@ -33,7 +33,7 @@ class RAGService:
         except json.JSONDecodeError:
             raise ValueError(f"Invalid JSON in STIX bundle: {stix_bundle_path}")
     
-    def initialize_from_bundles(self, stix_bundles: List[dict], embed_model: str = 'openai/text-embedding-3-small'):
+    def initialize_from_bundles(self, stix_bundles: List[dict], embed_model: str = 'nvidia/llama-3.2-nv-embedqa-1b-v2'):
         """Initialize the RAG service with multiple STIX bundles and create retriever."""
         all_corpus = []
         all_adv_step = {}
