@@ -92,7 +92,8 @@ class MCPService(BaseService):
                         dspy.configure(lm=dspy.LM(
                             model=lm_obj.get("model"),
                             api_key=lm_obj.get("api_key"),
-                            temperature=lm_obj.get("temperature"),
+                            api_base=lm_obj.get("api_base"), 
+  			    temperature=lm_obj.get("temperature"),
                             max_tokens=lm_obj.get("max_tokens"),
                         ))
                     except Exception as e:
