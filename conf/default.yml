@@ -1,7 +1,7 @@
 ---
 llm:
   model: moonshotai/kimi-k2-instruct-0905
-  api_key:  
+  api_key: 
   api_base: https://integrate.api.nvidia.com/v1  
   temperature: 0.5
   max_tokens: 10000
