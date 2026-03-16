@@ -400,8 +400,8 @@ def create_windows_ability(
     created_command = create_command(command_description, "windows")
     # Create the executor object with default values for optional fields
     executor = {
-        "name": "windows",
-        "platform": "psh",
+        "name": "psh",
+        "platform": "windows",
         "command": created_command,
         "code": None,
         "language": None,
@@ -467,8 +467,8 @@ def create_linux_ability(
 
     # Create the executor object with default values for optional fields
     executor = {
-        "name": "linux",
-        "platform": "sh",
+        "name": "sh",
+        "platform": "linux",
         "command": created_command,
         "code": None,
         "language": None,
