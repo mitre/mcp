@@ -5,6 +5,7 @@ from datetime import datetime
 import time
 import collections
 import uuid
+import os
 
 from factory import CreateCommand
 mcp = FastMCP("Caldera API MCP Server")
@@ -45,8 +46,8 @@ class CalderaRequest:
 
 
 caldera_request = CalderaRequest(
-    url="http://localhost:8888/api/v2/",
-    api_key="ADMIN123",
+    url=os.environ.get("CALDERA_URL", "http://localhost:8888/api/v2/"),
+    api_key=os.environ.get("CALDERA_API_KEY", "ADMIN123"),
 )
 
 
