@@ -387,11 +387,8 @@ async def process_file(
             ir["attack_patterns"] = await validate_techniques_llm(
                 ir["attack_patterns"], text, batch_size=15
             )
-            # Remove LLM-denied techniques (confidence dropped to 0.20)
-            ir["attack_patterns"] = [
-                t for t in ir["attack_patterns"]
-                if t.get("confidence", 1.0) > 0.25
-            ]
+            # LLM-denied techniques keep reduced confidence but are NOT removed
+            # The offline pipeline already filtered; LLM only adjusts confidence
 
             # Discover relationships the dep-parse missed
             llm_rels = await discover_relationships_llm(text, ir)
