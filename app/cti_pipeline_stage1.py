@@ -41,7 +41,7 @@ from plugins.mcp.app.utilities.cti_raw_cleaner import clean_raw_directory
 from plugins.mcp.app.utilities.cti_parsing import extract_ir, render_ir_summary
 from plugins.mcp.app.utilities.cti_mitre_extract import extract_mitre_techniques, convert_sets
 from plugins.mcp.app.utilities.cti_taxonomy_loader import build_normalized_attack_patterns
-from plugins.mcp.app.utilities.cti_entity_validator import validate_entities, repair_entities
+from plugins.mcp.app.utilities.cti_entity_validator import validate_entities, repair_entities, reclassify_entities
 
 from plugins.mcp.app.utilities.cti_relationships import (
     normalize_and_qualify_behaviors,
@@ -291,8 +291,9 @@ async def process_file(
                     ir["hashes"].append(h)
         
     # ---------------------------------------------------------
-    # 5. Entity validation
+    # 5. Entity reclassification + validation
     # ---------------------------------------------------------
+    ir = reclassify_entities(ir)
     ir = await validate_entities(ir, destructive=False)
     ir = repair_entities(ir)
 
@@ -316,12 +317,26 @@ async def process_file(
         lookup,
     )
 
+    # Extract explicit T-numbers from all IR text fields
+    all_ir_text = text
+    for group in ("threat_actors", "malware", "tools", "infrastructure", "behaviors", "attack_patterns"):
+        for item in ir.get(group, []):
+            if isinstance(item, dict):
+                all_ir_text += " " + (item.get("description", "") or "")
+                all_ir_text += " " + (item.get("text", "") or "")
+    from plugins.mcp.app.utilities.cti_mitre_extract import extract_ids_from_text
+    explicit_from_ir = extract_ids_from_text(all_ir_text, lookup)
+    explicit_objs = [lookup[tid] for tid in explicit_from_ir if tid in lookup]
+
     seen = set()
     merged = []
-    for t in ir.get("attack_patterns", []) + ling + mitre:
+    for t in explicit_objs + ir.get("attack_patterns", []) + ling + mitre:
         if isinstance(t, dict) and t.get("id") and t["id"] not in seen:
             seen.add(t["id"])
             merged.append(t)
+
+    # Remove deprecated/revoked technique IDs not in current taxonomy
+    merged = [t for t in merged if t.get("id") in lookup or not t.get("id", "").startswith("T")]
 
     ir["attack_patterns"] = merged
 

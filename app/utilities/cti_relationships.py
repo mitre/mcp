@@ -443,11 +443,6 @@ def _extract_relationships_from_doc(doc, ir, source_label):
                 if source_label in ("behavior", "behavior_dependency_recovery"):
                     threshold = 0.45
 
-                status = None
-                if conf < threshold:
-                    status = "abstract-nominal"
-                    candidate["x_cti_resolution_status"] = "pending"
-                    
                 candidate = {
                     "source": src,
                     "relationship": rel_class,
@@ -457,8 +452,9 @@ def _extract_relationships_from_doc(doc, ir, source_label):
                     "source_context": source_label,
                 }
 
-                if status:
-                    candidate["status"] = status
+                if conf < threshold:
+                    candidate["status"] = "abstract-nominal"
+                    candidate["x_cti_resolution_status"] = "pending"
 
                 if not is_actionable_relationship(candidate):
                     REL_REJECTIONS.append({

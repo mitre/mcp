@@ -489,7 +489,7 @@ def run_phase2(base_dir: Path):
         # -------------------------------------------------------
         # Write CAD Graph Preview for Visualizer Testing
         # -------------------------------------------------------
-        defense_root = root_dir / "plugins" / "mcp" / "utilities" / "D3fend_CAD"
+        defense_root = root_dir / "app" / "utilities" / "D3fend_CAD"
         try:
             enriched_bundle, ontology_info = enrich_stix_bundle_with_defend(bundle, defense_root)
         except FileNotFoundError as e:
@@ -547,7 +547,7 @@ def run_stix_to_cad_only(base_dir: Path):
         log("[!] No .stix.json files found in outputs_stix/.")
         return
 
-    defense_root = root_dir / "utilities" / "D3fend_CAD"
+    defense_root = root_dir / "app" / "utilities" / "D3fend_CAD"
 
     for stix_file in stix_files:
         log(f"    [*] Enriching {stix_file.name}")

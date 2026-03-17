@@ -309,7 +309,7 @@ async def _semantic_match_phrase(
             continue
 
         sim = cosine(p_vec, np.asarray(t_vec, dtype=float))
-        dyn_thresh = threshold + 0.15 if len(phrase.split()) <= 2 else threshold
+        dyn_thresh = threshold + 0.08 if len(phrase.split()) <= 2 else threshold
 
         if sim >= dyn_thresh:
             matches.append({
@@ -323,7 +323,7 @@ async def _semantic_match_phrase(
 async def semantic_match_techniques(
         phrases: list[str],
         techniques: list[dict],
-        threshold: float = 0.42
+        threshold: float = 0.82
     ) -> list[dict]:
 
     tasks = [
@@ -407,7 +407,7 @@ async def extract_dynamic_techniques(text: str, arg2, arg3=None, limit=25, *_, *
         if len(out) >= limit:
             break
 
-    out = [t for t in out if t["confidence"] >= 0.18]
+    out = [t for t in out if t["confidence"] >= 0.80]
     return out
 
 def _sentencize(text: str) -> list[str]:

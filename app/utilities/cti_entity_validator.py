@@ -78,6 +78,65 @@ async def classify_entity_llm(name: str, category: str) -> str:
         return "uncertain"
 
 # ============================================================
+# ENTITY RECLASSIFICATION (DETERMINISTIC, PRE-LLM)
+# ============================================================
+
+def reclassify_entities(ir: dict) -> dict:
+    """
+    Move misclassified entities between IR categories using MITRE taxonomy.
+    Runs BEFORE LLM validation to reduce LLM calls and fix type errors.
+    """
+    groups, malware_names, tool_names = _mitre_name_sets()
+
+    new_malware = []
+    for m in ir.get("malware", []):
+        name = (m.get("name") or "").strip()
+        name_lower = name.lower()
+
+        # Known MITRE tool misclassified as malware → move to tools
+        if name_lower in tool_names:
+            ir.setdefault("tools", []).append(m)
+            print(f"[RECLASS] malware→tool: '{name}' (MITRE taxonomy match)")
+            continue
+
+        # Technique descriptions misclassified as malware → drop from entities
+        technique_indicators = ["deletion", "disabling", "recovery", "clearing",
+                                "modification", "enumeration", "escalation"]
+        if any(ind in name_lower for ind in technique_indicators):
+            print(f"[RECLASS] malware→dropped: '{name}' (technique description)")
+            continue
+
+        # Slash-separated compound names → split
+        if "/" in name and len(name) < 50:
+            parts = [p.strip() for p in name.split("/") if p.strip()]
+            for part in parts:
+                part_lower = part.lower()
+                if part_lower in tool_names:
+                    ir.setdefault("tools", []).append(
+                        {"name": part, "description": m.get("description", "")})
+                    print(f"[RECLASS] split→tool: '{part}'")
+                elif part_lower in malware_names:
+                    new_malware.append(
+                        {"name": part, "description": m.get("description", "")})
+                else:
+                    ir.setdefault("tools", []).append(
+                        {"name": part, "description": m.get("description", "")})
+                    print(f"[RECLASS] split→tool (default): '{part}'")
+            continue
+
+        # Script/executable files → tools
+        if re.search(r'\.(exe|ps1|vbs|dll|bat|cmd)$', name_lower):
+            ir.setdefault("tools", []).append(m)
+            print(f"[RECLASS] malware→tool: '{name}' (script/executable)")
+            continue
+
+        new_malware.append(m)
+
+    ir["malware"] = new_malware
+    return ir
+
+
+# ============================================================
 # ENTITY VALIDATION PIPELINE
 # ============================================================
 
@@ -183,7 +242,7 @@ def repair_entities(ir: dict) -> dict:
 
         name = raw.strip()
         name = name.split(",")[0]                    # remove lists
-        name = re.sub(r"[^A-Za-z0-9 _-]", "", name)  # strip punctuation
+        name = re.sub(r"[^A-Za-z0-9. _-]", "", name)  # strip punctuation, keep dots for IPs/domains
         words = name.split()
 
         # Analyst rule: reject sentence-like entities

@@ -213,7 +213,8 @@ class LLMClient:
     # --------------------------------------------------
 
     async def _ollama_generate(self, prompt, model, api_base, temperature):
-        async with aiohttp.ClientSession() as session:
+        timeout = aiohttp.ClientTimeout(total=600)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post(
                 f"{api_base}/api/generate",
                 json={
