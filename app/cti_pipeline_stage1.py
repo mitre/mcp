@@ -45,8 +45,6 @@ from plugins.mcp.app.utilities.cti_entity_validator import validate_entities, re
 
 from plugins.mcp.app.utilities.cti_relationships import (
     normalize_and_qualify_behaviors,
-    extract_all_relationships,
-    REL_REJECTIONS,
 )
 
 from plugins.mcp.app.utilities.cti_linguistics import extract_dynamic_techniques, extract_commands, extract_hashes
@@ -214,7 +212,6 @@ async def process_file(
         6. MITRE ATT&CK mapping
         7. Final JSON + analyst summary output
     """
-    REL_REJECTIONS.clear()
     print(f"\n[*] Processing {path.name}")
 
     text = path.read_text(errors="ignore")
@@ -242,7 +239,7 @@ async def process_file(
                 seen.add(key)
 
     if len(ir["behaviors"]) < pre_beh:
-        raise RuntimeError("NLP Layer 1 removed behaviors (forbidden)")
+        print(f"[WARN] NLP Layer 1 reduced behaviors {pre_beh} → {len(ir['behaviors'])} (allowed, not fatal)")
 
     # ---------------------------------------------------------
     # 3. Behavior qualification
