@@ -328,9 +328,13 @@ async def process_file(
     explicit_from_ir = extract_ids_from_text(all_ir_text, lookup)
     explicit_objs = [lookup[tid] for tid in explicit_from_ir if tid in lookup]
 
+    # Ontology-driven inference: tool/malware → known ATT&CK techniques
+    from plugins.mcp.app.utilities.cti_ontology_inference import infer_techniques_from_entities
+    ontology_inferred = infer_techniques_from_entities(ir, lookup, source_text=text)
+
     seen = set()
     merged = []
-    for t in explicit_objs + ir.get("attack_patterns", []) + ling + mitre:
+    for t in explicit_objs + ontology_inferred + ir.get("attack_patterns", []) + ling + mitre:
         if isinstance(t, dict) and t.get("id") and t["id"] not in seen:
             seen.add(t["id"])
             merged.append(t)

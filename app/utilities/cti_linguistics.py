@@ -408,7 +408,25 @@ async def extract_dynamic_techniques(text: str, arg2, arg3=None, limit=25, *_, *
             break
 
     out = [t for t in out if t["confidence"] >= 0.80]
-    return out
+
+    # Evidence quality gate: reject matches from short/generic phrases
+    filtered = []
+    for t in out:
+        evidence = t.get("evidence", [""])[0] if t.get("evidence") else ""
+        words = evidence.split()
+        # Require at least 3 content words in the evidence phrase
+        if len(words) < 3:
+            continue
+        # Reject evidence that is all stopwords/generic
+        content_words = [w for w in words if len(w) > 3 and w not in {
+            "that", "this", "with", "from", "into", "also", "such",
+            "been", "have", "were", "will", "used", "using", "more",
+        }]
+        if len(content_words) < 2:
+            continue
+        filtered.append(t)
+
+    return filtered
 
 def _sentencize(text: str) -> list[str]:
     doc = nlp(text or "")
