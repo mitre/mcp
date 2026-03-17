@@ -21,8 +21,8 @@ This replaces the old loader that assumed 3 separate JSON files.
 
 import json, re
 from pathlib import Path
-import spacy
-nlp = spacy.load("en_core_web_lg")
+
+from plugins.mcp.app.utilities.nlp_model import nlp
 
 # ======================================================================
 #  Load the unified MITRE ATT&CK bundle

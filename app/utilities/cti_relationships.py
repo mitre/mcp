@@ -11,18 +11,13 @@ Key guarantees:
 - Backward compatible with cti_pipeline_stage1.py
 """
 
-import spacy, re
+import re
 from functools import lru_cache
 from nltk.corpus import wordnet as wn
 
+from plugins.mcp.app.utilities.nlp_model import nlp
 from plugins.mcp.app.utilities.cti_mitre_extract import cosine_sim
 from plugins.mcp.app.utilities.cti_linguistics import normalize_behavior_text, canonicalize_relationship_endpoints
-
-# ============================================================
-# NLP MODEL (GLOBAL, SINGLE LOAD)
-# ============================================================
-
-nlp = spacy.load("en_core_web_lg")
 
 # ============================================================
 # VECTOR CACHE (PERFORMANCE CRITICAL)

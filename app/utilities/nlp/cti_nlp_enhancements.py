@@ -13,11 +13,10 @@ Output conforms to:
     ir["threat_actors"] cleaned + normalized
 """
 
-import spacy
 import re
 from rapidfuzz import fuzz
 
-nlp = spacy.load("en_core_web_lg")
+from plugins.mcp.app.utilities.nlp_model import nlp
 
 def _log(msg: str):
     """Simple stdout logger for tee-based debugging."""

@@ -26,7 +26,38 @@ def _mitre_name_sets():
     groups = {o.get("name","").strip().lower() for o in tax.get("groups", {}).values()}
     malware = {o.get("name","").strip().lower() for o in tax.get("malware", {}).values()}
     tools = {o.get("name","").strip().lower() for o in tax.get("tools", {}).values()}
-    return groups, malware, tools
+    # Also collect aliases for fuzzy matching
+    all_aliases = set()
+    for collection in (tax.get("groups", {}), tax.get("malware", {}), tax.get("tools", {})):
+        for obj in collection.values():
+            for alias in obj.get("x_mitre_aliases", []):
+                all_aliases.add(alias.strip().lower())
+            name = obj.get("name", "").strip().lower()
+            if name:
+                all_aliases.add(name)
+    return groups, malware, tools, all_aliases
+
+
+def _known_cti_entity(name: str) -> bool:
+    """Check if a name is a known CTI entity (tool, malware, or group) by any name/alias."""
+    n = (name or "").strip().lower()
+    if not n or len(n) < 2:
+        return False
+    _, _, _, all_aliases = _mitre_name_sets()
+    # Exact match
+    if n in all_aliases:
+        return True
+    # Common misspellings: try without double letters
+    norm = re.sub(r"(.)\1+", r"\1", n)
+    if norm in all_aliases:
+        return True
+    # Try without trailing version/suffix
+    base = re.sub(r"[.\-_]\w+$", "", n)
+    if base in all_aliases:
+        return True
+    return False
+
+
 async def classify_entity_llm(name: str, category: str) -> str:
     """
     Ask the LLM whether <name> is a valid CTI entity.
@@ -37,13 +68,40 @@ async def classify_entity_llm(name: str, category: str) -> str:
     # Deterministic fast-path (MITRE)
     # -----------------------------
     n = (name or "").strip().lower()
-    groups, malware, tools = _mitre_name_sets()
+    groups, malware, tools, all_aliases = _mitre_name_sets()
 
+    # Exact match in correct category
     if category == "threat_actor" and n in groups:
         return "yes"
     if category == "malware" and n in malware:
         return "yes"
     if category == "tool" and n in tools:
+        return "yes"
+
+    # Cross-category: known entity, just miscategorized → still valid
+    if n in all_aliases:
+        return "yes"
+
+    # Fuzzy: handle misspellings (e.g., "Mimiikatz" → "mimikatz")
+    norm = re.sub(r"(.)\1+", r"\1", n)
+    if norm in all_aliases:
+        return "yes"
+
+    # Common tool names that aren't in MITRE but are widely known
+    WELL_KNOWN = {
+        "anydesk", "teamviewer", "rsync", "wmic", "fsutil", "vim-cmd",
+        "wevtutil", "veeam", "megasync", "rclone", "gmer", "keepass",
+        "winrar", "7zip", "nmap", "netcat", "wget", "curl", "ssh",
+        "scp", "powershell", "cmd.exe", "bitsadmin", "certutil",
+        "vssadmin", "bcdedit", "reg.exe", "sc.exe", "net.exe",
+        "wscript", "cscript", "mshta", "rundll32", "regsvr32",
+        "brute ratel", "sliver", "metasploit", "empire",
+    }
+    if n in WELL_KNOWN or n.rstrip(".exe") in WELL_KNOWN:
+        return "yes"
+
+    # Skip LLM for names that look like file paths or system utilities
+    if re.match(r"^[a-z][a-z0-9._-]{1,20}(\.exe|\.dll|\.ps1|\.vbs|\.bat)?$", n):
         return "yes"
 
     # -----------------------------
@@ -86,7 +144,7 @@ def reclassify_entities(ir: dict) -> dict:
     Move misclassified entities between IR categories using MITRE taxonomy.
     Runs BEFORE LLM validation to reduce LLM calls and fix type errors.
     """
-    groups, malware_names, tool_names = _mitre_name_sets()
+    groups, malware_names, tool_names, _ = _mitre_name_sets()
 
     new_malware = []
     for m in ir.get("malware", []):

@@ -8,10 +8,9 @@ Purpose:
 - Emit low-confidence behavior candidates only
 """
 
-import spacy
 from nltk.corpus import wordnet as wn
 
-nlp = spacy.load("en_core_web_lg")
+from plugins.mcp.app.utilities.nlp_model import nlp
 
 
 def recover_nominalized_behaviors(text: str) -> list[dict]:

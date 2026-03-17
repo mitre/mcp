@@ -19,16 +19,11 @@ NO brittle mappings.
 
 import re
 import numpy as np
-import spacy
 import asyncio
 from rapidfuzz import fuzz
 from functools import lru_cache
 
-# ============================================================
-# NLP MODEL (GLOBAL SINGLE LOAD)
-# ============================================================
-
-nlp = spacy.load("en_core_web_lg")
+from plugins.mcp.app.utilities.nlp_model import nlp
 
 # ===========================================================
 # Attempt to capture command-line invocations

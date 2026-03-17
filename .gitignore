@@ -21,3 +21,4 @@ data/raw
 data/scenario
 app/debug_mitre.log
 conf/local.yml
+.claude/worktrees/
