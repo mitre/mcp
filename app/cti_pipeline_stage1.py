@@ -346,6 +346,10 @@ async def process_file(
     from plugins.mcp.app.utilities.cti_defend_validation import validate_techniques_by_tactic
     merged = validate_techniques_by_tactic(merged, text, strict=True)
 
+    # Unified precision gate: PMI, hierarchy, clique, TF-IDF
+    from plugins.mcp.app.utilities.cti_precision_gate import apply_precision_gate
+    merged = apply_precision_gate(merged, text, ir, min_confidence=0.50)
+
     ir["attack_patterns"] = merged
 
     # ---------------------------------------------------------
