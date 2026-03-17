@@ -260,7 +260,9 @@ async def process_file(
     raw_relationships = await extract_all_relationships(
         text, ir, high_conf
     ) or []
-    ir["relationships"] = rag_safe_relationships(raw_relationships)
+    ir["relationships"] = prune_relationships(
+        rag_safe_relationships(raw_relationships), ir
+    )
     ir["low_confidence_behaviors"] = low_conf
 
     # ---------------------------------------------------------
@@ -463,6 +465,82 @@ def _merge_commands(entity, commands):
     for c in commands:
         if c["command"] not in existing:
             entity.setdefault("x_cti_commands", []).append(c)
+
+VALID_CTI_VERBS = {
+    "use", "employ", "deploy", "execute", "exploit", "target",
+    "communicate", "download", "upload", "exfiltrate",
+    "encrypt", "disable", "modify", "delete", "create", "install",
+    "inject", "compromise", "access", "collect", "scan", "enumerate",
+    "propagate", "spread", "deliver", "drop", "terminate", "stop",
+    "clear", "dump", "harvest", "steal", "extract", "transfer",
+}
+
+
+def prune_relationships(rels: list[dict], ir: dict) -> list[dict]:
+    """
+    Structural relationship pruning — removes cartesian product noise.
+
+    Rules (universal CTI, not adversary-specific):
+    1. Self-references removed
+    2. Only actors/malware as source (tools don't "use" other tools)
+    3. Verb must be CTI-relevant
+    4. Target must be short (not a sentence fragment)
+    5. Dedup by (source, target) keeping highest confidence
+    6. Cartesian detection: if same source+verb has >3 targets, drop all
+    """
+    actors = {a.get("name", "").lower() for a in ir.get("threat_actors", [])}
+    malware = {m.get("name", "").lower() for m in ir.get("malware", [])}
+    valid_sources = actors | malware
+
+    # Pass 1: structural prune
+    pruned = []
+    for r in rels:
+        src = (r.get("source") or "").lower()
+        tgt = (r.get("target") or "").lower()
+        verb = (r.get("relationship") or "").lower()
+
+        if src == tgt:
+            continue
+        if src not in valid_sources:
+            continue
+        if src in malware and tgt in malware:
+            continue
+        if verb not in VALID_CTI_VERBS:
+            continue
+        if len(tgt.split()) > 5:
+            continue
+        if not any(c.isalpha() for c in tgt):
+            continue
+
+        pruned.append(r)
+
+    # Pass 2: dedup by (source, target) keeping highest confidence
+    from collections import defaultdict
+    seen = {}
+    for r in pruned:
+        key = ((r.get("source") or "").lower(), (r.get("target") or "").lower())
+        if key not in seen or r.get("confidence", 0) > seen[key].get("confidence", 0):
+            seen[key] = r
+
+    # Pass 3: cartesian detection
+    verb_targets = defaultdict(list)
+    for r in seen.values():
+        src = (r.get("source") or "").lower()
+        verb = (r.get("relationship") or "").lower()
+        verb_targets[(src, verb)].append(r)
+
+    final = []
+    for (src, verb), group in verb_targets.items():
+        if len(group) > 3:
+            continue
+        final.extend(group)
+
+    if rels and len(final) < len(rels):
+        print(f"[REL-PRUNE] {len(rels)} → {len(final)} "
+              f"({100 * (1 - len(final) / max(len(rels), 1)):.0f}% pruned)")
+
+    return final
+
 
 def rag_safe_relationships(rels: list[dict], min_conf: float = 0.55) -> list[dict]:
     """
