@@ -342,6 +342,10 @@ async def process_file(
     # Remove deprecated/revoked technique IDs not in current taxonomy
     merged = [t for t in merged if t.get("id") in lookup or not t.get("id", "").startswith("T")]
 
+    # D3FEND tactic validation: filter techniques by tactic relevance to source text
+    from plugins.mcp.app.utilities.cti_defend_validation import validate_techniques_by_tactic
+    merged = validate_techniques_by_tactic(merged, text, strict=True)
+
     ir["attack_patterns"] = merged
 
     # ---------------------------------------------------------
