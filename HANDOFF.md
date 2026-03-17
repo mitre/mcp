@@ -1,47 +1,69 @@
-# CTI Pipeline — HANDOFF (Updated 2026-03-17 10:00)
+# CTI Pipeline — HANDOFF (Updated 2026-03-17 12:00)
 
-## PR #15: fix/p0-pipeline-fidelity (18 commits, targeting CTI branch)
+## Open PRs
+
+### PR #15: fix/p0-pipeline-fidelity → CTI (20 commits) — READY FOR REVIEW
 https://github.com/mitre/mcp/pull/15
 
-## Current Performance (Offline Mode, 5 Sources, Averaged)
+All deterministic improvements. No LLM dependency.
+
+### PR #16: feature/llm-validation → CTI (1 commit) — NEEDS REMOTE LLM
+https://github.com/mitre/mcp/pull/16
+
+Optional LLM validation layer. Blocked on remote LLM endpoint (local
+gemma3n too slow for structured JSON validation prompts).
+
+## Current Performance (PR #15, Offline Mode, 5 Sources)
 
 ```
-Metric                 Original    Current    Senior Analyst
-TTP Recall (extract)        5%       65%            100%
-TTP Precision              1%       11%            100%
-Actor Recall               0%       80%            100%
-Rel Count               571         41              16
-Rel Recall               N/A       22%            100%
-Time/file              ~8min      ~44s          30-60min
-LLM Required             Yes        No             N/A
+Metric                 Original    PR #15     Delta   Sr Analyst
+TTP Recall                   5%      65%     +60pp        100%
+TTP Precision                1%      11%     +10pp        100%
+Actor Recall                 0%      80%     +80pp        100%
+Tool Recall                 29%      75%     +46pp        100%
+Rel Recall                   0%      20%     +20pp        100%
+Rel Count                  571       40      -531          ~16
+Speed                    ~8min     ~13s*      97%      30-60min
+LLM Required               Yes       No    Removed         N/A
+STIX 2.1 Compliant          No      Yes     Fixed          N/A
+D3FEND                  Broken  Working     Fixed          N/A
+```
+*13s avg per file after first (first file ~50s for cache build)
+
+## PR #16 Expected Impact (pending remote LLM testing)
+```
+Metric                 PR #15    +LLM Val    Expected
+TTP Precision             11%     40-60%     LLM removes FP techniques
+Rel Recall                20%     40-50%     LLM discovers cross-sentence rels
+Speed/file               ~13s     ~40s       +27s for validation calls
 ```
 
-## Relationship Extraction Progression
+## Key Architecture
+
 ```
-Version                  Rels  Rel-Recall  Actor-Recall
-Original (cartesian)      571      N/A          0%
-+Dep-parse extractor       37      17%          0%
-+Default actor              37      17%          0%
-+pobj subtree walk          42      17%          0%
-+Frequency actor extract    41      22%         80%
+Raw CTI → Clean → IR (offline or LLM) → NLP → Entity Reclass
+→ Dep-Parse Relationships → MITRE Techniques (explicit + ontology + semantic)
+→ D3FEND Tactic Validation → Precision Gate → [LLM Validation (optional)]
+→ STIX 2.1 → D3FEND/CAD Enrichment
 ```
 
-## Key Files Changed (18 commits)
-- `cti_relation_extractor.py` — NEW: dep-parse triple extraction
-- `cti_offline_ir.py` — NEW: LLM-free IR extraction
-- `cti_ontology_inference.py` — NEW: tool→technique from MITRE taxonomy
-- `cti_defend_validation.py` — NEW: D3FEND tactic validation gate
-- `cti_precision_gate.py` — NEW: PMI + hierarchy + clique + cap
-- `cti_stix_merge.py` — NEW: multi-source STIX merge
-- `cti_stix_builders.py` — STIX 2.1 compliance fixes
-- `cti_entity_validator.py` — entity reclassification + fast-path
-- `cti_linguistics.py` — threshold + evidence quality gate
-- `cti_pipeline_stage1.py` — pipeline wiring for all above
-- `cti_pipeline_stage2.py` — D3FEND path fix
-- `nlp_model.py` — NEW: shared spaCy singleton
-- `tests/test_relation_extractor.py` — 18 unit tests, 100% pass
+LLM is used for:
+- PR #15: nowhere (fully offline capable)
+- PR #16: validation only (confirms/denies, never extracts)
+
+## To Test PR #16
+
+Configure remote LLM in conf/local.yml:
+```yaml
+cti:
+  model: gpt-4o-mini  # or any fast model
+  provider: openai
+  api_key: "your-key"
+  api_base: https://your-endpoint/v1
+  offline: false
+```
 
 ## Environment
-- Branch: `fix/p0-pipeline-fidelity` (from CTI)
+- Branch PR#15: `fix/p0-pipeline-fidelity`
+- Branch PR#16: `feature/llm-validation`
 - Venv: `/home/caldera/Desktop/CalderaVENV`
-- Config: `conf/local.yml` (cti.offline: true/false)
