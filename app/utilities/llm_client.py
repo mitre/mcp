@@ -240,6 +240,11 @@ class LLMClient:
             "Authorization": f"Bearer {llm_cfg.get('api_key') or ''}",
         }
 
+        # Add extra headers (e.g., Host header for SSH tunnel proxying)
+        extra_headers = llm_cfg.get("extra_headers", {})
+        if extra_headers:
+            headers.update(extra_headers)
+
         payload = {
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
@@ -249,7 +254,16 @@ class LLMClient:
 
         timeout = aiohttp.ClientTimeout(total=llm_cfg.get("timeout", 60))
 
-        async with aiohttp.ClientSession(timeout=timeout) as session:
+        # SSL verification (disable for self-signed certs / SSH tunnels)
+        import ssl as _ssl
+        ssl_ctx = None
+        if llm_cfg.get("ssl_verify") is False:
+            ssl_ctx = _ssl.create_default_context()
+            ssl_ctx.check_hostname = False
+            ssl_ctx.verify_mode = _ssl.CERT_NONE
+
+        connector = aiohttp.TCPConnector(ssl=ssl_ctx) if ssl_ctx else None
+        async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
             async with session.post(
                 f"{api_base}/chat/completions",
                 headers=headers,
