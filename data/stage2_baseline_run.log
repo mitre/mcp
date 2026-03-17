@@ -1,0 +1,39 @@
+[DEBUG] Total MITRE objects loaded: 24772
+[DEBUG][MITRE] attack_patterns loaded: 835
+[DEBUG][MITRE] malware loaded: 696
+[DEBUG][MITRE] groups loaded: 187
+[DEBUG][MITRE] tools loaded: 91
+[DEBUG][MITRE] relationships loaded: 20048
+[DEBUG][MITRE] name_index entries: 1778
+[DEBUG][MITRE] attack_id_index entries: 835
+[+] Running Phase 2: IR → STIX
+    [*] Processing sophos_blackcat_bad_luck.json
+        → wrote sophos_blackcat_bad_luck.stix.json
+        → wrote sophos_blackcat_bad_luck.stix.txt
+[D3FEND] Enriching STIX bundle...
+[D3FEND] No scenario directory found.
+[D3FEND] Skipping enrichment (missing assets): [Errno 2] No such file or directory: '/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/plugins/mcp/utilities/D3fend_CAD/D3fend_CAD_Graph_Schema.json'
+        → performed D3FEND enrichment
+ontology_info keys:
+
+        [!] No CAD graph returned from enrichment.
+
+===== D3FEND ENRICHMENT DEBUG =====
+[D3FEND] Enrichment skipped — ontology assets not available
+===== END D3FEND ENRICHMENT DEBUG =====
+
+    [*] Processing symantec_noberus_blackcat.json
+        → wrote symantec_noberus_blackcat.stix.json
+        → wrote symantec_noberus_blackcat.stix.txt
+[D3FEND] Enriching STIX bundle...
+[D3FEND] No scenario directory found.
+[D3FEND] Skipping enrichment (missing assets): [Errno 2] No such file or directory: '/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/plugins/mcp/utilities/D3fend_CAD/D3fend_CAD_Graph_Schema.json'
+        → performed D3FEND enrichment
+ontology_info keys:
+
+        [!] No CAD graph returned from enrichment.
+
+===== D3FEND ENRICHMENT DEBUG =====
+[D3FEND] Enrichment skipped — ontology assets not available
+===== END D3FEND ENRICHMENT DEBUG =====
+

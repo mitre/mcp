@@ -1,0 +1,90 @@
+[+] Stage1 starting: 5 files | 4 workers
+
+[*] Processing symantec_noberus_blackcat.txt
+
+[*] Processing talos_blackmatter_to_blackcat.txt
+
+[*] Processing sophos_blackcat_bad_luck.txt
+[IR][PARSED] actors=1  malware=1  tools=6  infra=1  patterns=4  behaviors=2  relationships=0
+[IR] Extracted sophos_blackcat_bad_luck
+[DEPNLP] Beginning NLP Layer #1
+[DEPNLP] Behaviors after NLP Layer 1: 10
+[DEPNLP] Actors removed: []
+[DEPNLP] Actors kept: ['BlackCat']
+[DEPNLP] Canonicalized 9 entities
+[REL][CANDIDATE] verb=collect sentence='collecting sensitive information using enumeration tools before encryption.
+re-running initial exploits during incident response operations to extract newly created credentials.'
+[REL][CHECK] src=BlackCat roles={'actor'} verb=collect tgt=sensitive information tgt_roles={'unknown'}
+[REL][CHECK] src=BlackCat roles={'actor'} verb=collect tgt=- running initial exploits during incident response operations tgt_roles={'unknown'}
+[REL][CANDIDATE] verb=use sentence='collecting sensitive information using enumeration tools before encryption.
+re-running initial exploits during incident response operations to extract newly created credentials.'
+[REL][CHECK] src=BlackCat roles={'actor'} verb=use tgt=enumeration tools tgt_roles={'unknown'}
+[REL][CANDIDATE] verb=extract sentence='collecting sensitive information using enumeration tools before encryption.
+re-running initial exploits during incident response operations to extract newly created credentials.'
+[REL][CHECK] src=BlackCat roles={'actor'} verb=extract tgt=newly created credentials tgt_roles={'unknown'}
+[REL][CANDIDATE] verb=create sentence='collecting sensitive information using enumeration tools before encryption.
+re-running initial exploits during incident response operations to extract newly created credentials.'
+[REL] semantic=3
+[REL][CANDIDATE] verb=collect sentence='collecting sensitive information using enumeration tools before encryption.'
+[REL][CHECK] src=BlackCat roles={'actor'} verb=collect tgt=sensitive information tgt_roles={'unknown'}
+[REL][CANDIDATE] verb=use sentence='collecting sensitive information using enumeration tools before encryption.'
+[REL][CHECK] src=BlackCat roles={'actor'} verb=use tgt=enumeration tools tgt_roles={'unknown'}
+[REL][CANDIDATE] verb=extract sentence='re-running initial exploits during incident response operations to extract newly created credentials.'
+[REL][CHECK] src=BlackCat roles={'actor'} verb=extract tgt=newly created credentials tgt_roles={'unknown'}
+[REL][CANDIDATE] verb=create sentence='re-running initial exploits during incident response operations to extract newly created credentials.'
+[REL] behavior=3
+[REL] semantic=3 behavior=3 combined_pre_dedup=6
+[REL][REJECT_SUMMARY] {'non_actionable_relationship': 2, 'no_target_recovered': 2}
+[REL] final_deduped=4
+
+[ENT] Starting entity validation
+[ENT] unique_entities=8
+[ENT][LLM] validating threat_actor: 'BlackCat'
+[DEBUG] Total MITRE objects loaded: 24772
+[DEBUG][MITRE] attack_patterns loaded: 835
+[DEBUG][MITRE] malware loaded: 696
+[DEBUG][MITRE] groups loaded: 187
+[DEBUG][MITRE] tools loaded: 91
+[DEBUG][MITRE] relationships loaded: 20048
+[DEBUG][MITRE] name_index entries: 1778
+[DEBUG][MITRE] attack_id_index entries: 835
+[ENT][LLM][WARN] Non-JSON response for 'BlackCat'
+[ENT][LLM] threat_actor 'BlackCat' → uncertain
+[ENT][LLM] validating malware: 'BlackCat Ransomware'
+[ENT][LLM] malware 'BlackCat Ransomware' → yes
+[ENT][LLM] validating tool: 'AnyDesk'
+[ENT][LLM] tool 'AnyDesk' → yes
+[ENT][LLM] validating tool: 'TeamViewer'
+[ENT][LLM][WARN] Non-JSON response for 'TeamViewer'
+[ENT][LLM] tool 'TeamViewer' → uncertain
+[ENT][LLM] validating tool: 'Cobalt Strike'
+[ENT][LLM] tool 'Cobalt Strike' → yes
+[ENT][LLM] validating tool: 'Brute Ratel'
+[ENT][LLM] tool 'Brute Ratel' → yes
+[ENT][LLM] validating tool: 'WinaR'
+[ENT][LLM] tool 'WinaR' → yes
+[ENT][LLM] validating tool: 'rsync'
+[ENT][LLM][WARN] Non-JSON response for 'rsync'
+[ENT][LLM] tool 'rsync' → uncertain
+[ENT] kept=5 uncertain=3 rejected=0
+
+[ENT] repair_before=9 repair_after=9
+[LING] techniques_in=835 behaviors_in=2
+[LING] raw_phrases=24
+[LING] operational_phrases=12
+[LING] candidate phrases extracted: 12
+[LING] semantic matches above threshold: 8349
+[MITRE] inferred=4 dropped=0
+[MITRE] explicit=0 inferred=4 final=4
+[IR][PARSED] actors=1  malware=1  tools=6  infra=1  patterns=28  behaviors=2  relationships=2
+
+[*] Processing unit42_blackcat_ransomware.txt
+
+[*] Processing varonis_blackcat_ransomware.txt
+[ERR] unit42_blackcat_ransomware.txt: 
+[ERR] talos_blackmatter_to_blackcat.txt: 
+[ERR] symantec_noberus_blackcat.txt: 
+[ERR] varonis_blackcat_ransomware.txt: 
+[OK] sophos_blackcat_bad_luck.txt
+
+[STAGE1] completed in 745.72s

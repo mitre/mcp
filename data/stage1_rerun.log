@@ -1,0 +1,277 @@
+Traceback (most recent call last):
+  File "<string>", line 17, in run_one
+  File "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/cti_pipeline_stage1.py", line 296, in process_file
+    ir = await validate_entities(ir, destructive=False)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/cti_entity_validator.py", line 123, in validate_entities
+    result = await classify_entity_llm(name, cat)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/cti_entity_validator.py", line 68, in classify_entity_llm
+    raw = await llm_generate(prompt, profile="cti")
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/llm_client.py", line 285, in llm_generate
+    return await get_llm_client().generate(prompt, profile)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/llm_client.py", line 193, in generate
+    return await self._ollama_generate(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/llm_client.py", line 218, in _ollama_generate
+    async with session.post(
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/client.py", line 1510, in __aenter__
+    self._resp: _RetType = await self._coro
+                           ^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/client.py", line 779, in _request
+    resp = await handler(req)
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/client.py", line 757, in _connect_and_send_request
+    await resp.start(conn)
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/client_reqrep.py", line 539, in start
+    message, payload = await protocol.read()  # type: ignore[union-attr]
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/streams.py", line 703, in read
+    await self._waiter
+aiohttp.client_exceptions.ServerDisconnectedError: Server disconnected
+Traceback (most recent call last):
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/connector.py", line 1298, in _wrap_create_connection
+    sock = await aiohappyeyeballs.start_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohappyeyeballs/impl.py", line 122, in start_connection
+    raise first_exception
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohappyeyeballs/impl.py", line 73, in start_connection
+    sock = await _connect_sock(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohappyeyeballs/impl.py", line 208, in _connect_sock
+    await loop.sock_connect(sock, address)
+  File "/usr/lib/python3.12/asyncio/selector_events.py", line 651, in sock_connect
+    return await fut
+           ^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/selector_events.py", line 691, in _sock_connect_cb
+    raise OSError(err, f'Connect call failed {address}')
+ConnectionRefusedError: [Errno 111] Connect call failed ('127.0.0.1', 11434)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<string>", line 17, in run_one
+  File "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/cti_pipeline_stage1.py", line 225, in process_file
+    ir = await load_or_extract_ir(path, text, ir_dir)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/cti_pipeline_stage1.py", line 391, in load_or_extract_ir
+    ir = await extract_ir(text)
+         ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/cti_parsing.py", line 172, in extract_ir
+    raw = await llm_generate(prompt, profile="cti")
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/llm_client.py", line 285, in llm_generate
+    return await get_llm_client().generate(prompt, profile)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/llm_client.py", line 193, in generate
+    return await self._ollama_generate(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/llm_client.py", line 218, in _ollama_generate
+    async with session.post(
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/client.py", line 1510, in __aenter__
+    self._resp: _RetType = await self._coro
+                           ^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/client.py", line 779, in _request
+    resp = await handler(req)
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/client.py", line 734, in _connect_and_send_request
+    conn = await self._connector.connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/connector.py", line 672, in connect
+    proto = await self._create_connection(req, traces, timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/connector.py", line 1239, in _create_connection
+    _, proto = await self._create_direct_connection(req, traces, timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/connector.py", line 1611, in _create_direct_connection
+    raise last_exc
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/connector.py", line 1580, in _create_direct_connection
+    transp, proto = await self._wrap_create_connection(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/connector.py", line 1321, in _wrap_create_connection
+    raise client_error(req.connection_key, exc) from exc
+aiohttp.client_exceptions.ClientConnectorError: Cannot connect to host 127.0.0.1:11434 ssl:default [Connect call failed ('127.0.0.1', 11434)]
+Traceback (most recent call last):
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/connector.py", line 1298, in _wrap_create_connection
+    sock = await aiohappyeyeballs.start_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohappyeyeballs/impl.py", line 122, in start_connection
+    raise first_exception
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohappyeyeballs/impl.py", line 73, in start_connection
+    sock = await _connect_sock(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohappyeyeballs/impl.py", line 208, in _connect_sock
+    await loop.sock_connect(sock, address)
+  File "/usr/lib/python3.12/asyncio/selector_events.py", line 651, in sock_connect
+    return await fut
+           ^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/selector_events.py", line 691, in _sock_connect_cb
+    raise OSError(err, f'Connect call failed {address}')
+ConnectionRefusedError: [Errno 111] Connect call failed ('127.0.0.1', 11434)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<string>", line 17, in run_one
+  File "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/cti_pipeline_stage1.py", line 225, in process_file
+    ir = await load_or_extract_ir(path, text, ir_dir)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/cti_pipeline_stage1.py", line 391, in load_or_extract_ir
+    ir = await extract_ir(text)
+         ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/cti_parsing.py", line 172, in extract_ir
+    raw = await llm_generate(prompt, profile="cti")
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/llm_client.py", line 285, in llm_generate
+    return await get_llm_client().generate(prompt, profile)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/llm_client.py", line 193, in generate
+    return await self._ollama_generate(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/caldera/plugins/mcp/app/utilities/llm_client.py", line 218, in _ollama_generate
+    async with session.post(
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/client.py", line 1510, in __aenter__
+    self._resp: _RetType = await self._coro
+                           ^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/client.py", line 779, in _request
+    resp = await handler(req)
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/client.py", line 734, in _connect_and_send_request
+    conn = await self._connector.connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/connector.py", line 672, in connect
+    proto = await self._create_connection(req, traces, timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/connector.py", line 1239, in _create_connection
+    _, proto = await self._create_direct_connection(req, traces, timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/connector.py", line 1611, in _create_direct_connection
+    raise last_exc
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/connector.py", line 1580, in _create_direct_connection
+    transp, proto = await self._wrap_create_connection(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caldera/Desktop/CalderaVENV/lib/python3.12/site-packages/aiohttp/connector.py", line 1321, in _wrap_create_connection
+    raise client_error(req.connection_key, exc) from exc
+aiohttp.client_exceptions.ClientConnectorError: Cannot connect to host 127.0.0.1:11434 ssl:default [Connect call failed ('127.0.0.1', 11434)]
+Files to process: ['symantec_noberus_blackcat.txt', 'talos_blackmatter_to_blackcat.txt', 'unit42_blackcat_ransomware.txt', 'varonis_blackcat_ransomware.txt']
+
+[*] Processing symantec_noberus_blackcat.txt
+[IR][PARSED] actors=1  malware=1  tools=7  infra=2  patterns=16  behaviors=4  relationships=0
+[IR] Extracted symantec_noberus_blackcat
+[DEPNLP] Beginning NLP Layer #1
+[DEPNLP] Behaviors after NLP Layer 1: 9
+[DEPNLP] Actors removed: ['ALPHV/BlackCat']
+[DEPNLP] Actors kept: []
+[DEPNLP] Canonicalized 10 entities
+[REL] semantic=0 behavior=0 combined_pre_dedup=0
+[REL][REJECT_SUMMARY] {}
+[REL] final_deduped=0
+
+[ENT] Starting entity validation
+[ENT] unique_entities=8
+[ENT][LLM] validating malware: 'Noberus'
+[DEBUG] Total MITRE objects loaded: 24772
+[DEBUG][MITRE] attack_patterns loaded: 835
+[DEBUG][MITRE] malware loaded: 696
+[DEBUG][MITRE] groups loaded: 187
+[DEBUG][MITRE] tools loaded: 91
+[DEBUG][MITRE] relationships loaded: 20048
+[DEBUG][MITRE] name_index entries: 1778
+[DEBUG][MITRE] attack_id_index entries: 835
+[ENT][LLM][WARN] Non-JSON response for 'Noberus'
+[ENT][LLM] malware 'Noberus' → uncertain
+[ENT][LLM] validating tool: 'PsExec'
+[ENT][LLM] tool 'PsExec' → yes
+[ENT][LLM] validating tool: 'Veeam'
+[ENT][LLM][WARN] Non-JSON response for 'Veeam'
+[ENT][LLM] tool 'Veeam' → uncertain
+[ENT][LLM] validating tool: 'wmic'
+[ENT][LLM] tool 'wmic' → yes
+[ENT][LLM] validating tool: 'fsutil'
+[ENT][LLM] tool 'fsutil' → yes
+[ENT][LLM] validating tool: 'vewtutil.exe'
+[ENT][LLM] tool 'vewtutil.exe' → uncertain
+[ENT][LLM] validating tool: 'vim-cmd'
+[ENT][LLM] tool 'vim-cmd' → yes
+[ENT][LLM] validating tool: 'wxrutil.exe'
+[ENT][LLM] tool 'wxrutil.exe' → no
+[ENT] kept=4 uncertain=3 rejected=1
+
+[ENT] repair_before=10 repair_after=10
+[LING] techniques_in=835 behaviors_in=0
+[LING] raw_phrases=288
+[LING] operational_phrases=105
+[LING] candidate phrases extracted: 105
+[LING] semantic matches above threshold: 72068
+[MITRE] explicit=0 inferred=0 final=0
+[IR][PARSED] actors=0  malware=1  tools=7  infra=2  patterns=25  behaviors=0  relationships=0
+[OK] symantec_noberus_blackcat.txt (671.5s)
+
+[*] Processing talos_blackmatter_to_blackcat.txt
+[IR][PARSED] actors=3  malware=12  tools=9  infra=3  patterns=12  behaviors=3  relationships=0
+[IR] Extracted talos_blackmatter_to_blackcat
+[DEPNLP] Beginning NLP Layer #1
+[DEPNLP] Behaviors after NLP Layer 1: 5
+[DEPNLP] Actors removed: ['BlackMatter/BlackCat Affiliate']
+[DEPNLP] Actors kept: ['BlackCat', 'BlackMatter']
+[DEPNLP] Canonicalized 26 entities
+[REL] semantic=0 behavior=0 combined_pre_dedup=0
+[REL][REJECT_SUMMARY] {}
+[REL] final_deduped=0
+
+[ENT] Starting entity validation
+[ENT] unique_entities=23
+[ENT][LLM] validating threat_actor: 'BlackCat'
+[ENT][LLM][WARN] Non-JSON response for 'BlackCat'
+[ENT][LLM] threat_actor 'BlackCat' → uncertain
+[ENT][LLM] validating threat_actor: 'BlackMatter'
+[ENT][LLM][WARN] Non-JSON response for 'BlackMatter'
+[ENT][LLM] threat_actor 'BlackMatter' → uncertain
+[ENT][LLM] validating malware: 'BlackMatter Ransomware'
+[ENT][LLM][WARN] Non-JSON response for 'BlackMatter Ransomware'
+[ENT][LLM] malware 'BlackMatter Ransomware' → uncertain
+[ENT][LLM] validating malware: 'BlackCat Ransomware'
+[ENT][LLM] malware 'BlackCat Ransomware' → yes
+[ENT][LLM] validating malware: 'Staler.exe'
+[ENT][LLM][WARN] Non-JSON response for 'Staler.exe'
+[ENT][LLM] malware 'Staler.exe' → uncertain
+[ENT][LLM] validating malware: 'Reverse-SSH'
+[ENT][LLM] malware 'Reverse-SSH' → yes
+[ENT][LLM] validating malware: 'Procdump/Dumpert'
+[ENT][LLM][WARN] Non-JSON response for 'Procdump/Dumpert'
+[ENT][LLM] malware 'Procdump/Dumpert' → uncertain
+[ENT][LLM] validating malware: 'WMIExec'
+[ENT][LLM] malware 'WMIExec' → yes
+[ENT][LLM] validating malware: 'WiNRM PowerShell Remoting (wsmprovhost.exe)'
+[ENT][LLM] malware 'WiNRM PowerShell Remoting (wsmprovhost.exe)' → yes
+[ENT][LLM] validating malware: 'PsExec/RemCom'
+[ENT][LLM] malware 'PsExec/RemCom' → yes
+[ENT][LLM] validating malware: 'Apply.ps1'
+[ENT][LLM] malware 'Apply.ps1' → unceertain
+[ENT][LLM] validating malware: 'Defender.vbscript/def.vbscript'
+[ENT][LLM] malware 'Defender.vbscript/def.vbscript' → yes
+[ENT][LLM] validating malware: 'VSS Shadow Copy Deletion'
+[ENT][LLM] malware 'VSS Shadow Copy Deletion' → yes
+[ENT][LLM] validating malware: 'BCDEdit Recovery Disabling'
+[ENT][LLM][WARN] Non-JSON response for 'BCDEdit Recovery Disabling'
+[ENT][LLM] malware 'BCDEdit Recovery Disabling' → uncertain
+[ENT][LLM] validating tool: 'Sooftperfect Network Scanner'
+[ENT][LLM] tool 'Sooftperfect Network Scanner' → no
+[ENT][LLM] validating tool: 'ADRecon'
+[ENT][LLM] tool 'ADRecon' → yes
+[ENT][LLM] validating tool: 'TeamViewer'
+[ENT][LLM] tool 'TeamViewer' → yes
+[ENT][LLM] validating tool: 'KeePass'
+[ENT][LLM] tool 'KeePass' → yes
+[ENT][LLM] validating tool: 'wevtutil'
+[ENT][LLM] tool 'wevtutil' → yes
+[ENT][LLM] validating tool: 'Gmer'
+[ERR] talos_blackmatter_to_blackcat.txt (970.1s): Server disconnected
+
+[*] Processing unit42_blackcat_ransomware.txt
+[ERR] unit42_blackcat_ransomware.txt (0.1s): Cannot connect to host 127.0.0.1:11434 ssl:default [Connect call failed ('127.0.0.1', 11434)]
+
+[*] Processing varonis_blackcat_ransomware.txt
+[ERR] varonis_blackcat_ransomware.txt (0.0s): Cannot connect to host 127.0.0.1:11434 ssl:default [Connect call failed ('127.0.0.1', 11434)]
