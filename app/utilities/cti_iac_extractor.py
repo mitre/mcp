@@ -289,7 +289,125 @@ def extract_infrastructure(ir: dict, source_text: str) -> dict:
             spec["accounts"].append({"type": acct_type, "detected_by": "source_text"})
 
     # ---------------------------------------------------------
-    # 7. Deployment notes
+    # 7. Network topology from text
+    # ---------------------------------------------------------
+    topology = {"hosts": [], "segments": [], "perimeter": []}
+
+    # Detect multi-host requirement
+    if re.search(r"lateral\s+movement|move\s+laterally|spread|propagat", text_lower):
+        topology["hosts"].append("Multiple internal hosts (lateral movement target)")
+    if re.search(r"domain\s+controller|active\s+directory", text_lower):
+        topology["hosts"].append("Domain Controller (Windows Server)")
+    if re.search(r"workstation|endpoint|client\s+machine", text_lower):
+        topology["hosts"].append("Workstation(s) (domain-joined)")
+    if re.search(r"file\s+server|share|backup\s+server", text_lower):
+        topology["hosts"].append("File/Backup Server")
+    if re.search(r"mail\s+server|exchange", text_lower):
+        topology["hosts"].append("Mail Server (Exchange)")
+    if re.search(r"web\s+server|public.facing|internet.facing", text_lower):
+        topology["hosts"].append("Web Server (public-facing)")
+    if re.search(r"database|sql\s+server", text_lower):
+        topology["hosts"].append("Database Server")
+
+    # Network segments
+    if re.search(r"DMZ|demilitarized", text_lower):
+        topology["segments"].append("DMZ (public-facing services)")
+    if re.search(r"internal\s+network|corporate\s+network|intranet", text_lower):
+        topology["segments"].append("Internal corporate network")
+    if re.search(r"segment|isolat|separate\s+network", text_lower):
+        topology["segments"].append("Segmented network zones")
+
+    # Perimeter
+    if re.search(r"VPN|remote\s+access|external\s+remote", text_lower):
+        topology["perimeter"].append("VPN/Remote access gateway")
+    if re.search(r"firewall", text_lower):
+        topology["perimeter"].append("Firewall")
+    if re.search(r"proxy", text_lower):
+        topology["perimeter"].append("Proxy server")
+
+    spec["topology"] = topology
+
+    # ---------------------------------------------------------
+    # 8. Kill chain ordering (deployment sequence)
+    # ---------------------------------------------------------
+    kill_chain = []
+    phase_signals = [
+        ("initial_access", r"initial\s+access|exploit.*public|phishing|drive.by|VPN.*exploit|brute\s+force",
+         "Perimeter/initial access host (VPN gateway, web server, or mail server)"),
+        ("execution", r"execut|PowerShell|cmd\.exe|scripting|scheduled\s+task",
+         "Execution environment on compromised host"),
+        ("persistence", r"persist|backdoor|implant|scheduled\s+task|registry.*run|autostart",
+         "Persistence mechanisms on foothold host"),
+        ("credential_access", r"credential|password|LSASS|dump|mimikatz|hash|kerberos",
+         "Credential stores (LSASS, SAM, NTDS.dit on DC)"),
+        ("discovery", r"discover|enumerat|scan|reconnaissance|ADRecon|network\s+scan",
+         "Network/AD discovery targets"),
+        ("lateral_movement", r"lateral|remote\s+desktop|RDP|PsExec|WMI|SMB.*spread",
+         "Additional hosts for lateral movement"),
+        ("collection", r"collect|stage|compress|archive|sensitive\s+data",
+         "Data staging location"),
+        ("exfiltration", r"exfiltrat|upload|cloud\s+storage|MEGA|rclone",
+         "Exfiltration endpoint (cloud storage or C2)"),
+        ("impact", r"encrypt|ransom|wipe|destruct|defac|shadow\s+copy|wallpaper",
+         "Impact targets (file servers, databases, backups)"),
+    ]
+
+    for phase, pattern, infra_need in phase_signals:
+        if re.search(pattern, text_lower):
+            kill_chain.append({"phase": phase, "infrastructure": infra_need})
+
+    spec["kill_chain"] = kill_chain
+
+    # ---------------------------------------------------------
+    # 9. Security controls to deploy (for purple team/detection testing)
+    # ---------------------------------------------------------
+    security_controls = []
+    control_patterns = [
+        (r"antivirus|anti.virus|Windows\s+Defender|AV\b", "Antivirus/EDR (Windows Defender)"),
+        (r"EDR|endpoint\s+detection", "Endpoint Detection and Response"),
+        (r"firewall|Windows\s+Firewall", "Host/Network Firewall"),
+        (r"event\s+log|logging|wevtutil|syslog", "Event Logging (Windows Event Log, Syslog)"),
+        (r"SmartScreen", "Windows SmartScreen"),
+        (r"multi.?factor|MFA|two.?factor|2FA", "Multi-Factor Authentication"),
+        (r"intrusion\s+detection|IDS|IPS", "IDS/IPS"),
+        (r"SIEM|security\s+information", "SIEM"),
+    ]
+    for pattern, name in control_patterns:
+        if re.search(pattern, source_text, re.IGNORECASE):
+            security_controls.append(name)
+
+    spec["security_controls"] = security_controls
+
+    # ---------------------------------------------------------
+    # 10. Data to stage (bait data for realistic emulation)
+    # ---------------------------------------------------------
+    staged_data = []
+    data_patterns = [
+        (r"credential|password|stored\s+password", "Credential files / password stores"),
+        (r"configuration|network\s+config", "Network configuration files"),
+        (r"document|sensitive\s+data|PII", "Sensitive documents"),
+        (r"database|SQL\s+data", "Database records"),
+        (r"email|mailbox", "Email/mailbox data"),
+        (r"backup", "Backup files"),
+        (r"source\s+code|repository", "Source code repositories"),
+        (r"certificate|private\s+key", "Certificates/private keys"),
+        (r"operating\s+procedure|SOP|policy", "SOPs/policy documents"),
+    ]
+    for pattern, name in data_patterns:
+        if re.search(pattern, source_text, re.IGNORECASE):
+            staged_data.append(name)
+
+    spec["staged_data"] = staged_data
+
+    # ---------------------------------------------------------
+    # 11. CVEs mentioned (for future vulnerable software deployment)
+    # ---------------------------------------------------------
+    cves = sorted(set(re.findall(r"CVE-\d{4}-\d+", source_text)))
+    if cves:
+        spec["cves"] = cves
+
+    # ---------------------------------------------------------
+    # 12. Deployment notes
     # ---------------------------------------------------------
     if "Windows" in spec["platforms"] and "ldap" in seen_services:
         spec["deployment_notes"].append("Active Directory domain required")
@@ -343,10 +461,52 @@ def render_iac_summary(spec: dict) -> str:
                         f"{' (' + tool['os'] + ')' if tool.get('os') else ''}"
                         f": needs {reqs}")
 
+    # Topology
+    topo = spec.get("topology", {})
+    if topo.get("hosts") or topo.get("segments"):
+        lines.append("\n## Network Topology")
+        if topo.get("perimeter"):
+            lines.append("  Perimeter:")
+            for p in topo["perimeter"]:
+                lines.append(f"    - {p}")
+        if topo.get("segments"):
+            lines.append("  Segments:")
+            for s in topo["segments"]:
+                lines.append(f"    - {s}")
+        if topo.get("hosts"):
+            lines.append("  Hosts:")
+            for h in topo["hosts"]:
+                lines.append(f"    - {h}")
+
+    # Kill Chain (deployment order)
+    kc = spec.get("kill_chain", [])
+    if kc:
+        lines.append("\n## Deployment Order (Kill Chain)")
+        for i, phase in enumerate(kc, 1):
+            lines.append(f"  {i}. [{phase['phase']}] {phase['infrastructure']}")
+
+    # Security Controls
+    if spec.get("security_controls"):
+        lines.append("\n## Security Controls to Deploy (detection testing)")
+        for ctrl in spec["security_controls"]:
+            lines.append(f"  - {ctrl}")
+
+    # Data to Stage
+    if spec.get("staged_data"):
+        lines.append("\n## Data to Stage (bait for exfil testing)")
+        for data in spec["staged_data"]:
+            lines.append(f"  - {data}")
+
+    # CVEs
+    if spec.get("cves"):
+        lines.append("\n## CVEs Referenced (deploy vulnerable versions)")
+        for cve in spec["cves"]:
+            lines.append(f"  - {cve}")
+
     # Network
     net = spec.get("network", {})
     if net.get("c2_channels") or net.get("external_ips"):
-        lines.append("\n## Network Requirements")
+        lines.append("\n## Network/C2 Requirements")
         for c2 in net.get("c2_channels", []):
             lines.append(f"  - C2 channel: {c2}")
         if net.get("external_ips"):
