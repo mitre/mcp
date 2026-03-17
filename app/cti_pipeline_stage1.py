@@ -294,7 +294,8 @@ async def process_file(
     # 5. Entity reclassification + validation
     # ---------------------------------------------------------
     ir = reclassify_entities(ir)
-    ir = await validate_entities(ir, destructive=False)
+    if not _is_offline_mode():
+        ir = await validate_entities(ir, destructive=False)
     ir = repair_entities(ir)
 
     # ---------------------------------------------------------
@@ -392,39 +393,69 @@ def process_one_file_sync(path, ir_dir, final_dir, stop_after):
 # IR Resume / Extraction Helper
 # =============================================================
 
+def _is_offline_mode() -> bool:
+    """Check if pipeline should run in offline (no-LLM) mode."""
+    try:
+        import yaml
+        conf_path = Path(__file__).resolve().parents[1] / "conf" / "local.yml"
+        if conf_path.exists():
+            with conf_path.open() as f:
+                cfg = yaml.safe_load(f) or {}
+            return cfg.get("cti", {}).get("offline", False)
+    except Exception:
+        pass
+    return False
+
+
 async def load_or_extract_ir(path: Path, text: str, ir_dir: Path) -> dict:
     """
     Load cached IR if present; otherwise extract fresh IR.
 
-    Guarantees:
-        • Deterministic resume
-        • JSON-safe output
+    Supports two modes:
+        • Online (default): LLM-based IR extraction
+        • Offline: deterministic spaCy NER + MITRE taxonomy extraction
+
+    Mode is set via conf/local.yml: cti.offline: true
     """
     ir_path = ir_dir / f"{path.stem}.ir-only.json"
+    offline = _is_offline_mode()
 
     if ir_path.exists():
         with ir_path.open("r", encoding="utf-8") as f:
             cached_ir = json.load(f)
 
-        cached_prov = cached_ir.get("provenance")
-        current_prov = get_llm_provenance(profile="cti")
+        if offline:
+            cached_prov = cached_ir.get("provenance", {})
+            if cached_prov.get("offline"):
+                print(f"[SKIP] IR up-to-date (offline): {ir_path.name}")
+                return cached_ir
+        else:
+            cached_prov = cached_ir.get("provenance")
+            current_prov = get_llm_provenance(profile="cti")
+            if cached_prov == current_prov:
+                print(f"[SKIP] IR up-to-date: {ir_path.name}")
+                return cached_ir
 
-        if cached_prov == current_prov:
-            print(f"[SKIP] IR up-to-date: {ir_path.name}")
-            return cached_ir
+        print(f"[REGEN] IR mode/provenance changed: {ir_path.name}")
 
-        print(f"[REGEN] IR provenance changed: {ir_path.name}")
+    if offline:
+        from plugins.mcp.app.utilities.cti_offline_ir import extract_ir_offline
+        ir = extract_ir_offline(text)
+        ir = convert_sets(ir)
+        ir["provenance"] = {"offline": True, "provider": "spacy+mitre+regex"}
+        print(f"[IR] Extracted {path.stem} (OFFLINE mode)")
+    else:
+        ir = await extract_ir(text)
+        ir = convert_sets(ir)
+        ir["provenance"] = get_llm_provenance(profile="cti")
+        print(f"[IR] Extracted {path.stem}")
 
-    ir = await extract_ir(text)
-    ir = convert_sets(ir)
-    ir["provenance"] = get_llm_provenance(profile="cti")
     ir_path.write_text(json.dumps(ir, indent=2), encoding="utf-8")
     (ir_dir / f"{path.stem}.ir-only.txt").write_text(
         render_ir_summary(ir),
         encoding="utf-8",
     )
 
-    print(f"[IR] Extracted {path.stem}")
     return ir
 
 def _merge_commands(entity, commands):
