@@ -14,18 +14,12 @@ This module performs NO orchestration.
 
 import re
 import numpy as np
-import spacy
 from datetime import datetime
 import uuid
 from functools import lru_cache
 from spacy.lang.en.stop_words import STOP_WORDS as SPACY_STOP_WORDS
 
-
-# ============================================================
-# NLP MODEL (GLOBAL SINGLE LOAD)
-# ============================================================
-
-nlp = spacy.load("en_core_web_lg")
+from plugins.mcp.app.utilities.nlp_model import nlp
 
 
 # ============================================================

@@ -19,16 +19,11 @@ NO brittle mappings.
 
 import re
 import numpy as np
-import spacy
 import asyncio
 from rapidfuzz import fuzz
 from functools import lru_cache
 
-# ============================================================
-# NLP MODEL (GLOBAL SINGLE LOAD)
-# ============================================================
-
-nlp = spacy.load("en_core_web_lg")
+from plugins.mcp.app.utilities.nlp_model import nlp
 
 # ===========================================================
 # Attempt to capture command-line invocations
@@ -309,7 +304,7 @@ async def _semantic_match_phrase(
             continue
 
         sim = cosine(p_vec, np.asarray(t_vec, dtype=float))
-        dyn_thresh = threshold + 0.15 if len(phrase.split()) <= 2 else threshold
+        dyn_thresh = threshold + 0.08 if len(phrase.split()) <= 2 else threshold
 
         if sim >= dyn_thresh:
             matches.append({
@@ -323,7 +318,7 @@ async def _semantic_match_phrase(
 async def semantic_match_techniques(
         phrases: list[str],
         techniques: list[dict],
-        threshold: float = 0.42
+        threshold: float = 0.82
     ) -> list[dict]:
 
     tasks = [
@@ -407,8 +402,26 @@ async def extract_dynamic_techniques(text: str, arg2, arg3=None, limit=25, *_, *
         if len(out) >= limit:
             break
 
-    out = [t for t in out if t["confidence"] >= 0.18]
-    return out
+    out = [t for t in out if t["confidence"] >= 0.80]
+
+    # Evidence quality gate: reject matches from short/generic phrases
+    filtered = []
+    for t in out:
+        evidence = t.get("evidence", [""])[0] if t.get("evidence") else ""
+        words = evidence.split()
+        # Require at least 3 content words in the evidence phrase
+        if len(words) < 3:
+            continue
+        # Reject evidence that is all stopwords/generic
+        content_words = [w for w in words if len(w) > 3 and w not in {
+            "that", "this", "with", "from", "into", "also", "such",
+            "been", "have", "were", "will", "used", "using", "more",
+        }]
+        if len(content_words) < 2:
+            continue
+        filtered.append(t)
+
+    return filtered
 
 def _sentencize(text: str) -> list[str]:
     doc = nlp(text or "")

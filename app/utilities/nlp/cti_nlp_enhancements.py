@@ -13,19 +13,18 @@ Output conforms to:
     ir["threat_actors"] cleaned + normalized
 """
 
-import spacy
 import re
 from rapidfuzz import fuzz
 
-nlp = spacy.load("en_core_web_lg")
+from plugins.mcp.app.utilities.nlp_model import nlp
 
 def _log(msg: str):
     """Simple stdout logger for tee-based debugging."""
     print(f"[DEPNLP] {msg}")
 
 def normalize_phrase(s: str) -> str:
-    """Normalize strings into canonical alphanumeric form."""
-    return re.sub(r"[^a-z0-9]+", "", s.lower())
+    """Normalize strings into canonical alphanumeric form, preserving dots for IPs/domains."""
+    return re.sub(r"[^a-z0-9.]+", "", s.lower())
 
 # ---------------------------------------------------------------------------
 # Behavior extraction helper
@@ -161,29 +160,34 @@ def clean_ir_nlp_layer1(ir: dict, original_text: str) -> dict:
     for a in actors:
         if isinstance(a, dict):
             name = a.get("name", "")
-            if not name:
-                continue
-            if not is_valid_actor(name):
-                removed.append(name)
-                continue
-
-            a["name"] = normalize_actor_name(name)
-            cleaned.append(a)
-
         elif isinstance(a, str):
             name = a.strip()
-            if not name:
-                continue
-            if not is_valid_actor(name):
-                removed.append(name)
-                continue
+            a = {"name": name, "description": "", "confidence": 0.5, "source": "recovered-string"}
+        else:
+            continue
 
-            cleaned.append({
-                "name": normalize_actor_name(name),
-                "description": "",
-                "confidence": 0.5,
-                "source": "recovered-string"
-            })
+        if not name:
+            continue
+
+        # Split slash-separated actor names into individual actors with aliases
+        if "/" in name:
+            parts = [p.strip() for p in name.split("/") if p.strip()]
+            for part in parts:
+                if is_valid_actor(part):
+                    cleaned.append({
+                        "name": normalize_actor_name(part),
+                        "description": a.get("description", ""),
+                        "aliases": [p for p in parts if p != part],
+                        "confidence": a.get("confidence", 0.5),
+                    })
+            continue
+
+        if not is_valid_actor(name):
+            removed.append(name)
+            continue
+
+        a["name"] = normalize_actor_name(name)
+        cleaned.append(a)
 
     ir["threat_actors"] = cleaned
     _log(f"Actors removed: {removed}")

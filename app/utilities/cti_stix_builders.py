@@ -59,6 +59,7 @@ def make_malware(m: dict) -> dict:
 
     obj = {
         "type": "malware",
+        "spec_version": "2.1",
         "id": new_stix_id("malware"),
         "created": now(),
         "modified": now(),
@@ -89,6 +90,7 @@ def make_tool(t: dict) -> dict:
 
     obj = {
         "type": "tool",
+        "spec_version": "2.1",
         "id": new_stix_id("tool"),
         "created": now(),
         "modified": now(),
@@ -116,11 +118,11 @@ def make_threat_actor(ta: dict) -> dict:
 
     obj = {
         "type": "threat-actor",
+        "spec_version": "2.1",
         "id": new_stix_id("threat-actor"),
         "created": now(),
         "modified": now(),
         "name": name,
-        "roles": ["threat-actor"],
     }
 
     if "description" in ta:
@@ -144,6 +146,7 @@ def make_infrastructure(i: dict) -> dict:
 
     obj = {
         "type": "infrastructure",
+        "spec_version": "2.1",
         "id": new_stix_id("infrastructure"),
         "created": now(),
         "modified": now(),
@@ -212,7 +215,10 @@ def make_attack_pattern(ttp_text, taxonomy: dict):
 
         ap = {
             "type": "attack-pattern",
+            "spec_version": "2.1",
             "id": obj["id"],
+            "created": obj.get("created", now()),
+            "modified": obj.get("modified", now()),
             "name": obj.get("name"),
             "description": obj.get("description", ""),
             "external_references": obj.get("external_references", []),
@@ -235,7 +241,10 @@ def make_attack_pattern(ttp_text, taxonomy: dict):
         if stype == "attack-pattern":
             ap = {
                 "type": "attack-pattern",
+                "spec_version": "2.1",
                 "id": sid,
+                "created": sobj.get("created", now()),
+                "modified": sobj.get("modified", now()),
                 "name": sobj.get("name"),
                 "description": sobj.get("description", ""),
                 "external_references": sobj.get("external_references", []),
@@ -253,6 +262,7 @@ def make_attack_pattern(ttp_text, taxonomy: dict):
     # ----------------------------
     ap = {
         "type": "attack-pattern",
+        "spec_version": "2.1",
         "id": new_stix_id("attack-pattern"),
         "created": now(),
         "modified": now(),
@@ -282,6 +292,7 @@ def make_observed_data(behavior: str) -> dict:
 
     obj = {
         "type": "observed-data",
+        "spec_version": "2.1",
         "id": new_stix_id("observed-data"),
         "created": now(),
         "modified": now(),
@@ -312,6 +323,7 @@ def make_relationship(rel_type: str, src_id: str, dst_id: str) -> dict:
 
     obj = {
         "type": "relationship",
+        "spec_version": "2.1",
         "id": new_stix_id("relationship"),
         "created": now(),
         "modified": now(),

@@ -11,18 +11,13 @@ Key guarantees:
 - Backward compatible with cti_pipeline_stage1.py
 """
 
-import spacy, re
+import re
 from functools import lru_cache
 from nltk.corpus import wordnet as wn
 
+from plugins.mcp.app.utilities.nlp_model import nlp
 from plugins.mcp.app.utilities.cti_mitre_extract import cosine_sim
 from plugins.mcp.app.utilities.cti_linguistics import normalize_behavior_text, canonicalize_relationship_endpoints
-
-# ============================================================
-# NLP MODEL (GLOBAL, SINGLE LOAD)
-# ============================================================
-
-nlp = spacy.load("en_core_web_lg")
 
 # ============================================================
 # VECTOR CACHE (PERFORMANCE CRITICAL)
@@ -443,11 +438,6 @@ def _extract_relationships_from_doc(doc, ir, source_label):
                 if source_label in ("behavior", "behavior_dependency_recovery"):
                     threshold = 0.45
 
-                status = None
-                if conf < threshold:
-                    status = "abstract-nominal"
-                    candidate["x_cti_resolution_status"] = "pending"
-                    
                 candidate = {
                     "source": src,
                     "relationship": rel_class,
@@ -457,8 +447,9 @@ def _extract_relationships_from_doc(doc, ir, source_label):
                     "source_context": source_label,
                 }
 
-                if status:
-                    candidate["status"] = status
+                if conf < threshold:
+                    candidate["status"] = "abstract-nominal"
+                    candidate["x_cti_resolution_status"] = "pending"
 
                 if not is_actionable_relationship(candidate):
                     REL_REJECTIONS.append({

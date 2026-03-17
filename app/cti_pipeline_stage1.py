@@ -41,7 +41,7 @@ from plugins.mcp.app.utilities.cti_raw_cleaner import clean_raw_directory
 from plugins.mcp.app.utilities.cti_parsing import extract_ir, render_ir_summary
 from plugins.mcp.app.utilities.cti_mitre_extract import extract_mitre_techniques, convert_sets
 from plugins.mcp.app.utilities.cti_taxonomy_loader import build_normalized_attack_patterns
-from plugins.mcp.app.utilities.cti_entity_validator import validate_entities, repair_entities
+from plugins.mcp.app.utilities.cti_entity_validator import validate_entities, repair_entities, reclassify_entities
 
 from plugins.mcp.app.utilities.cti_relationships import (
     normalize_and_qualify_behaviors,
@@ -255,13 +255,36 @@ async def process_file(
     low_conf  = [b for b in qualified if b.get("confidence", 0) < 0.5]
 
     # ---------------------------------------------------------
-    # 4. Relationships
+    # 4. Relationships (new dep-parse extractor)
     # ---------------------------------------------------------
-    raw_relationships = await extract_all_relationships(
-        text, ir, high_conf
-    ) or []
-    ir["relationships"] = rag_safe_relationships(raw_relationships)
+    from plugins.mcp.app.utilities.cti_relation_extractor import (
+        extract_triples, filter_grounded_relationships, dedup_triples,
+    )
+
+    # Build known entity set from IR for ontology grounding
+    known_entities = set()
+    for group in ("threat_actors", "malware", "tools", "infrastructure"):
+        for ent in ir.get(group, []):
+            name = (ent.get("name") or "").strip()
+            if name:
+                known_entities.add(name.lower())
+
+    # Determine dominant actor for generic subject resolution
+    default_actor = None
+    actors = ir.get("threat_actors", [])
+    malware_list = ir.get("malware", [])
+    if actors:
+        default_actor = actors[0].get("name", "").lower()
+    elif malware_list:
+        default_actor = malware_list[0].get("name", "").lower()
+
+    raw_triples = extract_triples(text, known_entities, default_actor=default_actor)
+    grounded = filter_grounded_relationships(raw_triples)
+    ir["relationships"] = dedup_triples(grounded)
     ir["low_confidence_behaviors"] = low_conf
+
+    if ir["relationships"]:
+        print(f"[REL-NEW] {len(raw_triples)} raw → {len(grounded)} grounded → {len(ir['relationships'])} deduped")
 
     # ---------------------------------------------------------
     # Commands Extraction (Linguistic)
@@ -291,9 +314,11 @@ async def process_file(
                     ir["hashes"].append(h)
         
     # ---------------------------------------------------------
-    # 5. Entity validation
+    # 5. Entity reclassification + validation
     # ---------------------------------------------------------
-    ir = await validate_entities(ir, destructive=False)
+    ir = reclassify_entities(ir)
+    if not _is_offline_mode():
+        ir = await validate_entities(ir, destructive=False)
     ir = repair_entities(ir)
 
     # ---------------------------------------------------------
@@ -316,12 +341,38 @@ async def process_file(
         lookup,
     )
 
+    # Extract explicit T-numbers from all IR text fields
+    all_ir_text = text
+    for group in ("threat_actors", "malware", "tools", "infrastructure", "behaviors", "attack_patterns"):
+        for item in ir.get(group, []):
+            if isinstance(item, dict):
+                all_ir_text += " " + (item.get("description", "") or "")
+                all_ir_text += " " + (item.get("text", "") or "")
+    from plugins.mcp.app.utilities.cti_mitre_extract import extract_ids_from_text
+    explicit_from_ir = extract_ids_from_text(all_ir_text, lookup)
+    explicit_objs = [lookup[tid] for tid in explicit_from_ir if tid in lookup]
+
+    # Ontology-driven inference: tool/malware → known ATT&CK techniques
+    from plugins.mcp.app.utilities.cti_ontology_inference import infer_techniques_from_entities
+    ontology_inferred = infer_techniques_from_entities(ir, lookup, source_text=text)
+
     seen = set()
     merged = []
-    for t in ir.get("attack_patterns", []) + ling + mitre:
+    for t in explicit_objs + ontology_inferred + ir.get("attack_patterns", []) + ling + mitre:
         if isinstance(t, dict) and t.get("id") and t["id"] not in seen:
             seen.add(t["id"])
             merged.append(t)
+
+    # Remove deprecated/revoked technique IDs not in current taxonomy
+    merged = [t for t in merged if t.get("id") in lookup or not t.get("id", "").startswith("T")]
+
+    # D3FEND tactic validation: filter techniques by tactic relevance to source text
+    from plugins.mcp.app.utilities.cti_defend_validation import validate_techniques_by_tactic
+    merged = validate_techniques_by_tactic(merged, text, strict=True)
+
+    # Unified precision gate: PMI, hierarchy, clique, TF-IDF
+    from plugins.mcp.app.utilities.cti_precision_gate import apply_precision_gate
+    merged = apply_precision_gate(merged, text, ir, min_confidence=0.50)
 
     ir["attack_patterns"] = merged
 
@@ -365,39 +416,69 @@ def process_one_file_sync(path, ir_dir, final_dir, stop_after):
 # IR Resume / Extraction Helper
 # =============================================================
 
+def _is_offline_mode() -> bool:
+    """Check if pipeline should run in offline (no-LLM) mode."""
+    try:
+        import yaml
+        conf_path = Path(__file__).resolve().parents[1] / "conf" / "local.yml"
+        if conf_path.exists():
+            with conf_path.open() as f:
+                cfg = yaml.safe_load(f) or {}
+            return cfg.get("cti", {}).get("offline", False)
+    except Exception:
+        pass
+    return False
+
+
 async def load_or_extract_ir(path: Path, text: str, ir_dir: Path) -> dict:
     """
     Load cached IR if present; otherwise extract fresh IR.
 
-    Guarantees:
-        • Deterministic resume
-        • JSON-safe output
+    Supports two modes:
+        • Online (default): LLM-based IR extraction
+        • Offline: deterministic spaCy NER + MITRE taxonomy extraction
+
+    Mode is set via conf/local.yml: cti.offline: true
     """
     ir_path = ir_dir / f"{path.stem}.ir-only.json"
+    offline = _is_offline_mode()
 
     if ir_path.exists():
         with ir_path.open("r", encoding="utf-8") as f:
             cached_ir = json.load(f)
 
-        cached_prov = cached_ir.get("provenance")
-        current_prov = get_llm_provenance(profile="cti")
+        if offline:
+            cached_prov = cached_ir.get("provenance", {})
+            if cached_prov.get("offline"):
+                print(f"[SKIP] IR up-to-date (offline): {ir_path.name}")
+                return cached_ir
+        else:
+            cached_prov = cached_ir.get("provenance")
+            current_prov = get_llm_provenance(profile="cti")
+            if cached_prov == current_prov:
+                print(f"[SKIP] IR up-to-date: {ir_path.name}")
+                return cached_ir
 
-        if cached_prov == current_prov:
-            print(f"[SKIP] IR up-to-date: {ir_path.name}")
-            return cached_ir
+        print(f"[REGEN] IR mode/provenance changed: {ir_path.name}")
 
-        print(f"[REGEN] IR provenance changed: {ir_path.name}")
+    if offline:
+        from plugins.mcp.app.utilities.cti_offline_ir import extract_ir_offline
+        ir = extract_ir_offline(text)
+        ir = convert_sets(ir)
+        ir["provenance"] = {"offline": True, "provider": "spacy+mitre+regex"}
+        print(f"[IR] Extracted {path.stem} (OFFLINE mode)")
+    else:
+        ir = await extract_ir(text)
+        ir = convert_sets(ir)
+        ir["provenance"] = get_llm_provenance(profile="cti")
+        print(f"[IR] Extracted {path.stem}")
 
-    ir = await extract_ir(text)
-    ir = convert_sets(ir)
-    ir["provenance"] = get_llm_provenance(profile="cti")
     ir_path.write_text(json.dumps(ir, indent=2), encoding="utf-8")
     (ir_dir / f"{path.stem}.ir-only.txt").write_text(
         render_ir_summary(ir),
         encoding="utf-8",
     )
 
-    print(f"[IR] Extracted {path.stem}")
     return ir
 
 def _merge_commands(entity, commands):
@@ -405,6 +486,82 @@ def _merge_commands(entity, commands):
     for c in commands:
         if c["command"] not in existing:
             entity.setdefault("x_cti_commands", []).append(c)
+
+VALID_CTI_VERBS = {
+    "use", "employ", "deploy", "execute", "exploit", "target",
+    "communicate", "download", "upload", "exfiltrate",
+    "encrypt", "disable", "modify", "delete", "create", "install",
+    "inject", "compromise", "access", "collect", "scan", "enumerate",
+    "propagate", "spread", "deliver", "drop", "terminate", "stop",
+    "clear", "dump", "harvest", "steal", "extract", "transfer",
+}
+
+
+def prune_relationships(rels: list[dict], ir: dict) -> list[dict]:
+    """
+    Structural relationship pruning — removes cartesian product noise.
+
+    Rules (universal CTI, not adversary-specific):
+    1. Self-references removed
+    2. Only actors/malware as source (tools don't "use" other tools)
+    3. Verb must be CTI-relevant
+    4. Target must be short (not a sentence fragment)
+    5. Dedup by (source, target) keeping highest confidence
+    6. Cartesian detection: if same source+verb has >3 targets, drop all
+    """
+    actors = {a.get("name", "").lower() for a in ir.get("threat_actors", [])}
+    malware = {m.get("name", "").lower() for m in ir.get("malware", [])}
+    valid_sources = actors | malware
+
+    # Pass 1: structural prune
+    pruned = []
+    for r in rels:
+        src = (r.get("source") or "").lower()
+        tgt = (r.get("target") or "").lower()
+        verb = (r.get("relationship") or "").lower()
+
+        if src == tgt:
+            continue
+        if src not in valid_sources:
+            continue
+        if src in malware and tgt in malware:
+            continue
+        if verb not in VALID_CTI_VERBS:
+            continue
+        if len(tgt.split()) > 5:
+            continue
+        if not any(c.isalpha() for c in tgt):
+            continue
+
+        pruned.append(r)
+
+    # Pass 2: dedup by (source, target) keeping highest confidence
+    from collections import defaultdict
+    seen = {}
+    for r in pruned:
+        key = ((r.get("source") or "").lower(), (r.get("target") or "").lower())
+        if key not in seen or r.get("confidence", 0) > seen[key].get("confidence", 0):
+            seen[key] = r
+
+    # Pass 3: cartesian detection
+    verb_targets = defaultdict(list)
+    for r in seen.values():
+        src = (r.get("source") or "").lower()
+        verb = (r.get("relationship") or "").lower()
+        verb_targets[(src, verb)].append(r)
+
+    final = []
+    for (src, verb), group in verb_targets.items():
+        if len(group) > 3:
+            continue
+        final.extend(group)
+
+    if rels and len(final) < len(rels):
+        print(f"[REL-PRUNE] {len(rels)} → {len(final)} "
+              f"({100 * (1 - len(final) / max(len(rels), 1)):.0f}% pruned)")
+
+    return final
+
 
 def rag_safe_relationships(rels: list[dict], min_conf: float = 0.55) -> list[dict]:
     """
