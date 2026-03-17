@@ -493,17 +493,25 @@ async def load_or_extract_ir(path: Path, text: str, ir_dir: Path) -> dict:
 
         print(f"[REGEN] IR mode/provenance changed: {ir_path.name}")
 
+    # Always run offline IR first (fast, deterministic, broad entity coverage)
+    from plugins.mcp.app.utilities.cti_offline_ir import extract_ir_offline
+    ir = extract_ir_offline(text)
+    ir = convert_sets(ir)
+
     if offline:
-        from plugins.mcp.app.utilities.cti_offline_ir import extract_ir_offline
-        ir = extract_ir_offline(text)
-        ir = convert_sets(ir)
         ir["provenance"] = {"offline": True, "provider": "spacy+mitre+regex"}
         print(f"[IR] Extracted {path.stem} (OFFLINE mode)")
     else:
-        ir = await extract_ir(text)
-        ir = convert_sets(ir)
-        ir["provenance"] = get_llm_provenance(profile="cti")
-        print(f"[IR] Extracted {path.stem}")
+        # Merge LLM IR on top of offline IR (LLM may find entities NER missed)
+        try:
+            llm_ir = await extract_ir(text)
+            llm_ir = convert_sets(llm_ir)
+            ir = _merge_ir(ir, llm_ir)
+            ir["provenance"] = get_llm_provenance(profile="cti")
+            print(f"[IR] Extracted {path.stem} (OFFLINE + LLM merged)")
+        except Exception as e:
+            print(f"[IR] LLM extraction failed ({e}), using offline only")
+            ir["provenance"] = {"offline": True, "provider": "spacy+mitre+regex", "llm_fallback": True}
 
     ir_path.write_text(json.dumps(ir, indent=2), encoding="utf-8")
     (ir_dir / f"{path.stem}.ir-only.txt").write_text(
@@ -518,6 +526,24 @@ def _merge_commands(entity, commands):
     for c in commands:
         if c["command"] not in existing:
             entity.setdefault("x_cti_commands", []).append(c)
+
+def _merge_ir(base_ir: dict, llm_ir: dict) -> dict:
+    """
+    Merge LLM-extracted IR into offline-extracted IR.
+    LLM adds entities the offline NER missed; offline provides the base.
+    Deduplicates by lowercase name.
+    """
+    for group in ("threat_actors", "malware", "tools", "infrastructure", "behaviors"):
+        existing = {(e.get("name") or e.get("description") or "").lower()
+                    for e in base_ir.get(group, []) if isinstance(e, dict)}
+        for item in llm_ir.get(group, []):
+            if isinstance(item, dict):
+                key = (item.get("name") or item.get("description") or "").lower()
+                if key and key not in existing:
+                    base_ir.setdefault(group, []).append(item)
+                    existing.add(key)
+    return base_ir
+
 
 VALID_CTI_VERBS = {
     "use", "employ", "deploy", "execute", "exploit", "target",
