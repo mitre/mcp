@@ -21,6 +21,7 @@ This replaces the old loader that assumed 3 separate JSON files.
 
 import json, re
 from pathlib import Path
+from functools import lru_cache
 
 from plugins.mcp.app.utilities.nlp_model import nlp
 
@@ -51,6 +52,8 @@ def load_mitre_bundle():
 #  Parse and index MITRE objects
 # ======================================================================
 
+_taxonomy_cache = {}
+
 def load_mitre_taxonomy(taxonomy=None):
     """
     Extracts all relevant MITRE STIX objects and builds fast lookup tables.
@@ -64,6 +67,9 @@ def load_mitre_taxonomy(taxonomy=None):
         name_index
         attack_id_index
     """
+
+    if _taxonomy_cache:
+        return _taxonomy_cache
 
     try:
         bundle = load_mitre_bundle()
@@ -180,7 +186,7 @@ def load_mitre_taxonomy(taxonomy=None):
     print("[DEBUG][MITRE] name_index entries:", len(name_index))
     print("[DEBUG][MITRE] attack_id_index entries:", len(attack_id_index))
       
-    return {
+    result = {
         "attack_patterns": attack_patterns,
         "malware": malware,
         "groups": groups,
@@ -190,6 +196,8 @@ def load_mitre_taxonomy(taxonomy=None):
         "name_index": name_index,
         "attack_id_index": attack_id_index,
     }
+    _taxonomy_cache.update(result)
+    return result
 
 
 # ======================================================================
@@ -220,6 +228,7 @@ def lookup_attack_id(tid: str, taxonomy: dict):
     return taxonomy["attack_id_index"].get(tid.upper().strip())
 
 
+@lru_cache(maxsize=1)
 def build_normalized_attack_patterns():
     """
     Unified MITRE technique index for Stage-1 and Stage-2.
