@@ -377,7 +377,45 @@ async def process_file(
     ir["attack_patterns"] = merged
 
     # ---------------------------------------------------------
-    # 7. Output
+    # 7. LLM Validation (optional — runs only if LLM available and not offline)
+    # ---------------------------------------------------------
+    if not _is_offline_mode():
+        try:
+            from plugins.mcp.app.utilities.cti_llm_validation import (
+                validate_techniques_llm,
+                discover_relationships_llm,
+            )
+
+            # Validate techniques against source text
+            ir["attack_patterns"] = await validate_techniques_llm(
+                ir["attack_patterns"], text, batch_size=15
+            )
+            # Remove LLM-denied techniques (confidence dropped to 0.20)
+            ir["attack_patterns"] = [
+                t for t in ir["attack_patterns"]
+                if t.get("confidence", 1.0) > 0.25
+            ]
+
+            # Discover relationships the dep-parse missed
+            llm_rels = await discover_relationships_llm(text, ir)
+            if llm_rels:
+                # Merge with existing, dedup
+                existing_keys = {
+                    ((r.get("source") or "").lower(), (r.get("target") or "").lower())
+                    for r in ir["relationships"]
+                }
+                for r in llm_rels:
+                    key = (r["source"].lower(), r["target"].lower())
+                    if key not in existing_keys:
+                        ir["relationships"].append(r)
+                        existing_keys.add(key)
+                print(f"[LLM-VAL] Added {len(llm_rels)} LLM-discovered relationships")
+
+        except Exception as e:
+            print(f"[LLM-VAL] Skipped (LLM unavailable): {e}")
+
+    # ---------------------------------------------------------
+    # 8. Output
     # ---------------------------------------------------------
     final = convert_sets(ir)
     final["provenance"] = ir.get("provenance")
