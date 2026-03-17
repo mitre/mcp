@@ -260,13 +260,17 @@ def extract_triples(text: str, known_entities: set[str],
                         subject_tok = child
                     if child.dep_ in ("dobj", "attr"):
                         object_toks.append(child)
+                        # Walk into dobj's prepositional children
+                        # "deployed mechanisms including AnyDesk and TeamViewer"
+                        for dobj_child in child.subtree:
+                            if dobj_child.dep_ == "pobj" and dobj_child != child:
+                                object_toks.append(dobj_child)
                     # Prepositional objects for verbs like "connect to X"
                     if child.dep_ == "prep":
                         for pobj in child.children:
                             if pobj.dep_ == "pobj":
                                 object_toks.append(pobj)
                     # Complement clauses: "leverage X to recover Y"
-                    # The dobj of the complement is also relevant
                     if child.dep_ in ("ccomp", "xcomp"):
                         for grandchild in child.children:
                             if grandchild.dep_ in ("nsubj", "dobj"):
