@@ -84,8 +84,9 @@ def is_valid_actor(name: str) -> bool:
         return False
     if any(cue in name_l for cue in VALID_ACTOR_CUES):
         return True
-    # if name is short and proper-noun-like, keep it
-    return len(name) <= 25 and name.isalpha()
+    # if name is short and looks like a proper name, keep it
+    # (allow spaces for multi-word names like "Berserk Bear")
+    return len(name) <= 30 and all(c.isalpha() or c.isspace() for c in name)
 
 def normalize_actor_name(name: str):
     """Remove possessives and common suffixes."""

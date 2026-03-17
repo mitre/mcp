@@ -371,6 +371,10 @@ async def process_file(
     from plugins.mcp.app.utilities.cti_precision_gate import apply_precision_gate
     merged = apply_precision_gate(merged, text, ir, min_confidence=0.50)
 
+    # Keyword evidence filter: technique name/description must match source text
+    from plugins.mcp.app.utilities.cti_defend_validation import filter_by_keyword_evidence
+    merged = filter_by_keyword_evidence(merged, text, min_overlap=2)
+
     ir["attack_patterns"] = merged
 
     # ---------------------------------------------------------

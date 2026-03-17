@@ -176,6 +176,67 @@ def _load_d3fend_technique_tactics():
 # VALIDATION GATE
 # ============================================================
 
+def _build_technique_keywords():
+    """Build keyword sets per technique from MITRE name + first sentence of description."""
+    from plugins.mcp.app.utilities.cti_taxonomy_loader import build_normalized_attack_patterns
+    import re as _re
+    techniques, _ = build_normalized_attack_patterns()
+    GENERIC = {"and","the","via","for","from","with","over","non","pre","sub","based","standard","multi"}
+    STOP = {"adversaries","adversary","techniques","information","example",
+            "system","systems","within","including","specific","through",
+            "between","perform","against","during","access","command",
+            "network","software"}
+    result = {}
+    for t in techniques:
+        name = (t.get("name") or "").lower()
+        desc = (t.get("description") or "")[:300].lower()
+        name_words = set(_re.findall(r"[a-z]{4,}", name)) - GENERIC
+        first_sent = desc.split(".")[0] if "." in desc else desc
+        desc_words = set(_re.findall(r"[a-z]{5,}", first_sent)) - GENERIC - STOP
+        result[t["id"]] = name_words | desc_words
+    return result
+
+
+def filter_by_keyword_evidence(
+    techniques: list[dict],
+    source_text: str,
+    min_overlap: int = 2,
+) -> list[dict]:
+    """
+    Filter techniques by keyword evidence: technique name/description
+    keywords must appear in the source text.
+
+    Keeps techniques that:
+    - Have >=min_overlap keyword matches with source text
+    - Were from explicit T-number extraction
+    - Were confirmed by LLM validation
+    """
+    if not techniques or not source_text:
+        return techniques
+
+    tech_kw = _build_technique_keywords()
+    text_words = set(re.findall(r"[a-z]{4,}", source_text.lower()))
+
+    kept = []
+    dropped = 0
+    for t in techniques:
+        tid = t.get("id", "")
+        kw = tech_kw.get(tid, set())
+        overlap = kw & text_words
+
+        if (len(overlap) >= min_overlap or
+                t.get("source") == "explicit" or
+                t.get("x_llm_validated") is True):
+            kept.append(t)
+        else:
+            dropped += 1
+
+    if dropped:
+        print(f"[D3FEND-KW] {len(techniques)} → {len(kept)} "
+              f"({dropped} dropped, no keyword evidence)")
+    return kept
+
+
 def validate_techniques_by_tactic(
     techniques: list[dict],
     source_text: str,
