@@ -134,50 +134,63 @@ def extract_ir_offline(text: str) -> dict:
                     "source": "mitre-taxonomy",
                 })
 
-    # Promote malware that acts as actor names in text
-    # (e.g., "BlackCat exploits..." → BlackCat is also an actor)
-    doc = nlp(text[:nlp.max_length])
-    malware_names = {m["name"].lower() for m in ir["malware"]}
+    # ---------------------------------------------------------
+    # Actor inference: use MITRE entity frequency + title + first paragraph
+    # The most frequently mentioned MITRE malware/group is the primary actor
+    # ---------------------------------------------------------
+    from collections import Counter as _Counter
 
-    for sent in doc.sents:
-        root = sent.root
-        if root.pos_ != "VERB":
+    # Get MITRE malware and group names
+    malware_set = set()
+    group_set = set()
+    for obj in mitre_index.values():
+        cat = obj[0]
+        name = obj[1].lower()
+        if cat == "malware":
+            malware_set.add(name)
+        elif cat == "threat_actors":
+            group_set.add(name)
+
+    # Count frequency of each MITRE malware/group in the text
+    actor_freq = _Counter()
+    for name in (malware_set | group_set):
+        if len(name) < 3:
             continue
-        # Check if subject is a known malware name used as agent
-        for child in root.children:
-            if child.dep_ in ("nsubj", "nsubjpass"):
-                subj = child.text.strip().lower()
-                if subj in malware_names or any(subj in m for m in malware_names):
-                    # This malware is used as an actor in the text
-                    for m in ir["malware"]:
-                        if subj in m["name"].lower():
-                            actor_key = ("threat_actors", m["name"].lower())
-                            if actor_key not in seen_entities:
-                                seen_entities.add(actor_key)
-                                ir["threat_actors"].append({
-                                    "name": m["name"],
-                                    "description": f"Threat actor (inferred from malware name used as agent)",
-                                    "source": "agent-inference",
-                                })
-                            break
+        pattern = r"\b" + re.escape(name) + r"\b"
+        count = len(re.findall(pattern, text_lower))
+        if count > 0:
+            actor_freq[name] = count
 
-    # Also add actors from title-case proper nouns near attack verbs
-    ATTACK_VERBS = {"exploit", "deploy", "execute", "target", "compromise",
-                    "attack", "encrypt", "exfiltrate", "disable", "leverage"}
-    for sent in doc.sents:
-        for tok in sent:
-            if tok.lemma_.lower() in ATTACK_VERBS:
-                for child in tok.children:
-                    if child.dep_ == "nsubj" and child.text[0].isupper():
-                        name = child.text.strip()
-                        key = ("threat_actors", name.lower())
-                        if key not in seen_entities and len(name) > 2:
-                            seen_entities.add(key)
-                            ir["threat_actors"].append({
-                                "name": name,
-                                "description": "",
-                                "source": "verb-agent-inference",
-                            })
+    # Title bonus: entities in the first line get a boost
+    first_line = text.strip().split("\n")[0].lower()
+    for name in actor_freq:
+        if name in first_line:
+            actor_freq[name] += 3  # title mention is strong signal
+
+    # First paragraph bonus
+    first_para = text.strip().split("\n\n")[0].lower() if "\n\n" in text else text_lower[:500]
+    for name in actor_freq:
+        if name in first_para:
+            actor_freq[name] += 1
+
+    # Add top actors (by frequency) that aren't already in IR
+    for name, count in actor_freq.most_common(3):
+        if count < 2:
+            continue
+        key = ("threat_actors", name)
+        if key not in seen_entities:
+            seen_entities.add(key)
+            # Find canonical name from index
+            canonical = name
+            for idx_name, (cat, canon, desc) in mitre_index.items():
+                if idx_name == name:
+                    canonical = canon
+                    break
+            ir["threat_actors"].append({
+                "name": canonical,
+                "description": f"Primary threat actor ({count} mentions)",
+                "source": "frequency-inference",
+            })
 
     mitre_found = sum(len(ir[k]) for k in ("threat_actors", "malware", "tools"))
     print(f"[OFFLINE-IR] MITRE taxonomy matches: {mitre_found}")
