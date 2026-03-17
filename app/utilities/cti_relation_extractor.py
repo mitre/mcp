@@ -160,7 +160,8 @@ def _resolve_objects(tok, known_entities):
 # CORE TRIPLE EXTRACTION
 # ============================================================
 
-def extract_triples(text: str, known_entities: set[str]) -> list[dict]:
+def extract_triples(text: str, known_entities: set[str],
+                    default_actor: str = None) -> list[dict]:
     """
     Extract (subject, verb, object) triples from CTI text.
 
@@ -169,11 +170,22 @@ def extract_triples(text: str, known_entities: set[str]) -> list[dict]:
     - Passive voice: "Mimikatz was deployed by BlackCat"
     - Compound subjects: "BlackCat operators leverage tools"
     - Conjunctions: "deployed A, B and C"
+    - Generic subjects: "the group", "threat actors", "attackers"
+      → resolved to default_actor if provided
     - Ontology grounding: only emits if subject OR object is known entity
 
     Returns list of relationship dicts with provenance.
     """
     known_lower = {e.lower() for e in known_entities if e}
+
+    # Generic subject terms that should resolve to the default actor
+    GENERIC_SUBJECTS = {
+        "group", "actors", "attackers", "operator", "operators",
+        "threat", "adversary", "adversaries", "intruders",
+        "hackers", "gang", "affiliate", "affiliates", "they",
+        "it", "malware", "ransomware", "campaign",
+    }
+
     doc = nlp(text[:nlp.max_length])
     triples = []
 
@@ -272,6 +284,14 @@ def extract_triples(text: str, known_entities: set[str]) -> list[dict]:
 
                 # Resolve subject
                 subj_entity = _resolve_subject_entity(subject_tok, known_lower)
+
+                # If subject is generic ("the group", "attackers", etc.)
+                # resolve to the default actor
+                if not subj_entity and default_actor:
+                    subj_text = _resolve_full_subject(subject_tok).lower()
+                    subj_words = set(subj_text.split())
+                    if subj_words & GENERIC_SUBJECTS:
+                        subj_entity = default_actor
 
                 # Resolve each object (with conjunction splitting)
                 for obj_tok in object_toks:

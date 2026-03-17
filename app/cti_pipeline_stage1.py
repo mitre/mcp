@@ -255,15 +255,36 @@ async def process_file(
     low_conf  = [b for b in qualified if b.get("confidence", 0) < 0.5]
 
     # ---------------------------------------------------------
-    # 4. Relationships
+    # 4. Relationships (new dep-parse extractor)
     # ---------------------------------------------------------
-    raw_relationships = await extract_all_relationships(
-        text, ir, high_conf
-    ) or []
-    ir["relationships"] = prune_relationships(
-        rag_safe_relationships(raw_relationships), ir
+    from plugins.mcp.app.utilities.cti_relation_extractor import (
+        extract_triples, filter_grounded_relationships, dedup_triples,
     )
+
+    # Build known entity set from IR for ontology grounding
+    known_entities = set()
+    for group in ("threat_actors", "malware", "tools", "infrastructure"):
+        for ent in ir.get(group, []):
+            name = (ent.get("name") or "").strip()
+            if name:
+                known_entities.add(name.lower())
+
+    # Determine dominant actor for generic subject resolution
+    default_actor = None
+    actors = ir.get("threat_actors", [])
+    malware_list = ir.get("malware", [])
+    if actors:
+        default_actor = actors[0].get("name", "").lower()
+    elif malware_list:
+        default_actor = malware_list[0].get("name", "").lower()
+
+    raw_triples = extract_triples(text, known_entities, default_actor=default_actor)
+    grounded = filter_grounded_relationships(raw_triples)
+    ir["relationships"] = dedup_triples(grounded)
     ir["low_confidence_behaviors"] = low_conf
+
+    if ir["relationships"]:
+        print(f"[REL-NEW] {len(raw_triples)} raw → {len(grounded)} grounded → {len(ir['relationships'])} deduped")
 
     # ---------------------------------------------------------
     # Commands Extraction (Linguistic)
