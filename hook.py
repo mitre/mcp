@@ -61,8 +61,9 @@ if not is_port_open(5000):
         plugin_dir = os.path.dirname(os.path.abspath(__file__))
         mlruns_path = os.path.join(plugin_dir, 'mlruns')
         db_path = os.path.join(plugin_dir, 'mlruns.db')
+        import sys
         subprocess.Popen([
-            "mlflow", "server",
+            sys.executable, "-m", "mlflow", "server",
             "--backend-store-uri", f"sqlite:///{db_path}",
             "--default-artifact-root", mlruns_path,
             "--host", "127.0.0.1",
