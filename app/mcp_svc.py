@@ -74,7 +74,7 @@ class MCPService(BaseService):
         rag = RAGService(api_key=api_key, api_base=api_base, log=self.log)
         if topk:
             rag.topk_objects_to_retrieve = int(topk)
-        rag.initialize_from_bundles(bundles, embed_model=embed_model or 'nvidia/llama-3.2-nv-embedqa-1b-v2')
+        rag.initialize_from_bundles(bundles, embed_model=embed_model or 'nvidia_nim/llama-3.2-nv-embedqa-1b-v2')
         return rag
 
     async def _run_execution(self, focus, prompt, run_id, lm_obj=None, run_config: dict = None):
@@ -101,7 +101,7 @@ class MCPService(BaseService):
                         self.log.warning(f"[MCP] Failed to configure LM: {e}")
 
                 rag_files = run_config.get("rag_files") or []
-                rag_embed_model = run_config.get("rag_embed_model") or 'nvidia/llama-3.2-nv-embedqa-1b-v2'
+                rag_embed_model = run_config.get("rag_embed_model") or 'nvidia_nim/llama-3.2-nv-embedqa-1b-v2'
                 rag_topk = run_config.get("rag_topk")
 
                 # Use RAG if explicitly requested via focus or if files were selected

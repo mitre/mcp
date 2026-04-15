@@ -33,7 +33,7 @@ class RAGService:
         except json.JSONDecodeError:
             raise ValueError(f"Invalid JSON in STIX bundle: {stix_bundle_path}")
     
-    def initialize_from_bundles(self, stix_bundles: List[dict], embed_model: str = 'nvidia/llama-3.2-nv-embedqa-1b-v2'):
+    def initialize_from_bundles(self, stix_bundles: List[dict], embed_model: str = 'nvidia_nim/llama-3.2-nv-embedqa-1b-v2'):
         """Initialize the RAG service with multiple STIX bundles and create retriever."""
         all_corpus = []
         all_adv_step = {}
@@ -46,7 +46,11 @@ class RAGService:
         self.adv_step = all_adv_step
         
         self.log.info("Initializing embeddings and retriever for STIX corpus")
-        embedder = dspy.Embedder(embed_model, api_key=self.api_key, api_base=self.api_base)
+        embedder = dspy.Embedder(
+            embed_model, 
+            api_key=self.api_key, 
+            api_base=self.api_base
+        )
         self.search = dspy.retrievers.Embeddings(
             corpus=self.corpus,
             embedder=embedder, 
