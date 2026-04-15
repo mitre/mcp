@@ -226,21 +226,21 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
         mlflow.end_run()
         raise
 
-    # Optional streaming updates (if desired for parity)
-    client = MlflowClient()
-    latest_thought = None
-    latest_observation = None
+    # # Optional streaming updates (if desired for parity)
+    # client = MlflowClient()
+    # latest_thought = None
+    # latest_observation = None
 
-    while True:
-        run = client.get_run(run_id)
-        tags = run.data.tags
+    # while True:
+    #     run = client.get_run(run_id)
+    #     tags = run.data.tags
 
-        if tags.get("latest_thought") != latest_thought:
-            latest_thought = tags["latest_thought"]
-            client.set_tag(run_id, "frontend_thought", latest_thought)
+    #     if tags.get("latest_thought") != latest_thought:
+    #         latest_thought = tags["latest_thought"]
+    #         client.set_tag(run_id, "frontend_thought", latest_thought)
 
-        if tags.get("latest_observation") != latest_observation:
-            latest_observation = tags["latest_observation"]
-            client.set_tag(run_id, "frontend_observation", latest_observation)
+    #     if tags.get("latest_observation") != latest_observation:
+    #         latest_observation = tags["latest_observation"]
+    #         client.set_tag(run_id, "frontend_observation", latest_observation)
 
-        await asyncio.sleep(2)
+    #     await asyncio.sleep(2)
