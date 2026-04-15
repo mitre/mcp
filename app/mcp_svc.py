@@ -89,6 +89,7 @@ class MCPService(BaseService):
                 mlflow.log_param("prompt", prompt)
 
                 # Configure LM globally if provided
+                lm = None
                 if lm_obj and lm_obj.get("api_key"):
                     try:
                         lm = dspy.LM(

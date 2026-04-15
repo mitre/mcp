@@ -54,7 +54,8 @@ class RAGService:
         embedder = dspy.Embedder(
             embed_model, 
             api_key=self.api_key, 
-            api_base=self.api_base or "https://integrate.api.nvidia.com/v1"
+            api_base=self.api_base or "https://integrate.api.nvidia.com/v1",
+            encoding_format="float", 
         )
         self.search = dspy.retrievers.Embeddings(
             corpus=self.corpus,
