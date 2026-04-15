@@ -46,10 +46,11 @@ class RAGService:
         self.adv_step = all_adv_step
         
         self.log.info("Initializing embeddings and retriever for STIX corpus")
+        print(f"[RAG DEBUG] embed_model='{embed_model}', api_key_set={bool(self.api_key)}, api_base='{self.api_base}'")
         embedder = dspy.Embedder(
             embed_model, 
             api_key=self.api_key, 
-            api_base=self.api_base
+            api_base=self.api_base or "https://integrate.api.nvidia.com/v1"
         )
         self.search = dspy.retrievers.Embeddings(
             corpus=self.corpus,

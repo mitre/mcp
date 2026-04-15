@@ -72,6 +72,7 @@ class MCPService(BaseService):
                 bundles.append(json.load(f))
 
         rag = RAGService(api_key=api_key, api_base=api_base, log=self.log)
+        print(f"[RAG SVC DEBUG] embed_model passed to RAG: '{embed_model}', api_base: '{api_base}'")
         if topk:
             rag.topk_objects_to_retrieve = int(topk)
         rag.initialize_from_bundles(bundles, embed_model=embed_model or 'nvidia_nim/llama-3.2-nv-embedqa-1b-v2')
@@ -97,6 +98,7 @@ class MCPService(BaseService):
                             temperature=lm_obj.get("temperature"),
                             max_tokens=lm_obj.get("max_tokens"),
                         )
+                        print(f"[LM DEBUG] model='{lm_obj.get('model')}', api_base='{lm_obj.get('api_base')}'")
                     except Exception as e:
                         self.log.warning(f"[MCP] Failed to configure LM: {e}")
 
