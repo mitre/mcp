@@ -173,7 +173,7 @@
                 class="input"
                 type="text"
                 v-model="globalConfig.ragEmbedModel"
-                placeholder="nvidia_nim/llama-3.2-nv-embedqa-1b-v2"
+                placeholder="nvidia/llama-3.2-nv-embedqa-1b-v2"
               />
             </div>
           </div>
@@ -514,7 +514,7 @@ const globalConfig = reactive({
   apiBase: savedConfig?.apiBase || 'https://integrate.api.nvidia.com/v1',
   maxToolCalls: savedConfig?.maxToolCalls || 5,
   maxTokens: savedConfig?.maxTokens || 10000,
-  ragEmbedModel: savedConfig?.ragEmbedModel || 'nvidia_nim/llama-3.2-nv-embedqa-1b-v2',
+  ragEmbedModel: savedConfig?.ragEmbedModel || 'nvidia/llama-3.2-nv-embedqa-1b-v2',
   ragTopK: savedConfig?.ragTopK ?? 5
 })
 
