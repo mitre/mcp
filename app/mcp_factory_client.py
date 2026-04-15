@@ -180,9 +180,8 @@ async def run(adversary_emulation_task: str, lm_obj = None, rag_context=None, ru
                 mlflow.set_tag("stage", "listing tools")
                 tools = await session.list_tools()
 
-                # FIXED: add openai/ prefix and api_base
                 with dspy.context(lm=dspy.LM(
-                    "openai/" + lm_settings['model'],
+                    f"nvidia_nim/" + lm_settings['model'],
                     api_key=lm_settings['api_key'],
                     api_base=lm_settings['api_base'],
                     temperature=lm_settings['temperature'],

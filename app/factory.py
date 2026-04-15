@@ -11,7 +11,7 @@ def configure_dspy_from_env():
     max_tokens = int(os.environ.get('DSPY_MAX_TOKENS', '10000'))
     if api_key:
         lm = dspy.LM(
-            model="openai/" + model,
+            model=f"nvidia_nim/" + model,
             api_key=api_key,
             api_base=api_base,
             temperature=temperature,

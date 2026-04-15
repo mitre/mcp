@@ -91,7 +91,7 @@ class MCPService(BaseService):
                 if lm_obj and lm_obj.get("api_key"):
                     try:
                         lm = dspy.LM(
-                            model="openai/" + lm_obj.get("model"),
+                            model=f"nvidia_nim/" + lm_obj.get("model"),
                             api_key=lm_obj.get("api_key"),
                             api_base=lm_obj.get("api_base"),
                             temperature=lm_obj.get("temperature"),
