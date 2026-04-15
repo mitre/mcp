@@ -511,7 +511,7 @@ const globalConfig = reactive({
   modelName: savedConfig?.modelName || 'gpt-4o',
   temperature: savedConfig?.temperature ?? 0.5,
   apiKey: savedConfig?.apiKey || '',
-  apiBase: savedConfig?.apiBase || '',
+  apiBase: savedConfig?.apiBase || 'https://integrate.api.nvidia.com/v1',
   maxToolCalls: savedConfig?.maxToolCalls || 5,
   maxTokens: savedConfig?.maxTokens || 10000,
   ragEmbedModel: savedConfig?.ragEmbedModel || 'nvidia_nim/llama-3.2-nv-embedqa-1b-v2',
