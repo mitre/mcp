@@ -154,3 +154,94 @@ def search_cti_data_by_title(name: str) -> str:
     if 'global_rag_service' in globals():
         return global_rag_service.search_cti_data_by_title(name)
     return "RAG service not initialized"
+
+
+# ---------------------------------------------------------------------------
+# Capability registration
+# ---------------------------------------------------------------------------
+# Wraps the RAGService above as a Capability the workflow registry can discover
+# and invoke. Workflows that accept "rag" in their accepted_capabilities list
+# will receive a cti_context string in their context dict when this capability
+# is enabled by the user. Until the orchestrator switches to consuming the
+# capability registry, this declaration is dormant; the legacy code path in
+# mcp_svc still wires RAG into runs directly.
+
+import os
+from pathlib import Path
+
+from plugins.mcp.app.capabilities.base import Capability
+
+
+def _format_rag_context(rag_context: dict) -> str:
+    """Format a RAGService.get_context_for_task() result into a prompt string.
+
+    Mirrors the formatter that lives inline in workflows/author.py and
+    workflows/plan_execute.py so the capability can stand on its own once the
+    orchestrator switches over.
+    """
+    if not rag_context:
+        return "No CTI context available."
+
+    parts = []
+    if rag_context.get("search_results"):
+        parts.append("Relevant CTI findings:")
+        for i, result in enumerate(rag_context["search_results"][:3], 1):
+            parts.append(f"{i}. {result}")
+    if rag_context.get("detailed_context"):
+        parts.append("\nDetailed CTI Information:")
+        for ctx in rag_context["detailed_context"]:
+            parts.append(f"\n{ctx['name']}:")
+            parts.append(f"{ctx['description']}")
+    return "\n".join(parts)
+
+
+async def _enrich(prompt: str, settings: dict) -> dict:
+    """Build a RAGService from selected files and return cti_context string.
+
+    settings keys (all optional):
+      rag_files       list of filenames under plugins/mcp/data/
+      topk            int, defaults to 5
+      embed_model     str, defaults to openai/text-embedding-3-small
+      api_key         str, required by the embedding model
+
+    Returns an empty dict when no files are selected so workflow signatures
+    that accept cti_context fall back to their default (empty string).
+    """
+    rag_files = settings.get("rag_files") or []
+    if not rag_files:
+        return {}
+
+    api_key = settings.get("api_key") or ""
+    embed_model = settings.get("embed_model") or "openai/text-embedding-3-small"
+    topk = int(settings.get("topk") or 5)
+
+    base_dir = Path(__file__).resolve().parent.parent.parent / "data"
+    bundles = []
+    for name in rag_files:
+        path = base_dir / name
+        if not path.exists():
+            raise FileNotFoundError(f"RAG file not found: {path}")
+        with open(path, "r", encoding="utf-8") as f:
+            bundles.append(json.load(f))
+
+    rag = RAGService(api_key=api_key)
+    rag.topk_objects_to_retrieve = topk
+    rag.initialize_from_bundles(bundles, embed_model=embed_model)
+    raw_context = rag.get_context_for_task(prompt)
+    return {"cti_context": _format_rag_context(raw_context)}
+
+
+CAPABILITIES = [
+    Capability(
+        id="rag",
+        display_name="CTI Ingestion (RAG)",
+        description=(
+            "Embed uploaded CTI bundles and inject the most relevant chunks "
+            "as context for the workflow. Useful for grounding both ability "
+            "authoring and infrastructure provisioning in real threat reports."
+        ),
+        enrich=_enrich,
+        ui_settings_component="components/RAGSettings.vue",
+        contributes_fields=["cti_context"],
+    ),
+]
