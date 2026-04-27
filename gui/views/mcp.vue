@@ -513,22 +513,42 @@ function saveConfig(config) {
   }
 }
 
-// Global configuration that will be shared with all child components
-// Load from localStorage if available, otherwise use defaults
+// Global configuration shared with all child components.
+// Initial state comes from localStorage; missing fields are filled in by
+// /plugin/mcp/defaults so the UI stays in sync with conf/default.yml
+// instead of hard-coding a parallel set of constants here.
 const savedConfig = loadConfig()
 const globalConfig = reactive({
-  modelName: savedConfig?.modelName || 'openai/nemotron-3-super',
-  temperature: savedConfig?.temperature ?? 0.5,
+  modelName: savedConfig?.modelName || '',
+  temperature: savedConfig?.temperature,
   apiKey: savedConfig?.apiKey || '',
-  maxToolCalls: savedConfig?.maxToolCalls || 5,
-  maxTokens: savedConfig?.maxTokens || 10000,
-  ragEmbedModel: savedConfig?.ragEmbedModel || 'openai/text-embedding-3-small',
-  ragTopK: savedConfig?.ragTopK ?? 5,
+  maxToolCalls: savedConfig?.maxToolCalls,
+  maxTokens: savedConfig?.maxTokens,
+  ragEmbedModel: savedConfig?.ragEmbedModel || '',
+  ragTopK: savedConfig?.ragTopK,
   enabledServers: savedConfig?.enabledServers || []
 })
 
-// Discover MCP servers and reconcile against saved enabled list.
+function applyServerDefaults(d) {
+  // Only fill fields the user hasn't already set.
+  if (!globalConfig.modelName)     globalConfig.modelName     = d.model || ''
+  if (globalConfig.temperature   == null) globalConfig.temperature   = d.temperature
+  if (!globalConfig.maxToolCalls)  globalConfig.maxToolCalls  = d.max_tool_calls
+  if (!globalConfig.maxTokens)     globalConfig.maxTokens     = d.max_tokens
+  if (!globalConfig.ragEmbedModel) globalConfig.ragEmbedModel = d.rag_embed_model || ''
+  if (globalConfig.ragTopK       == null) globalConfig.ragTopK       = d.rag_topk
+}
+
 onMounted(async () => {
+  // Backend-driven defaults so the UI never duplicates yaml values.
+  try {
+    const resp = await fetch('/plugin/mcp/defaults')
+    if (resp.ok) applyServerDefaults(await resp.json())
+  } catch (e) {
+    console.warn('[MCP] Failed to fetch /plugin/mcp/defaults:', e)
+  }
+
+  // Discover MCP servers and reconcile against saved enabled list.
   try {
     const resp = await fetch('/plugin/mcp/servers')
     const data = await resp.json()
@@ -536,12 +556,10 @@ onMounted(async () => {
     const known = new Set(availableServers.value.map(s => s.name))
 
     if (!savedConfig?.enabledServers) {
-      // First load — default to whatever the registry marks default_enabled.
       globalConfig.enabledServers = availableServers.value
         .filter(s => s.default_enabled)
         .map(s => s.name)
     } else {
-      // Drop any saved entries that no longer exist.
       globalConfig.enabledServers = globalConfig.enabledServers.filter(n => known.has(n))
     }
   } catch (e) {
