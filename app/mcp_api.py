@@ -27,26 +27,54 @@ class McpAPI:
         self.log.info("[MCP] Initialized McpAPI")
 
     async def execute(self, request):
+        """POST /plugin/mcp/execute.
+
+        New payload shape (preferred):
+            {
+              "text": "...",
+              "workflow_id": "author" | "plan_execute" | ...,
+              "lm_config": { model, api_key, api_base, temperature, max_tokens, max_tool_calls },
+              "enabled_servers": ["caldera_core", ...],
+              "enabled_capabilities": ["rag", ...],
+              "capability_settings": { "rag": { "rag_files": [...], "topk": 5, "embed_model": "..." } }
+            }
+
+        Legacy payload (still accepted, mapped by mcp_svc):
+            { "text": "...", "type": "factory"|"planner"|"rag_factory"|"rag_planner",
+              "config": { ...lm + rag_files/rag_topk/rag_embed_model }, "enabled_servers": [...] }
+        """
         self.log.info("[MCP] Executing request")
         try:
             data = await request.json()
-            self.log.info(f"[MCP] Request data: {data}")
             user_input = data.get("text", "")
-            self.log.info(f"[MCP] User input: {user_input}")
-            focus = data.get("type", "factory")  # Default to factory if not specified
-            self.log.info(f"[MCP] Execution focus: {focus}")
-            model_config = data.get("config")
-            enabled_servers = data.get("enabled_servers")
-            self.log.info(f"[MCP] Config received, enabled_servers={enabled_servers}")
-
             if not user_input:
                 return web.json_response({"error": 'Missing "text" in request'}, status=400)
 
+            workflow_id = data.get("workflow_id")
+            lm_config = data.get("lm_config")
+            enabled_capabilities = data.get("enabled_capabilities")
+            capability_settings = data.get("capability_settings")
+            enabled_servers = data.get("enabled_servers")
+
+            # Legacy fields (only used when workflow_id is absent)
+            focus = data.get("type")
+            model_config = data.get("config")
+
+            self.log.info(
+                f"[MCP] workflow_id={workflow_id} legacy_type={focus} "
+                f"enabled_servers={enabled_servers} "
+                f"enabled_capabilities={enabled_capabilities}"
+            )
+
             result = await self.mcp_svc.execute(
+                workflow_id=workflow_id,
                 focus=focus,
                 prompt=user_input,
+                lm_config=lm_config,
                 model_config=model_config,
                 enabled_servers=enabled_servers,
+                enabled_capabilities=enabled_capabilities,
+                capability_settings=capability_settings,
             )
             return web.json_response(result)
 

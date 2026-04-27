@@ -1,20 +1,19 @@
 import logging
-import dspy
 from app.utility.base_service import BaseService
-from plugins.mcp.app.workflows.author import run as factory_run
-from plugins.mcp.app.workflows.plan_execute import run as planner_run
-from plugins.mcp.app.capabilities.rag import RAGService
-from enum import Enum
 import mlflow
 import asyncio
-import json
-from pathlib import Path
 
-class ExecuteStyle(Enum):
-    LLMfactory = "factory"
-    LLMplanner = "planner"
-    RAGplanner = "rag_planner"
-    RAGfactory = "rag_factory"
+
+# Legacy ExecuteStyle string values mapped to new (workflow_id, capability_ids).
+# Inbound /execute requests with `type` set to one of these are translated to
+# the new payload shape. Once the UI ships the new payload exclusively, this
+# shim and its callers can be deleted.
+_LEGACY_TYPE_MAP = {
+    "factory":     ("author",        []),
+    "planner":     ("plan_execute",  []),
+    "rag_factory": ("author",        ["rag"]),
+    "rag_planner": ("plan_execute",  ["rag"]),
+}
 
 class MCPService(BaseService):
     def __init__(self, services, server_registry=None, workflow_registry=None, capability_registry=None):
@@ -52,128 +51,173 @@ class MCPService(BaseService):
         }
         return lm
 
-    async def execute(self, focus: str, prompt: str, model_config: dict, enabled_servers=None, file: dict = None):
-        """Start MLflow run and launch async execution."""
-        run = mlflow.start_run(run_name="MCP Execution")
+    async def execute(self, focus: str = None, prompt: str = "", model_config: dict = None,
+                      enabled_servers=None, file: dict = None,
+                      workflow_id: str = None, lm_config: dict = None,
+                      enabled_capabilities=None, capability_settings=None):
+        """Start an MLflow run and launch a background workflow execution.
+
+        Accepts both the new payload shape and the legacy one. The HTTP layer
+        decides which fields to fill; this method maps the legacy ones onto
+        the new ones via _LEGACY_TYPE_MAP.
+
+        New payload (preferred):
+          workflow_id, prompt, lm_config, enabled_servers, enabled_capabilities,
+          capability_settings
+
+        Legacy payload (supported until the UI catches up):
+          focus (== "factory"|"planner"|"rag_factory"|"rag_planner"),
+          prompt, model_config, enabled_servers
+        """
+        # ---- 1. Translate legacy payload into the new shape ----
+        legacy_rag_settings = None
+        if workflow_id is None and focus is not None:
+            mapped = _LEGACY_TYPE_MAP.get(focus)
+            if mapped is None:
+                raise ValueError(f"Unknown legacy execute type: {focus}")
+            workflow_id, mapped_caps = mapped
+            enabled_capabilities = list(enabled_capabilities or [])
+            for c in mapped_caps:
+                if c not in enabled_capabilities:
+                    enabled_capabilities.append(c)
+            # Legacy clients also enable RAG implicitly when they include
+            # rag_files in model_config, even when type is plain factory/planner.
+            mc = model_config or {}
+            if mc.get("rag_files") and "rag" not in enabled_capabilities:
+                enabled_capabilities.append("rag")
+            if "rag" in enabled_capabilities:
+                legacy_rag_settings = {
+                    "rag_files": mc.get("rag_files") or [],
+                    "topk": mc.get("rag_topk"),
+                    "embed_model": mc.get("rag_embed_model"),
+                }
+            if lm_config is None:
+                lm_config = mc
+
+        if workflow_id is None:
+            raise ValueError("execute() requires either workflow_id or focus")
+
+        # ---- 2. Resolve workflow + filter inputs against its declared scope ----
+        if workflow_id not in self.workflow_registry:
+            raise ValueError(
+                f"Unknown workflow_id: {workflow_id}. "
+                f"Available: {list(self.workflow_registry)}"
+            )
+        workflow = self.workflow_registry[workflow_id]
+
+        allowed_servers = set(workflow.required_servers + workflow.optional_servers)
+        scoped_servers = [s for s in (enabled_servers or []) if s in allowed_servers]
+        # Required servers always run, even if the caller didn't include them.
+        for req in workflow.required_servers:
+            if req not in scoped_servers:
+                scoped_servers.append(req)
+
+        scoped_capabilities = [
+            c for c in (enabled_capabilities or [])
+            if c in workflow.accepted_capabilities and c in self.capability_registry
+        ]
+
+        # ---- 3. Build LM dict + merge per-capability settings ----
+        lm_obj = None
+        if lm_config and lm_config.get("api_key"):
+            lm_obj = self._create_dspy_client(lm_config)
+
+        cap_settings = dict(capability_settings or {})
+        # Hand the legacy rag settings forward under the new key.
+        if legacy_rag_settings is not None and "rag" not in cap_settings:
+            cap_settings["rag"] = legacy_rag_settings
+        # The rag capability needs an api_key for embedding; inject from lm_config
+        # when the caller didn't supply one explicitly.
+        if "rag" in scoped_capabilities and lm_obj:
+            rag_cfg = dict(cap_settings.get("rag") or {})
+            rag_cfg.setdefault("api_key", lm_obj.get("api_key", ""))
+            cap_settings["rag"] = rag_cfg
+
+        # ---- 4. Start MLflow run and launch the background task ----
+        run = mlflow.start_run(run_name=f"MCP {workflow.display_name}")
         run_id = run.info.run_id
-        mlflow.end_run()  # Immediately end run so polling can begin
+        mlflow.end_run()
 
-        api_key = (model_config or {}).get("api_key")
-        dspy_client = None
-        if api_key:
-            dspy_client = self._create_dspy_client(model_config)
-
-        if not enabled_servers:
-            enabled_servers = ["caldera_core"]
-
-        # Launch background run, pass full config for RAG options
         asyncio.create_task(self._run_execution(
-            focus=focus,
+            workflow=workflow,
             prompt=prompt,
             run_id=run_id,
-            lm_obj=dspy_client,
-            run_config=model_config or {},
-            enabled_servers=enabled_servers,
+            lm_obj=lm_obj,
+            enabled_servers=scoped_servers,
+            enabled_capabilities=scoped_capabilities,
+            capability_settings=cap_settings,
         ))
-        return {"run_id": run_id, "enabled_servers": enabled_servers}
+        return {
+            "run_id": run_id,
+            "workflow_id": workflow.id,
+            "enabled_servers": scoped_servers,
+            "enabled_capabilities": scoped_capabilities,
+        }
 
-    def _build_rag_service_from_files(self, filenames, api_key: str, embed_model: str, topk: int):
-        base_dir = Path(__file__).resolve().parent.parent / "data"
-        bundles = []
-        for name in filenames or []:
-            path = base_dir / name
-            if not path.exists():
-                raise FileNotFoundError(f"RAG file not found: {path}")
-            with open(path, "r", encoding="utf-8") as f:
-                bundles.append(json.load(f))
+    async def _run_execution(self, workflow, prompt, run_id, lm_obj,
+                             enabled_servers, enabled_capabilities, capability_settings):
+        """Run a workflow end-to-end in the background, tracking via MLflow.
 
-        rag = RAGService(api_key=api_key, log=self.log)
-        if topk:
-            rag.topk_objects_to_retrieve = int(topk)
-        rag.initialize_from_bundles(bundles, embed_model=embed_model or 'openai/text-embedding-3-small')
-        return rag
-
-    async def _run_execution(self, focus, prompt, run_id, lm_obj=None, run_config: dict = None, enabled_servers=None):
-        """Executes the full DSPy logic in background and tracks via MLflow."""
-        run_config = run_config or {}
-        enabled_servers = enabled_servers or ["caldera_core"]
+        Per-request LM is set via dspy.context() inside each workflow's run()
+        function, so we deliberately do not call dspy.configure() from this
+        async task (it raises across tasks and adds nothing).
+        """
         try:
-            # Force clear any stale MLflow context from main thread
             mlflow.end_run()
             with mlflow.start_run(run_id=run_id):
                 mlflow.set_tag("stage", "initializing")
+                mlflow.set_tag("workflow_id", workflow.id)
+                mlflow.log_param("workflow", workflow.id)
                 mlflow.log_param("prompt", prompt)
                 mlflow.log_param("enabled_servers", ",".join(enabled_servers))
+                mlflow.log_param("enabled_capabilities", ",".join(enabled_capabilities))
 
-                # NOTE: We deliberately do NOT call dspy.configure here.
-                # Both factory and planner clients wrap their react.acall in
-                # dspy.context(lm=...) so the per-run LM is always set
-                # correctly. Calling dspy.configure from this async task
-                # raises "can only be called from the same async task that
-                # called it first" the moment a second request lands, and
-                # adds nothing because dspy.context overrides it anyway.
-
-                rag_files = run_config.get("rag_files") or []
-                rag_embed_model = run_config.get("rag_embed_model") or 'openai/text-embedding-3-small'
-                rag_topk = run_config.get("rag_topk")
-
-                # Use RAG if explicitly requested via focus or if files were selected
-                use_rag = (focus in [ExecuteStyle.RAGplanner.value, ExecuteStyle.RAGfactory.value]) or bool(rag_files)
-
-                rag_context = None
-                if use_rag and rag_files:
+                # ---- Run capabilities sequentially. Each contributes kwargs
+                #      that get merged into the workflow's run() context. ----
+                capability_context = {}
+                for cap_id in enabled_capabilities:
+                    cap = self.capability_registry[cap_id]
+                    if cap.enrich is None:
+                        continue
+                    settings = capability_settings.get(cap_id, {})
+                    mlflow.set_tag(f"capability_{cap_id}_stage", "running")
                     try:
-                        self.log.info(f"[MCP] Building RAG from files: {rag_files}")
-                        rag = self._build_rag_service_from_files(
-                            filenames=rag_files,
-                            api_key=(lm_obj or {}).get("api_key"),
-                            embed_model=rag_embed_model,
-                            topk=rag_topk or 5
+                        self.log.info(f"[MCP] Running capability '{cap_id}' enrich()")
+                        contrib = await cap.enrich(prompt, settings) or {}
+                        capability_context.update(contrib)
+                        mlflow.set_tag(f"capability_{cap_id}_stage", "complete")
+                        mlflow.set_tag(
+                            f"capability_{cap_id}_fields",
+                            ",".join(sorted(contrib.keys())),
                         )
-                        rag_context = rag.get_context_for_task(prompt)
-                        # Log RAG retrieval process (use different namespace to avoid collision with LLM thoughts)
-                        for i, thought in enumerate(rag_context.get("thoughts", [])):
-                            mlflow.set_tag(f"rag_retrieval_step_{i}", thought)
-
-                        # Log which CTI objects were retrieved
-                        search_results = rag_context.get('search_results', [])
-                        for i, result in enumerate(search_results):
-                            result_name = result.split(" | ")[0] if " | " in result else result[:100]
-                            mlflow.set_tag(f"rag_retrieved_object_{i}", result_name)
-
-                        mlflow.set_tag("rag_tool_name", "get_context_for_task")
-                        mlflow.set_tag("rag_tool_args", json.dumps({"query": prompt, "rag_files": rag_files}))
-                        self.log.info(f"[MCP] RAG retrieved {len(search_results)} CTI objects")
                     except Exception as e:
-                        self.log.warning(f"[MCP] RAG build/error: {e}")
+                        mlflow.set_tag(f"capability_{cap_id}_stage", "error")
+                        self.log.warning(f"[MCP] Capability '{cap_id}' enrich failed: {e}")
 
-                # Execute appropriate pipeline
-                result = {}
-                common_kwargs = dict(
+                # ---- Invoke the workflow ----
+                if workflow.run is None:
+                    raise RuntimeError(f"Workflow {workflow.id} has no run() function")
+
+                self.log.info(
+                    f"[MCP] Executing workflow '{workflow.id}' with prompt={prompt!r}"
+                )
+                mlflow.set_tag("stage", "executing workflow")
+                result = await workflow.run(
+                    prompt,
+                    lm_obj,
+                    run_id=run_id,
                     enabled_servers=enabled_servers,
                     server_registry=self.server_registry,
+                    **capability_context,
                 )
-                if use_rag:
-                    if focus in [ExecuteStyle.LLMplanner.value, ExecuteStyle.RAGplanner.value]:
-                        self.log.info(f"[MCP] Executing RAG-enhanced planner with prompt: {prompt}")
-                        result = await planner_run(prompt, lm_obj, rag_context=rag_context, run_id=run_id, **common_kwargs)
-                    else:
-                        self.log.info(f"[MCP] Executing RAG-enhanced factory with prompt: {prompt}")
-                        result = await factory_run(prompt, lm_obj, rag_context=rag_context, run_id=run_id, **common_kwargs)
-                else:
-                    if focus == ExecuteStyle.LLMplanner.value:
-                        self.log.info(f"[MCP] Executing planner with prompt: {prompt}")
-                        result = await planner_run(prompt, lm_obj, run_id=run_id, **common_kwargs)
-                    else:
-                        self.log.info(f"[MCP] Executing factory with prompt: {prompt}")
-                        result = await factory_run(prompt, lm_obj, run_id=run_id, **common_kwargs)
 
                 mlflow.set_tag("stage", "complete")
                 mlflow.set_tag("status", "success")
-                # Store process_result as a tag instead of param to avoid conflicts
-                # (the client already logs it as a param)
-                if result.get("process_result"):
-                    mlflow.set_tag("process_result_summary", str(result.get("process_result", ""))[:250])
+                if (result or {}).get("process_result"):
+                    mlflow.set_tag(
+                        "process_result_summary",
+                        str(result.get("process_result", ""))[:250],
+                    )
 
         except Exception as e:
             self.log.error(f"[MCP] Execution failed: {e}")

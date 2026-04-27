@@ -149,7 +149,11 @@ def format_rag_context(rag_context):
     
     return "\n".join(formatted_parts)
 
-async def run(adversary_emulation_task: str, lm_obj = None, rag_context=None, run_id=None, enabled_servers=None, server_registry=None):
+async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_id=None, enabled_servers=None, server_registry=None, cti_context: str = "", **_extra_capability_context):
+    # cti_context (formatted string) is the new orchestrator's path. rag_context
+    # (raw dict) is the legacy mcp_svc shim. Either may be supplied; cti_context
+    # wins. **_extra_capability_context absorbs unknown kwargs from future
+    # capabilities so adding one doesn't break this signature.
     # Build LM settings safely (support defaults)
     lm_settings = {}
     max_tool_calls = 5  # Default value
@@ -272,20 +276,24 @@ async def run(adversary_emulation_task: str, lm_obj = None, rag_context=None, ru
             with dspy.context(lm=dspy.LM(lm_settings['model'], **lm_kwargs)):
                 mlflow.set_tag("stage", "creating DSPy ReAct instance")
 
-                if rag_context:
-                    signature = DSPyCalderaFactoryClientWithRAG
-                    formatted_context = format_rag_context(rag_context)
+                # Resolve CTI context: prefer the orchestrator-supplied string,
+                # fall back to formatting the legacy structured dict.
+                resolved_cti = cti_context
+                if not resolved_cti and rag_context:
+                    resolved_cti = format_rag_context(rag_context)
 
-                    # Log CTI context being sent to LLM for verification
-                    mlflow.log_param("cti_context_preview", formatted_context[:1000])  # First 1000 chars
-                    mlflow.set_tag("cti_context_length", len(formatted_context))
-                    mlflow.set_tag("cti_search_results_count", len(rag_context.get("search_results", [])))
-                    mlflow.set_tag("cti_detailed_context_count", len(rag_context.get("detailed_context", [])))
-                    print(f"[MCP] Passing CTI context to LLM ({len(formatted_context)} chars)")
+                if resolved_cti:
+                    signature = DSPyCalderaFactoryClientWithRAG
+                    mlflow.log_param("cti_context_preview", resolved_cti[:1000])
+                    mlflow.set_tag("cti_context_length", len(resolved_cti))
+                    if rag_context:
+                        mlflow.set_tag("cti_search_results_count", len(rag_context.get("search_results", [])))
+                        mlflow.set_tag("cti_detailed_context_count", len(rag_context.get("detailed_context", [])))
+                    print(f"[MCP] Passing CTI context to LLM ({len(resolved_cti)} chars)")
 
                     react = dspy.ReAct(signature, tools=dspy_tools, max_iters=max_tool_calls)
                     mlflow.set_tag("stage", "executing DSPy ReAct with RAG")
-                    result = await react.acall(adversary_emulation_task=adversary_emulation_task, cti_context=formatted_context)
+                    result = await react.acall(adversary_emulation_task=adversary_emulation_task, cti_context=resolved_cti)
                 else:
                     signature = DSPyCalderaFactoryClient
                     react = dspy.ReAct(signature, tools=dspy_tools, max_iters=max_tool_calls)
