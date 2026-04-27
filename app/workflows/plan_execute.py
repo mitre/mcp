@@ -310,3 +310,32 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
             client.set_tag(run_id, "frontend_observation", latest_observation)
 
         await asyncio.sleep(2)
+
+
+# Workflow registration consumed by the discovery layer once it lands.
+# Until then this list is dormant; the orchestrator still routes by the
+# legacy ExecuteStyle string.
+from plugins.mcp.app.workflows.base import Workflow  # noqa: E402
+
+WORKFLOWS = [
+    Workflow(
+        id="plan_execute",
+        display_name="Plan and Execute",
+        description=(
+            "Plan and execute operations using existing abilities, adversaries, "
+            "and infrastructure. With CTI ingestion enabled, can also provision "
+            "infrastructure that matches the environment described in the report."
+        ),
+        signature=DSPyCalderaPlannerClient,
+        required_servers=["caldera_core"],
+        optional_servers=["range"],
+        accepted_capabilities=["rag"],
+        ui_component="plan_execute.vue",
+        example_prompts=[
+            "Plan an emulation against the Discovery adversary on my available agents.",
+            "Build infrastructure that resembles the environment described in the attached CTI report.",
+            "Stand up a small ICS testbed with two Windows hosts and one Linux jumpbox, then run a discovery operation against it.",
+        ],
+        run=run,
+    ),
+]

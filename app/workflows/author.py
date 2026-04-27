@@ -325,3 +325,33 @@ async def run(adversary_emulation_task: str, lm_obj = None, rag_context=None, ru
         if created_local_run:
             mlflow.end_run()
         raise
+
+
+# Workflow registration consumed by the discovery layer once it lands.
+# Until then, this list is dormant; the orchestrator still routes by the
+# legacy ExecuteStyle string. Both registration paths will coexist for
+# one or two commits and then ExecuteStyle will be removed.
+from plugins.mcp.app.workflows.base import Workflow  # noqa: E402
+
+WORKFLOWS = [
+    Workflow(
+        id="author",
+        display_name="Author",
+        description=(
+            "Create new abilities and adversaries from a description. "
+            "Best for authoring reusable artifacts; does not run operations or "
+            "deploy infrastructure."
+        ),
+        signature=DSPyCalderaFactoryClient,
+        required_servers=["caldera_core"],
+        optional_servers=[],
+        accepted_capabilities=["rag"],
+        ui_component="author.vue",
+        example_prompts=[
+            "Create a few abilities related to persistence with WMI for Windows, then create an adversary with those abilities. Please create more than one ability.",
+            "Build a Linux discovery adversary using ATT&CK T1057 and T1018 techniques.",
+            "Author an adversary that exfiltrates data over DNS, with at least three supporting abilities.",
+        ],
+        run=run,
+    ),
+]
