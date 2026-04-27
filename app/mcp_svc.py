@@ -17,7 +17,7 @@ class ExecuteStyle(Enum):
     RAGfactory = "rag_factory"
 
 class MCPService(BaseService):
-    def __init__(self, services, server_registry=None):
+    def __init__(self, services, server_registry=None, workflow_registry=None, capability_registry=None):
         super().__init__()
         self.services = services
         self.data_svc = services.get("data_svc")
@@ -28,10 +28,17 @@ class MCPService(BaseService):
         # Build RAG per run when requested
         self.rag_service = None
 
-        # Registry of discovered MCP servers (caldera_core + any plugin-provided)
+        # Discovery registries built once at hook.enable() and handed in here.
+        # The orchestrator hasn't switched to consuming workflow_registry or
+        # capability_registry yet; they live on the service so /plugin/mcp/*
+        # routes can expose them and so the upcoming switch is wiring-only.
         self.server_registry = server_registry or {}
+        self.workflow_registry = workflow_registry or {}
+        self.capability_registry = capability_registry or {}
         self.log.info(
-            f"[MCP] Initialized MCPService with servers: {list(self.server_registry.keys())}"
+            f"[MCP] Initialized MCPService with servers={list(self.server_registry.keys())} "
+            f"workflows={list(self.workflow_registry.keys())} "
+            f"capabilities={list(self.capability_registry.keys())}"
         )
 
     def _create_dspy_client(self, model_config: dict):

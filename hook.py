@@ -90,6 +90,8 @@ try:
     from plugins.mcp.app.mcp_gui import McpGUI
     from plugins.mcp.app.mcp_api import McpAPI
     from plugins.mcp.app.discovery.servers import discover_mcp_servers
+    from plugins.mcp.app.discovery.workflows import discover_workflows
+    from plugins.mcp.app.discovery.capabilities import discover_capabilities
     logging.getLogger("litellm_logging").setLevel(logging.ERROR)
 
 except ImportError as e:
@@ -99,14 +101,24 @@ except ImportError as e:
 async def enable(services):
     app = services.get('app_svc').application
 
-    # Discover MCP servers provided by sibling plugins (plus the core one shipped with mcp)
+    # Discover MCP servers, workflows, and capabilities at boot. Each registry is
+    # built once and handed to MCPService; nothing rescans at request time.
     import pathlib
     plugins_root = pathlib.Path(__file__).resolve().parent.parent
     server_registry = discover_mcp_servers(plugins_root)
+    workflow_registry = discover_workflows(plugins_root)
+    capability_registry = discover_capabilities(plugins_root)
     log.info(f"[MCP] Server registry: {list(server_registry.keys())}")
+    log.info(f"[MCP] Workflow registry: {list(workflow_registry.keys())}")
+    log.info(f"[MCP] Capability registry: {list(capability_registry.keys())}")
 
     services.get('data_svc').add_service(
-        'mcp_svc', MCPService(services, server_registry=server_registry)
+        'mcp_svc', MCPService(
+            services,
+            server_registry=server_registry,
+            workflow_registry=workflow_registry,
+            capability_registry=capability_registry,
+        )
     )
     mcp_gui = McpGUI(services, name=name, description=description)
     app.router.add_static('/mcp', 'plugins/mcp/static/', append_version=True)
