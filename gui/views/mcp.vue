@@ -84,7 +84,7 @@
                 class="input"
                 type="text"
                 v-model="globalConfig.modelName"
-                placeholder="e.g., gpt-4o"
+                placeholder="e.g., openai/nemotron-3-super"
               />
             </div>
           </div>
@@ -139,6 +139,27 @@
                 step="1000"
               />
             </div>
+          </div>
+
+          <div class="field">
+            <label class="label">Enabled MCP Servers</label>
+            <div class="control" v-if="availableServers.length">
+              <label
+                v-for="srv in availableServers"
+                :key="srv.name"
+                class="checkbox is-block mb-1"
+                :title="srv.description"
+              >
+                <input
+                  type="checkbox"
+                  :value="srv.name"
+                  v-model="globalConfig.enabledServers"
+                />
+                {{ srv.display_name }}
+                <span class="has-text-grey-light is-size-7">({{ srv.name }})</span>
+              </label>
+            </div>
+            <p v-else class="help is-warning">No MCP servers discovered.</p>
           </div>
 
           <div class="field">
@@ -444,6 +465,7 @@ import McpPromptPlanner from './public_mcp_ability_factory.vue'
 import McpHistory from './mcp_history.vue'
 
 const selectedPath = ref(null)
+const availableServers = ref([])
 const LOCAL_STORAGE_KEY = 'mcp_global_config'
 
 // Load saved config from localStorage
@@ -495,13 +517,36 @@ function saveConfig(config) {
 // Load from localStorage if available, otherwise use defaults
 const savedConfig = loadConfig()
 const globalConfig = reactive({
-  modelName: savedConfig?.modelName || 'gpt-4o',
+  modelName: savedConfig?.modelName || 'openai/nemotron-3-super',
   temperature: savedConfig?.temperature ?? 0.5,
   apiKey: savedConfig?.apiKey || '',
   maxToolCalls: savedConfig?.maxToolCalls || 5,
   maxTokens: savedConfig?.maxTokens || 10000,
   ragEmbedModel: savedConfig?.ragEmbedModel || 'openai/text-embedding-3-small',
-  ragTopK: savedConfig?.ragTopK ?? 5
+  ragTopK: savedConfig?.ragTopK ?? 5,
+  enabledServers: savedConfig?.enabledServers || []
+})
+
+// Discover MCP servers and reconcile against saved enabled list.
+onMounted(async () => {
+  try {
+    const resp = await fetch('/plugin/mcp/servers')
+    const data = await resp.json()
+    availableServers.value = data.servers || []
+    const known = new Set(availableServers.value.map(s => s.name))
+
+    if (!savedConfig?.enabledServers) {
+      // First load — default to whatever the registry marks default_enabled.
+      globalConfig.enabledServers = availableServers.value
+        .filter(s => s.default_enabled)
+        .map(s => s.name)
+    } else {
+      // Drop any saved entries that no longer exist.
+      globalConfig.enabledServers = globalConfig.enabledServers.filter(n => known.has(n))
+    }
+  } catch (e) {
+    console.warn('[MCP] Failed to fetch /plugin/mcp/servers:', e)
+  }
 })
 
 // Watch for changes and save to localStorage

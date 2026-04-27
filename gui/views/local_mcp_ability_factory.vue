@@ -302,6 +302,7 @@ async function handleSubmit() {
     const payload = {
       text: inputText.value,
       type: useRag ? 'rag_factory' : 'factory',
+      enabled_servers: globalConfig.enabledServers,
       config: {
         model: globalConfig.modelName,
         temperature: globalConfig.temperature,
