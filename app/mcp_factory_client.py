@@ -73,7 +73,7 @@ def get_env(lm_settings=None):
 
 mlflow.set_tracking_uri("http://localhost:5000")
 mlflow.set_experiment("caldera-mcp-FACTORY-client-1")
-# mlflow.dspy.autolog()
+mlflow.dspy.autolog()
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
