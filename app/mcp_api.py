@@ -6,6 +6,18 @@ import json
 from pathlib import Path
 from datetime import datetime
 
+from plugins.mcp.app.mcp_factory_client import get_llm_config
+
+# Hard-coded fallbacks for fields the yaml doesn't (yet) name. Keep this
+# list in sync with the inputs rendered in mcp.vue's Global Model Config.
+_CONFIG_FALLBACKS = {
+    "temperature": 0.5,
+    "max_tokens": 10000,
+    "max_tool_calls": 5,
+    "rag_embed_model": "openai/text-embedding-3-small",
+    "rag_topk": 5,
+}
+
 class McpAPI:
 
     def __init__(self, services):
@@ -40,6 +52,27 @@ class McpAPI:
 
         except Exception as e:
             self.log.error(f"[MCP] Error executing request: {str(e)}")
+            return web.json_response({"error": str(e)}, status=500)
+
+    async def defaults(self, request):
+        """Yaml-resolved defaults for the Global Model Config UI panel.
+
+        api_key is always returned as empty string — the user supplies their
+        own. Everything else comes from conf/default.yml so the UI never
+        drifts from the backend's single source of truth.
+        """
+        try:
+            yaml_cfg = get_llm_config() or {}
+            payload = {
+                "model": yaml_cfg.get("model"),
+                "api_key": "",
+                "api_base": yaml_cfg.get("api_base"),
+            }
+            for key, fallback in _CONFIG_FALLBACKS.items():
+                payload[key] = yaml_cfg.get(key, fallback)
+            return web.json_response(payload)
+        except Exception as e:
+            self.log.error(f"[MCP] Error fetching defaults: {e}")
             return web.json_response({"error": str(e)}, status=500)
 
     async def list_servers(self, request):
@@ -252,8 +285,3 @@ class McpAPI:
             self.log.error(f"[MCP] Error fetching run detail {run_id}: {e}")
             return web.json_response({"error": str(e)}, status=500)
 
-def setup_routes(app, mcp_api: McpAPI):
-    app.router.add_post("/plugin/mcp/execute", mcp_api.execute)
-    app.router.add_get("/plugin/mcp/status", mcp_api.status)
-    app.router.add_post("/plugin/mcp/rag/upload", mcp_api.upload_rag)
-    app.router.add_get("/plugin/mcp/rag/list", mcp_api.list_rag)
