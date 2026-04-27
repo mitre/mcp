@@ -3,6 +3,7 @@ import dspy
 from app.utility.base_service import BaseService
 from plugins.mcp.app.mcp_factory_client import run as factory_run
 from plugins.mcp.app.mcp_planner_client import run as planner_run
+from plugins.mcp.app.mcp_factory_client import get_llm_config as _yaml_llm
 from plugins.mcp.app.rag import RAGService
 from enum import Enum
 import mlflow
@@ -38,6 +39,7 @@ class MCPService(BaseService):
         lm = {
             "model": model_config.get("model"),
             "api_key": model_config.get("api_key"),
+            "api_base": model_config.get("api_base"),
             "temperature": model_config.get("temperature"),
             "max_tokens": model_config.get("max_tokens"),
             "max_tool_calls": model_config.get("max_tool_calls"),
@@ -100,12 +102,22 @@ class MCPService(BaseService):
                 # Configure LM globally if provided
                 if lm_obj and lm_obj.get("api_key"):
                     try:
-                        dspy.configure(lm=dspy.LM(
-                            model=lm_obj.get("model"),
-                            api_key=lm_obj.get("api_key"),
+                        yaml_cfg = _yaml_llm() or {}
+                        api_base = lm_obj.get("api_base") or yaml_cfg.get("api_base")
+                        # When yaml pins an alternate gateway, its model wins
+                        # (gateway has a constrained model list).
+                        model = (yaml_cfg.get("model")
+                                 if (yaml_cfg.get("api_base") and yaml_cfg.get("model"))
+                                 else lm_obj.get("model"))
+                        lm_kwargs = dict(
+                            model=model,
+                            api_key=lm_obj.get("api_key") or yaml_cfg.get("api_key"),
                             temperature=lm_obj.get("temperature"),
                             max_tokens=lm_obj.get("max_tokens"),
-                        ))
+                        )
+                        if api_base:
+                            lm_kwargs["api_base"] = api_base
+                        dspy.configure(lm=dspy.LM(**lm_kwargs))
                     except Exception as e:
                         self.log.warning(f"[MCP] Failed to configure LM: {e}")
 

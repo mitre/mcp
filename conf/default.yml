@@ -1,10 +1,12 @@
 ---
 llm:
-  model: gpt-4o
-  api_key: 
+  model: openai/nemotron-3-super
+  api_key: ${API_KEY}
+  api_base: https://models.k8s.aip.mitre.org/v1
   offline: true
   use_mock: false
 factory:
-  model: gpt-4o
-  api_key: 
+  model: openai/nemotron-3-super
+  api_key: ${API_KEY}
+  api_base: https://models.k8s.aip.mitre.org/v1
   temperature: 0.4

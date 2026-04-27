@@ -11,10 +11,19 @@ from mlflow.tracking import MlflowClient
 import asyncio
 from contextlib import AsyncExitStack
 
+def _expand_env(value):
+    if isinstance(value, str):
+        return os.path.expandvars(value)
+    if isinstance(value, dict):
+        return {k: _expand_env(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_expand_env(v) for v in value]
+    return value
+
 def get_llm_config():
     try:
         config = BaseWorld.strip_yml('plugins/mcp/conf/default.yml')[0]
-        return config.get('llm', {})
+        return _expand_env(config.get('llm', {}))
     except Exception as e:
         print(f"[MCP] Failed to load LLM config: {e}")
         return {}
@@ -57,6 +66,7 @@ def get_env(lm_settings=None):
         # Use 'or' to handle None values and ensure we always get strings
         env['DSPY_MODEL'] = str(lm_settings.get('model') or 'gpt-4o')
         env['DSPY_API_KEY'] = str(lm_settings.get('api_key') or '')
+        env['DSPY_API_BASE'] = str(lm_settings.get('api_base') or '')
         env['DSPY_TEMPERATURE'] = str(lm_settings.get('temperature') or 0.5)
         env['DSPY_MAX_TOKENS'] = str(lm_settings.get('max_tokens') or 10000)
 
@@ -147,8 +157,16 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
         lm_instance = lm_obj
         lm_settings = None  # Can't extract settings from LM instance
     elif isinstance(lm_obj, dict):
-        lm_instance = build_lm_from_dict(lm_obj)
-        lm_settings = lm_obj
+        # Overlay GUI dict onto yaml; when yaml pins a gateway via api_base,
+        # its model/api_base win over GUI submissions (gateway has constrained
+        # model list, GUI default may not match).
+        yaml_cfg = get_llm_config() or {}
+        merged = {**yaml_cfg, **{k: v for k, v in lm_obj.items() if v not in (None, "")}}
+        if yaml_cfg.get("api_base") and yaml_cfg.get("model"):
+            merged["model"] = yaml_cfg["model"]
+            merged["api_base"] = yaml_cfg["api_base"]
+        lm_instance = build_lm_from_dict(merged)
+        lm_settings = merged
         max_tool_calls = lm_obj.get("max_tool_calls") or 5
     else:
         cfg = get_llm_config()

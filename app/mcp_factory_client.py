@@ -12,10 +12,19 @@ import asyncio
 import copy
 from contextlib import AsyncExitStack
 
+def _expand_env(value):
+    if isinstance(value, str):
+        return os.path.expandvars(value)
+    if isinstance(value, dict):
+        return {k: _expand_env(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_expand_env(v) for v in value]
+    return value
+
 def get_llm_config():
     try:
         config = BaseWorld.strip_yml('plugins/mcp/conf/default.yml')[0]
-        return config.get('llm', {})
+        return _expand_env(config.get('llm', {}))
     except Exception as e:
         print(f"[MCP] Failed to load LLM config: {e}")
         return {}
@@ -52,6 +61,7 @@ def get_env(lm_settings=None):
         # Use 'or' to handle None values and ensure we always get strings
         env['DSPY_MODEL'] = str(lm_settings.get('model') or 'gpt-4o')
         env['DSPY_API_KEY'] = str(lm_settings.get('api_key') or '')
+        env['DSPY_API_BASE'] = str(lm_settings.get('api_base') or '')
         env['DSPY_TEMPERATURE'] = str(lm_settings.get('temperature') or 0.5)
         env['DSPY_MAX_TOKENS'] = str(lm_settings.get('max_tokens') or 10000)
 
@@ -145,9 +155,17 @@ async def run(adversary_emulation_task: str, lm_obj = None, rag_context=None, ru
     max_tool_calls = 5  # Default value
     if lm_obj:
         lm_obj_safe = copy.deepcopy(lm_obj) or {}
+        yaml_cfg = get_llm_config()
+        # When yaml configures an alternate gateway (api_base set), the yaml model
+        # is authoritative — the gateway only accepts a constrained model list.
+        if yaml_cfg.get("api_base") and yaml_cfg.get("model"):
+            resolved_model = yaml_cfg["model"]
+        else:
+            resolved_model = lm_obj_safe.get("model") or yaml_cfg.get("model") or "gpt-4o"
         lm_settings = {
-            "model": lm_obj_safe.get("model") or "gpt-4o",
-            "api_key": lm_obj_safe.get("api_key") or "",
+            "model": resolved_model,
+            "api_key": lm_obj_safe.get("api_key") or yaml_cfg.get("api_key") or "",
+            "api_base": lm_obj_safe.get("api_base") or yaml_cfg.get("api_base") or "",
             "temperature": lm_obj_safe.get("temperature") or 0.5,
             "max_tokens": lm_obj_safe.get("max_tokens") or 10000,
         }
@@ -157,6 +175,7 @@ async def run(adversary_emulation_task: str, lm_obj = None, rag_context=None, ru
         lm_settings = {
             "model": llm_config.get("model") or "gpt-4o",
             "api_key": llm_config.get("api_key") or "",
+            "api_base": llm_config.get("api_base") or "",
             "temperature": llm_config.get("temperature") or 0.5,
             "max_tokens": llm_config.get("max_tokens") or 10000,
         }
@@ -241,12 +260,14 @@ async def run(adversary_emulation_task: str, lm_obj = None, rag_context=None, ru
             mlflow.log_param("tool_count", len(dspy_tools))
 
             # Use context to set LM for this task/run
-            with dspy.context(lm=dspy.LM(
-                lm_settings['model'],
-                api_key=lm_settings['api_key'],
-                temperature=lm_settings['temperature'],
-                max_tokens=lm_settings['max_tokens']
-            )):
+            lm_kwargs = {
+                "api_key": lm_settings['api_key'],
+                "temperature": lm_settings['temperature'],
+                "max_tokens": lm_settings['max_tokens'],
+            }
+            if lm_settings.get('api_base'):
+                lm_kwargs['api_base'] = lm_settings['api_base']
+            with dspy.context(lm=dspy.LM(lm_settings['model'], **lm_kwargs)):
                 mlflow.set_tag("stage", "creating DSPy ReAct instance")
 
                 if rag_context:
