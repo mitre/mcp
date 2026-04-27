@@ -5,7 +5,7 @@
         <div class="column is-two-thirds">
           <div class="box">
             <div class="is-flex is-align-items-center is-justify-content-space-between mb-3">
-              <h2 class="title is-4 has-text-primary mb-0">LLM Operation Planner</h2>
+              <h2 class="title is-4 has-text-primary mb-0">{{ props.workflow?.display_name || 'MCP Workflow' }}</h2>
               <span class="icon is-clickable" @click="collapsibleBoxOpen = !collapsibleBoxOpen">
                 <font-awesome-icon :icon="['fas', collapsibleBoxOpen ? 'minus' : 'plus']" />
               </span>
@@ -13,18 +13,79 @@
 
             <div v-show="collapsibleBoxOpen">
               <div v-if="uiPhase === 'idle' || uiPhase === 'finished'">
-                <strong>Example Starting Prompt:</strong>
-                <blockquote class="example-prompt">
-                  Find some abilities that constitute a stealer adversary for linux which includes credential-access and exfiltration, then create an adversary with those abilities, then create an operation with the adversary.
-                </blockquote>
+                <p v-if="props.workflow?.description" class="mb-3">{{ props.workflow.description }}</p>
 
-                <div class="field">
+                <div v-if="examplePrompts.length">
+                  <strong>Example Starting Prompts:</strong>
+                  <blockquote
+                    v-for="(ex, i) in examplePrompts"
+                    :key="i"
+                    class="example-prompt"
+                    @click="inputText = ex"
+                    style="cursor: pointer;"
+                    title="Click to use this prompt"
+                  >
+                    {{ ex }}
+                  </blockquote>
+                </div>
+
+                <!-- Per-workflow scoped server checklist. Required servers are
+                     pinned on (rendered disabled). -->
+                <div v-if="serverChoices.length" class="field mt-3">
+                  <label class="label">Enabled MCP Servers for this workflow</label>
+                  <div class="control">
+                    <label
+                      v-for="srv in serverChoices"
+                      :key="srv.name"
+                      class="checkbox is-block mb-1"
+                      :title="srv.description"
+                    >
+                      <input
+                        type="checkbox"
+                        :value="srv.name"
+                        :checked="enabledServers.includes(srv.name)"
+                        :disabled="srv.required"
+                        @change="toggleServer(srv.name, $event.target.checked)"
+                      />
+                      {{ srv.display_name }}
+                      <span class="has-text-grey-light is-size-7">
+                        ({{ srv.name }}<span v-if="srv.required"> &middot; required</span>)
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Per-workflow capability panel. Toggling a capability adds
+                     it to enabled_capabilities; the capability's own settings
+                     (e.g. RAG file picker) live in the right column. -->
+                <div v-if="capabilityChoices.length" class="field mt-3">
+                  <label class="label">Capabilities</label>
+                  <div class="control">
+                    <label
+                      v-for="cap in capabilityChoices"
+                      :key="cap.id"
+                      class="checkbox is-block mb-1"
+                      :title="cap.description"
+                    >
+                      <input
+                        type="checkbox"
+                        :value="cap.id"
+                        :checked="enabledCapabilities.includes(cap.id)"
+                        @change="toggleCapability(cap.id, $event.target.checked)"
+                      />
+                      {{ cap.display_name }}
+                      <span class="has-text-grey-light is-size-7">({{ cap.id }})</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="field mt-3">
                   <div class="control">
                     <textarea
                       v-model="inputText"
                       class="textarea"
                       rows="4"
-                      placeholder="Describe the complete adversary operation you'd like to plan and execute..."
+                      placeholder="Describe what you want this workflow to do..."
                     ></textarea>
                   </div>
                 </div>
@@ -33,7 +94,7 @@
                   <button class="button is-light is-small" @click="$emit('back')">
                     ← Back
                   </button>
-                  
+
                   <button class="button is-primary" @click="handleSubmit" :disabled="!inputText || isLoading">
                     <span v-if="isLoading">Processing...</span>
                     <span v-else>Submit</span>
@@ -69,13 +130,42 @@
           </div>
         </div>
 
-        <div class="column is-one-third">
+        <div class="column is-one-third" v-if="workflowAcceptsRag">
           <div class="box">
             <div class="is-flex is-align-items-center is-justify-content-space-between mb-3">
               <h3 class="title is-5 has-text-primary mb-0">RAG Data</h3>
               <span class="icon is-clickable" @click="ragBoxOpen = !ragBoxOpen">
                 <font-awesome-icon :icon="['fas', ragBoxOpen ? 'minus' : 'plus']" />
               </span>
+            </div>
+
+            <!-- RAG-specific settings live with the RAG capability, not in
+                 Global Model Config, since they only make sense when RAG is
+                 in play. Bound to globalConfig.capabilitySettings.rag so
+                 they persist via the same localStorage path. -->
+            <div v-show="ragBoxOpen" class="field">
+              <label class="label">RAG TopK</label>
+              <div class="control">
+                <input
+                  class="input is-small"
+                  type="number"
+                  min="1"
+                  max="30"
+                  step="1"
+                  v-model.number="ragSettings.topk"
+                />
+              </div>
+            </div>
+            <div v-show="ragBoxOpen" class="field">
+              <label class="label">RAG Embed Model</label>
+              <div class="control">
+                <input
+                  class="input is-small"
+                  type="text"
+                  v-model="ragSettings.embed_model"
+                  placeholder="openai/text-embedding-3-small"
+                />
+              </div>
             </div>
 
             <div v-show="ragBoxOpen" class="field">
@@ -156,7 +246,7 @@
           <strong>Stage: </strong> {{ displayedStage }}
         </p>
 
-        <p><strong>Status: </strong>
+        <p><strong>Status: </strong> 
           <span v-if="pollStatus === 'RUNNING'">{{ animatedStatus }}</span>
           <span v-else>{{ pollStatus }}</span>
         </p>
@@ -201,16 +291,6 @@
                   <br>
                 </div>
 
-                <!-- If operation creation sentence -->
-                <div v-if="lastOperationSentenceKeys.has(`${idx}-${sIdx}`)">
-                  <div
-                    class="notification is-info mt-4"
-                    style="margin-left: 2rem;"
-                  >
-                    {{ parsedOperationLine.name }}
-                  </div>
-                </div>
-                <br>
               </div>
             </template>
           </div>
@@ -227,8 +307,82 @@ import { inject, ref, watch, computed, onMounted } from "vue"
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faPlus, faMinus } from '@fortawesome/free-solid-svg-icons'
 
+const props = defineProps({
+  // Workflow registration object from /plugin/mcp/workflows. May be missing
+  // when the parent shell hasn't loaded the registry yet (mounting race);
+  // we guard with optional chaining throughout.
+  workflow: { type: Object, default: () => ({}) },
+  // Capability registration list from /plugin/mcp/capabilities. Filtered to
+  // those the current workflow accepts before being shown in the UI.
+  capabilities: { type: Array, default: () => [] },
+})
+
 const $api = inject("$api")
 const globalConfig = inject("mcpGlobalConfig")
+const availableServers = inject("mcpAvailableServers", ref([]))
+
+// ---- Per-workflow scoped server + capability state -----------------------
+// Reads/writes flow through globalConfig so localStorage persistence is
+// automatic. Each map is keyed by workflow.id so a user's RANGE checkbox
+// for "Plan & Execute" doesn't bleed into "Author".
+const enabledServers = computed({
+  get: () => globalConfig.serversByWorkflow?.[props.workflow.id] || [],
+  set: (v) => {
+    if (!globalConfig.serversByWorkflow) globalConfig.serversByWorkflow = {}
+    globalConfig.serversByWorkflow[props.workflow.id] = v
+  },
+})
+
+const enabledCapabilities = computed({
+  get: () => globalConfig.capabilitiesByWorkflow?.[props.workflow.id] || [],
+  set: (v) => {
+    if (!globalConfig.capabilitiesByWorkflow) globalConfig.capabilitiesByWorkflow = {}
+    globalConfig.capabilitiesByWorkflow[props.workflow.id] = v
+  },
+})
+
+// Server choices = required (pinned-on) + optional. Required entries render
+// disabled so the user can't untick them; the backend would force them on
+// anyway.
+const serverChoices = computed(() => {
+  const wf = props.workflow || {}
+  const all = availableServers.value || []
+  const required = new Set(wf.required_servers || [])
+  const optional = new Set(wf.optional_servers || [])
+  return all
+    .filter(s => required.has(s.name) || optional.has(s.name))
+    .map(s => ({ ...s, required: required.has(s.name) }))
+})
+
+// Capability choices filtered to those this workflow accepts.
+const capabilityChoices = computed(() => {
+  const accepted = new Set(props.workflow?.accepted_capabilities || [])
+  return (props.capabilities || []).filter(c => accepted.has(c.id))
+})
+
+const examplePrompts = computed(() => props.workflow?.example_prompts || [])
+
+function toggleServer(name, checked) {
+  const current = new Set(enabledServers.value)
+  if (checked) current.add(name); else current.delete(name)
+  enabledServers.value = [...current]
+}
+
+function toggleCapability(id, checked) {
+  const current = new Set(enabledCapabilities.value)
+  if (checked) current.add(id); else current.delete(id)
+  enabledCapabilities.value = [...current]
+}
+
+// RAG-specific helpers used by the RAG settings panel in the right column.
+const workflowAcceptsRag = computed(() =>
+  (props.workflow?.accepted_capabilities || []).includes('rag')
+)
+const ragSettings = computed(() => {
+  if (!globalConfig.capabilitySettings) globalConfig.capabilitySettings = {}
+  if (!globalConfig.capabilitySettings.rag) globalConfig.capabilitySettings.rag = {}
+  return globalConfig.capabilitySettings.rag
+})
 
 const inputText = ref('')
 const submittedPrompt = ref('')
@@ -247,7 +401,6 @@ const uiPhase = ref('idle')
 const animatedStatus = ref('RUNNING')
 const parsedAbilityLines = ref([])
 const parsedAdversaryLine = ref('')
-const parsedOperationLine = ref('')
 const collapsibleBoxOpen = ref(true)
 const ragBoxOpen = ref(true)
 const stageQueue = ref([])
@@ -261,7 +414,6 @@ const selectedRag = ref([])
 let dotCount = 0
 let dotInterval = null
 
-// Break each thought into individual sentences
 function splitSentences(thought) {
   return thought.split(/[.?!]\s+/).map(s => s.trim()).filter(Boolean)
 }
@@ -285,7 +437,7 @@ async function handleSubmit() {
   pollFinalResult.value = ''
   pollTrajectory.value = {}
   runId.value = null
-  responseMessage.value = 'Started creation of the operation.'
+  responseMessage.value = 'Started ability creation process.'
   displayedStage.value = ''
   hasShownInitialMessage = false
   stageQueue.value = []
@@ -297,48 +449,52 @@ async function handleSubmit() {
     if (pollInterval) clearInterval(pollInterval)
     if (stageInterval) clearInterval(stageInterval)
 
-    const useRag = selectedRag.value.length > 0
+    // Build the new /execute payload. Per-workflow scoped server + capability
+    // toggles come from globalConfig.serversByWorkflow and capabilitiesByWorkflow.
+    // Selecting RAG files implicitly enables the rag capability for this run
+    // even if the user didn't tick it explicitly, mirroring the legacy UI's
+    // "attach a CTI bundle to turn RAG on" affordance.
+    const filesAttached = selectedRag.value.length > 0
+    const baseCaps = new Set(enabledCapabilities.value || [])
+    if (filesAttached) baseCaps.add('rag')
+    const finalCaps = [...baseCaps]
 
-    // Debug: Log global config state
-    console.log("[MCP Planner] Global config state:", {
-      modelName: globalConfig.modelName,
-      temperature: globalConfig.temperature,
-      hasApiKey: !!globalConfig.apiKey,
-      apiKeyLength: globalConfig.apiKey?.length || 0,
-      maxToolCalls: globalConfig.maxToolCalls,
-      maxTokens: globalConfig.maxTokens,
-      ragEmbedModel: globalConfig.ragEmbedModel,
-      ragTopK: globalConfig.ragTopK
-    })
+    const ragSettings = (globalConfig.capabilitySettings && globalConfig.capabilitySettings.rag) || {}
 
     const payload = {
       text: inputText.value,
-      type: useRag ? 'rag_planner' : 'planner',
-      enabled_servers: globalConfig.enabledServers,
-      config: {
+      workflow_id: props.workflow.id,
+      enabled_servers: enabledServers.value,
+      enabled_capabilities: finalCaps,
+      capability_settings: {
+        rag: {
+          rag_files: selectedRag.value,
+          embed_model: ragSettings.embed_model || '',
+          topk: ragSettings.topk,
+        },
+      },
+      lm_config: {
         model: globalConfig.modelName,
         temperature: globalConfig.temperature,
         api_key: globalConfig.apiKey,
         max_tool_calls: globalConfig.maxToolCalls,
         max_tokens: globalConfig.maxTokens,
-        rag_files: selectedRag.value,
-        rag_embed_model: globalConfig.ragEmbedModel,
-        rag_topk: globalConfig.ragTopK
-      }
+      },
     }
 
-    // Debug: Log payload with redacted API key
-    console.log("[MCP Planner] Submitting payload:", {
+    console.log("[MCP] Submitting payload:", {
       ...payload,
-      config: {
-        ...payload.config,
-        api_key: payload.config.api_key ? `***PRESENT (${payload.config.api_key.length} chars)***` : '***MISSING***'
-      }
+      lm_config: {
+        ...payload.lm_config,
+        api_key: payload.lm_config.api_key
+          ? `***PRESENT (${payload.lm_config.api_key.length} chars)***`
+          : '***MISSING***',
+      },
     })
     const response = await $api.post('/plugin/mcp/execute', payload)
 
     runId.value = response.data.run_id
-
+    
     pollStatusUpdates(runId.value)
     inputText.value = ''
   } catch (err) {
@@ -487,29 +643,6 @@ function pollStatusUpdates(id) {
         })
         .filter(Boolean);
 
-      // Find operation creation entry
-      const opToolEntry = Object.entries(traj).find(
-        ([k, v]) => k.startsWith('tool_name_') && v === 'create_operation'
-      );
-
-      if (opToolEntry) {
-        const opIdx = opToolEntry[0].split('_')[2];
-        let opArgs = traj[`tool_args_${opIdx}`];
-
-        try {
-          if (typeof opArgs === 'string') opArgs = JSON.parse(opArgs);
-        } catch {
-          opArgs = null;
-        }
-
-        if (opArgs?.operation_name) {
-          parsedOperationLine.value = {
-            name: opArgs.operation_name,
-            adversaryName: opArgs.adversary_name || 'unknown'
-          };
-        }
-      }
-
     } catch (e) {
       clearInterval(pollInterval);
       pollInterval = null;
@@ -571,13 +704,6 @@ const adversarySentenceKeys = computed(() =>
   )
 );
 
-const operationSentenceKeys = computed(() =>
-  getMatchingSentenceKeys((s) =>
-    (s.toLowerCase().includes('create') || s.toLowerCase().includes('created')) &&
-    s.toLowerCase().includes('operation')
-  )
-);
-
 function assignInjectLocations() {
   const used = new Set();
   const injects = {};
@@ -599,7 +725,6 @@ function assignInjectLocations() {
 
   place('ability', abilitySentenceKeys.value);
   place('adversary', adversarySentenceKeys.value);
-  place('operation', operationSentenceKeys.value);
 
   return injects;
 }
@@ -608,7 +733,6 @@ const resolvedInjects = computed(assignInjectLocations);
 
 const lastAbilitySentenceKeys = computed(() => (resolvedInjects.value?.ability ?? new Set()));
 const lastAdversarySentenceKeys = computed(() => (resolvedInjects.value?.adversary ?? new Set()));
-const lastOperationSentenceKeys = computed(() => (resolvedInjects.value?.operation ?? new Set()));
 
 watch(responseMessage, (newVal, oldVal) => {
   if (newVal && newVal !== oldVal) {
@@ -704,30 +828,29 @@ onMounted(() => {
   border-left: 4px solid #7a00cc;
   padding: 1rem;
   background-color: #f4f4f4;
-  color: #222; /* darker text for better contrast */
+  color: #222;
   font-style: italic;
 }
 
 .title.is-5 + .title.is-5 {
-  margin-top: 2rem; /* Ensure vertical spacing between Thoughts and Reasoning headings */
+  margin-top: 2rem;
 }
 .reasoning-box p {
-  margin-left: 1rem; /* indent bullet-pointed sentences */
+  margin-left: 1rem;
 }
 .reasoning-box .notification {
-  margin-bottom: .5rem; /* Adjust spacing between items */
+  margin-bottom: .5rem;
 }
 .icon.is-clickable i {
   color: white !important;
   font-size: 1.25rem;
 }
 .thought-line {
-  margin-left: 1.5rem;  /* indent */
-  margin-bottom: 0.5rem;  /* vertical spacing between bullets */
-  line-height: 1.4;  /* slightly more legible */
+  margin-left: 1.5rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
 }
 
-/* Reasoning panel to match palette */
 .reasoning-panel {
   border-left: 4px solid #7a00cc;
   background-color: #f4f4f4;

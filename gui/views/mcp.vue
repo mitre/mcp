@@ -7,40 +7,40 @@
 
     <!-- Main Layout: Cards on Left, Config on Right -->
     <div v-if="!selectedPath" class="columns" style="margin: 0 1rem;">
-      <!-- Left Side: Operation Cards -->
+      <!-- Left Side: Operation Cards (one per discovered workflow + History + Guide) -->
       <div class="column is-two-thirds">
         <div class="is-flex" style="flex-direction: column; gap: 1.5rem;">
-          <!-- LLM Factory -->
-          <div class="box" style="display: flex; flex-direction: column; justify-content: space-between;">
+          <p v-if="!availableWorkflows.length" class="notification is-warning">
+            No workflows discovered. Check the Caldera log for plugin discovery errors.
+          </p>
+
+          <!-- One card per discovered workflow -->
+          <div
+            v-for="wf in availableWorkflows"
+            :key="wf.id"
+            class="box"
+            style="display: flex; flex-direction: column; justify-content: space-between;"
+          >
             <div style="flex-grow: 1;">
-              <h3 class="title is-5">LLM Ability Factory</h3>
-              <p>
-                AI creates new abilities and adversaries based on your descriptions. Best for creating specific capabilities.
+              <h3 class="title is-5">{{ wf.display_name }}</h3>
+              <p>{{ wf.description }}</p>
+              <p
+                v-if="wf.required_servers.length || wf.optional_servers.length || wf.accepted_capabilities.length"
+                class="is-size-7 has-text-grey-light mt-2"
+              >
+                <span v-if="wf.required_servers.length">Requires: {{ wf.required_servers.join(', ') }}</span>
+                <span v-if="wf.optional_servers.length"> &middot; Can use: {{ wf.optional_servers.join(', ') }}</span>
+                <span v-if="wf.accepted_capabilities.length"> &middot; Capabilities: {{ wf.accepted_capabilities.join(', ') }}</span>
               </p>
             </div>
             <div class="is-flex is-justify-content-flex-end mt-4">
-              <button class="button is-primary" @click="selectedPath = 'factory'">
-                Start Factory Session
+              <button class="button is-primary" @click="selectedPath = wf.id">
+                Start {{ wf.display_name }} Session
               </button>
             </div>
           </div>
 
-          <!-- LLM Planner -->
-          <div class="box" style="display: flex; flex-direction: column; justify-content: space-between;">
-            <div style="flex-grow: 1;">
-              <h3 class="title is-5">LLM Operation Planner</h3>
-              <p>
-                AI plans and executes complete adversary operations. Best for comprehensive attack scenarios.
-              </p>
-            </div>
-            <div class="is-flex is-justify-content-flex-end mt-4">
-              <button class="button is-primary" @click="selectedPath = 'planner'">
-                Start Planner Session
-              </button>
-            </div>
-          </div>
-
-          <!-- History -->
+          <!-- History (always on) -->
           <div class="box" style="display: flex; flex-direction: column; justify-content: space-between;">
             <div style="flex-grow: 1;">
               <h3 class="title is-5">Run History</h3>
@@ -55,12 +55,12 @@
             </div>
           </div>
 
-          <!-- Extension Guide -->
+          <!-- Extension Guide (always on) -->
           <div class="box" style="display: flex; flex-direction: column; justify-content: space-between;">
             <div style="flex-grow: 1;">
               <h3 class="title is-5">Extend & Customize</h3>
               <p>
-                Learn how to create custom MCP use cases and extend the framework with new capabilities.
+                Learn how to add a new MCP server, workflow, or capability from your own plugin.
               </p>
             </div>
             <div class="is-flex is-justify-content-flex-end mt-4">
@@ -141,58 +141,23 @@
             </div>
           </div>
 
-          <div class="field">
-            <label class="label">Enabled MCP Servers</label>
-            <div class="control" v-if="availableServers.length">
-              <label
-                v-for="srv in availableServers"
-                :key="srv.name"
-                class="checkbox is-block mb-1"
-                :title="srv.description"
-              >
-                <input
-                  type="checkbox"
-                  :value="srv.name"
-                  v-model="globalConfig.enabledServers"
-                />
-                {{ srv.display_name }}
-                <span class="has-text-grey-light is-size-7">({{ srv.name }})</span>
-              </label>
-            </div>
-            <p v-else class="help is-warning">No MCP servers discovered.</p>
-          </div>
-
-          <div class="field">
-            <label class="label">RAG TopK</label>
-            <div class="control">
-              <input
-                class="input"
-                type="number"
-                v-model.number="globalConfig.ragTopK"
-                min="1"
-                max="30"
-                step="1"
-              />
-            </div>
-          </div>
-
-          <div class="field">
-            <label class="label">RAG Embed Model</label>
-            <div class="control">
-              <input
-                class="input"
-                type="text"
-                v-model="globalConfig.ragEmbedModel"
-                placeholder="openai/text-embedding-3-small"
-              />
-            </div>
-          </div>
+          <p class="is-size-7 has-text-grey-light">
+            Server toggles and capability settings (e.g. RAG file picker)
+            live inside each workflow's session page, scoped to what that
+            workflow can actually use.
+          </p>
         </div>
       </div>
     </div>
 
-    <McpPromptFactory v-if="selectedPath === 'factory'" @back="selectedPath = null" />
-    <McpPromptPlanner v-if="selectedPath === 'planner'" @back="selectedPath = null" />
+    <!-- Workflow session pages: routed dynamically by workflow_id. -->
+    <component
+      v-if="activeWorkflow"
+      :is="resolveWorkflowComponent(activeWorkflow)"
+      :workflow="activeWorkflow"
+      :capabilities="availableCapabilities"
+      @back="selectedPath = null"
+    />
     <McpHistory v-if="selectedPath === 'history'" @back="selectedPath = null" />
 
     <!-- Embedded Extension Guide -->
@@ -223,17 +188,20 @@
             </section>
 
             <section class="mb-6">
-              <h3 class="title is-4 has-text-light">🚀 Quick Start Steps</h3>
+              <h3 class="title is-4 has-text-light">Quick Start Steps</h3>
               <p style="color: #f5f5f5;" class="mb-3">
-                <strong>Define Your Use Case:</strong> Determine what your extension will do (e.g., threat hunter, campaign builder)
+                The MCP plugin discovers extensions at boot from any sibling
+                Caldera plugin. Drop the files below at your plugin root and
+                they appear automatically after a Caldera restart. No edits
+                to the MCP plugin itself are required.
               </p>
               <div class="box" style="background-color: #4a4a4a;">
                 <ol class="has-text-light" style="margin-left: 1.5rem;">
-                  <li class="mb-2"><strong>Create DSPy Client</strong> - Build <code>app/mcp_&lt;name&gt;_client.py</code> with custom signatures</li>
-                  <li class="mb-2"><strong>Add MCP Tools (Optional)</strong> - Extend <code>app/mcp_server.py</code> with custom tools</li>
-                  <li class="mb-2"><strong>Update Service Layer</strong> - Add your use case to <code>ExecuteStyle</code> enum in <code>app/mcp_svc.py</code></li>
-                  <li class="mb-2"><strong>Create Vue Frontend</strong> - Build UI component in <code>gui/views/</code></li>
-                  <li class="mb-2"><strong>Add Navigation</strong> - Register component in <code>mcp.vue</code></li>
+                  <li class="mb-2"><strong>MCP server</strong> &mdash; <code>plugins/&lt;name&gt;/mcp_server.py</code> with a top-level <code>MCP_METADATA = {...}</code> literal and one or more <code>@mcp.tool()</code> functions imported from <code>plugins/&lt;name&gt;/mcp/tools/</code>.</li>
+                  <li class="mb-2"><strong>Workflow registration (optional)</strong> &mdash; <code>plugins/&lt;name&gt;/mcp/workflows.py</code> exposing <code>WORKFLOWS = [Workflow(...)]</code>. Each workflow declares its DSPy signature, required and optional MCP servers, and which capabilities it accepts.</li>
+                  <li class="mb-2"><strong>Capability registration (optional)</strong> &mdash; <code>plugins/&lt;name&gt;/mcp/capabilities.py</code> exposing <code>CAPABILITIES = [Capability(...)]</code> for context modifiers any workflow can opt into.</li>
+                  <li class="mb-2"><strong>Plan validator (optional)</strong> &mdash; <code>plugins/&lt;name&gt;/mcp/translator.py</code> with a <code>validate_plan()</code> function for two-phase plan-then-execute workflows.</li>
+                  <li class="mb-2"><strong>Vue session page (optional)</strong> &mdash; <code>plugins/&lt;name&gt;/gui/views/&lt;component&gt;.vue</code>, referenced by name from your Workflow's <code>ui_component</code> field.</li>
                 </ol>
               </div>
             </section>
@@ -459,64 +427,51 @@ async function handleCustomSubmit() {
 </template>
 
 <script setup>
-import { ref, provide, reactive, watch, onMounted } from 'vue'
+import { ref, provide, reactive, watch, onMounted, computed } from 'vue'
 import McpPromptFactory from './local_mcp_ability_factory.vue'
 import McpPromptPlanner from './public_mcp_ability_factory.vue'
 import McpHistory from './mcp_history.vue'
 
+// selectedPath holds either a workflow id (e.g. "author", "plan_execute") or
+// one of the always-on cards: "history", "guide".
 const selectedPath = ref(null)
+
+const availableWorkflows = ref([])
+const availableCapabilities = ref([])
 const availableServers = ref([])
+
 const LOCAL_STORAGE_KEY = 'mcp_global_config'
 
-// Load saved config from localStorage
 function loadConfig() {
   try {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY)
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      console.log('[MCP] Loaded config from localStorage:', {
-        modelName: parsed.modelName,
-        temperature: parsed.temperature,
-        hasApiKey: !!parsed.apiKey,
-        apiKeyLength: parsed.apiKey?.length || 0,
-        maxToolCalls: parsed.maxToolCalls,
-        maxTokens: parsed.maxTokens,
-        ragEmbedModel: parsed.ragEmbedModel,
-        ragTopK: parsed.ragTopK
-      })
-      return parsed
-    } else {
-      console.log('[MCP] No saved config found in localStorage')
-    }
+    if (saved) return JSON.parse(saved)
   } catch (e) {
     console.warn('[MCP] Failed to load saved config:', e)
   }
   return null
 }
 
-// Save config to localStorage
 function saveConfig(config) {
   try {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(config))
-    console.log('[MCP] Saved config to localStorage:', {
-      modelName: config.modelName,
-      temperature: config.temperature,
-      hasApiKey: !!config.apiKey,
-      apiKeyLength: config.apiKey?.length || 0,
-      maxToolCalls: config.maxToolCalls,
-      maxTokens: config.maxTokens,
-      ragEmbedModel: config.ragEmbedModel,
-      ragTopK: config.ragTopK
-    })
   } catch (e) {
     console.warn('[MCP] Failed to save config:', e)
   }
 }
 
 // Global configuration shared with all child components.
-// Initial state comes from localStorage; missing fields are filled in by
-// /plugin/mcp/defaults so the UI stays in sync with conf/default.yml
-// instead of hard-coding a parallel set of constants here.
+//
+// Holds LM credentials/limits (model, temperature, api_key, max_tool_calls,
+// max_tokens) plus per-workflow and per-capability state:
+//
+//   serversByWorkflow    { <workflow_id>: [server_id, ...] }
+//   capabilitiesByWorkflow { <workflow_id>: [capability_id, ...] }
+//   capabilitySettings   { <capability_id>: { ...settings... } }
+//
+// RAG-specific fields (topk, embed_model) live under capabilitySettings.rag,
+// not in the global LM config, since they belong to the RAG capability and
+// are settable per workflow run.
 const savedConfig = loadConfig()
 const globalConfig = reactive({
   modelName: savedConfig?.modelName || '',
@@ -524,20 +479,46 @@ const globalConfig = reactive({
   apiKey: savedConfig?.apiKey || '',
   maxToolCalls: savedConfig?.maxToolCalls,
   maxTokens: savedConfig?.maxTokens,
-  ragEmbedModel: savedConfig?.ragEmbedModel || '',
-  ragTopK: savedConfig?.ragTopK,
-  enabledServers: savedConfig?.enabledServers || []
+  serversByWorkflow: savedConfig?.serversByWorkflow || {},
+  capabilitiesByWorkflow: savedConfig?.capabilitiesByWorkflow || {},
+  capabilitySettings: savedConfig?.capabilitySettings || {},
 })
 
 function applyServerDefaults(d) {
   // Only fill fields the user hasn't already set.
-  if (!globalConfig.modelName)     globalConfig.modelName     = d.model || ''
+  if (!globalConfig.modelName)            globalConfig.modelName     = d.model || ''
   if (globalConfig.temperature   == null) globalConfig.temperature   = d.temperature
-  if (!globalConfig.maxToolCalls)  globalConfig.maxToolCalls  = d.max_tool_calls
-  if (!globalConfig.maxTokens)     globalConfig.maxTokens     = d.max_tokens
-  if (!globalConfig.ragEmbedModel) globalConfig.ragEmbedModel = d.rag_embed_model || ''
-  if (globalConfig.ragTopK       == null) globalConfig.ragTopK       = d.rag_topk
+  if (!globalConfig.maxToolCalls)         globalConfig.maxToolCalls  = d.max_tool_calls
+  if (!globalConfig.maxTokens)            globalConfig.maxTokens     = d.max_tokens
+  // Seed RAG capability defaults from the backend the first time around.
+  if (!globalConfig.capabilitySettings.rag) globalConfig.capabilitySettings.rag = {}
+  const rag = globalConfig.capabilitySettings.rag
+  if (!rag.embed_model) rag.embed_model = d.rag_embed_model || ''
+  if (rag.topk == null) rag.topk = d.rag_topk
 }
+
+// Resolve which Vue component renders a given workflow's session page.
+// Built-in workflows ship with the MCP plugin and have known component names;
+// external plugins reference their own files via workflow.ui_component, which
+// the magma bundler is responsible for resolving relative to the plugin's
+// gui/views/ directory.
+const _BUILTIN_COMPONENTS = {
+  'author.vue': McpPromptFactory,
+  'plan_execute.vue': McpPromptPlanner,
+  // Backwards-compatible aliases for the pre-rename component names so
+  // workflows that reference the old paths keep working until the magma
+  // bundler picks up the new file names.
+  'local_mcp_ability_factory.vue': McpPromptFactory,
+  'public_mcp_ability_factory.vue': McpPromptPlanner,
+}
+
+function resolveWorkflowComponent(wf) {
+  return _BUILTIN_COMPONENTS[wf.ui_component] || McpPromptFactory
+}
+
+const activeWorkflow = computed(() =>
+  availableWorkflows.value.find(w => w.id === selectedPath.value) || null
+)
 
 onMounted(async () => {
   // Backend-driven defaults so the UI never duplicates yaml values.
@@ -548,30 +529,65 @@ onMounted(async () => {
     console.warn('[MCP] Failed to fetch /plugin/mcp/defaults:', e)
   }
 
-  // Discover MCP servers and reconcile against saved enabled list.
+  // Discover workflows, capabilities, and servers in parallel.
   try {
-    const resp = await fetch('/plugin/mcp/servers')
-    const data = await resp.json()
-    availableServers.value = data.servers || []
-    const known = new Set(availableServers.value.map(s => s.name))
+    const [wfResp, capResp, srvResp] = await Promise.all([
+      fetch('/plugin/mcp/workflows'),
+      fetch('/plugin/mcp/capabilities'),
+      fetch('/plugin/mcp/servers'),
+    ])
+    const wfData = wfResp.ok ? await wfResp.json() : { workflows: [] }
+    const capData = capResp.ok ? await capResp.json() : { capabilities: [] }
+    const srvData = srvResp.ok ? await srvResp.json() : { servers: [] }
+    availableWorkflows.value = wfData.workflows || []
+    availableCapabilities.value = capData.capabilities || []
+    availableServers.value = srvData.servers || []
 
-    if (!savedConfig?.enabledServers) {
-      globalConfig.enabledServers = availableServers.value
-        .filter(s => s.default_enabled)
-        .map(s => s.name)
-    } else {
-      globalConfig.enabledServers = globalConfig.enabledServers.filter(n => known.has(n))
+    // Seed each workflow's default server toggles when no saved state exists.
+    for (const wf of availableWorkflows.value) {
+      if (globalConfig.serversByWorkflow[wf.id] === undefined) {
+        // Default to required + any optional servers marked default_enabled
+        // by their server registration.
+        const defaultsByServer = Object.fromEntries(
+          availableServers.value.map(s => [s.name, !!s.default_enabled])
+        )
+        const defaults = [
+          ...wf.required_servers,
+          ...wf.optional_servers.filter(s => defaultsByServer[s]),
+        ]
+        globalConfig.serversByWorkflow[wf.id] = [...new Set(defaults)]
+      } else {
+        // Drop any saved server names that no longer exist or are no longer
+        // in this workflow's allowed scope.
+        const allowed = new Set([...wf.required_servers, ...wf.optional_servers])
+        globalConfig.serversByWorkflow[wf.id] =
+          globalConfig.serversByWorkflow[wf.id].filter(n => allowed.has(n))
+        // Required servers are always on regardless of what was saved.
+        for (const req of wf.required_servers) {
+          if (!globalConfig.serversByWorkflow[wf.id].includes(req)) {
+            globalConfig.serversByWorkflow[wf.id].push(req)
+          }
+        }
+      }
+      if (globalConfig.capabilitiesByWorkflow[wf.id] === undefined) {
+        globalConfig.capabilitiesByWorkflow[wf.id] = []
+      } else {
+        const allowedCaps = new Set(wf.accepted_capabilities)
+        globalConfig.capabilitiesByWorkflow[wf.id] =
+          globalConfig.capabilitiesByWorkflow[wf.id].filter(c => allowedCaps.has(c))
+      }
     }
   } catch (e) {
-    console.warn('[MCP] Failed to fetch /plugin/mcp/servers:', e)
+    console.warn('[MCP] Failed to fetch workflow/capability/server registries:', e)
   }
 })
 
-// Watch for changes and save to localStorage
 watch(globalConfig, (newConfig) => {
   saveConfig(newConfig)
 }, { deep: true })
 
-// Provide the global config to all child components
+// Provide the shared config + registries to child workflow components.
 provide('mcpGlobalConfig', globalConfig)
+provide('mcpAvailableServers', availableServers)
+provide('mcpAvailableCapabilities', availableCapabilities)
 </script>
