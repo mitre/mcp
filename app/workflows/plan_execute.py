@@ -81,6 +81,19 @@ mlflow.set_experiment("caldera-mcp-client-1")
 mlflow.dspy.autolog()
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
+_PLAN_EXECUTE_OUTPUT_DESC = (
+    "The substantive answer to the user's request. Include the actual data "
+    "observed from your tool calls: counts, names, ids, statuses, and any "
+    "values the user asked about. When listing things, use a short bulleted "
+    "or numbered list with the real names from the observations, not "
+    "placeholders. Do NOT narrate which tools you called or describe your "
+    "methodology. Do NOT say things like 'I first listed X, then I retrieved "
+    "Y'. The user wants the results, not a recap of how you got them. "
+    "If a tool failed and you could not retrieve some data, say so clearly "
+    "and name what is missing, but still return whatever data you did get."
+)
+
+
 class DSPyCalderaPlannerClient(dspy.Signature):
     """You are a planner for the Caldera adversary emulation platform.
     You have access to MCP tool servers that wrap Caldera's core API and any
@@ -89,13 +102,13 @@ class DSPyCalderaPlannerClient(dspy.Signature):
 
     Prefer reusing existing artifacts over creating new ones. Use range or
     infrastructure tools only when the operation requires live targets.
+
+    When you produce process_result, return the substantive content the
+    user asked for (real names, counts, ids, statuses), not a recap of the
+    tools you called.
     """
     adversary_emulation_task: str = dspy.InputField()
-    process_result: str = dspy.OutputField(
-        desc=(
-            "Message that summarizes the result of the adversary emulation operation."
-        )
-    )
+    process_result: str = dspy.OutputField(desc=_PLAN_EXECUTE_OUTPUT_DESC)
 
 class DSPyCalderaPlannerClientWithRAG(dspy.Signature):
     """You are a planner for the Caldera adversary emulation platform,
@@ -108,6 +121,10 @@ class DSPyCalderaPlannerClientWithRAG(dspy.Signature):
     infrastructure tools only when the operation requires live targets.
     Ground your plan in the provided CTI context so the operation mirrors
     real-world threat actor behavior.
+
+    When you produce process_result, return the substantive content the
+    user asked for (real names, counts, ids, statuses), not a recap of the
+    tools you called.
     """
     adversary_emulation_task: str = dspy.InputField()
     cti_context: str = dspy.InputField(
@@ -115,8 +132,10 @@ class DSPyCalderaPlannerClientWithRAG(dspy.Signature):
     )
     process_result: str = dspy.OutputField(
         desc=(
-            "Message that summarizes the result of the adversary emulation operation, "
-            "including how CTI information influenced the planning and execution."
+            _PLAN_EXECUTE_OUTPUT_DESC
+            + " When CTI context shaped the plan, briefly note which "
+            "CTI elements drove which decisions, but keep that note "
+            "secondary to the substantive results themselves."
         )
     )
 

@@ -77,6 +77,21 @@ mlflow.dspy.autolog()
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
+_AUTHOR_OUTPUT_DESC = (
+    "The substantive answer to the user's request. Include the actual data "
+    "produced or observed: the names and ids of every ability you created, "
+    "the name and id of any adversary you authored, and any tool outputs "
+    "the user asked about. When listing items, use a short bulleted or "
+    "numbered list with the real names from the observations, not "
+    "placeholders. Do NOT narrate which tools you called or describe your "
+    "methodology. Do NOT say things like 'I first listed X, then I created "
+    "Y'. The user wants the artifacts and the data, not a recap of how "
+    "you got them. If a tool failed and you could not complete part of the "
+    "request, say so clearly and name what is missing, but still return "
+    "whatever you did create or retrieve."
+)
+
+
 class DSPyCalderaFactoryClient(dspy.Signature):
     """You are an ability factory for the Caldera adversary emulation platform.
     You have access to MCP tool servers that wrap Caldera's core API and any
@@ -86,14 +101,14 @@ class DSPyCalderaFactoryClient(dspy.Signature):
     Use only the tools needed to create the requested artifact. If a tool
     deploys VMs, runs operations, or performs destructive actions, do not
     call it unless the user's request explicitly requires it.
+
+    When you produce process_result, return the substantive content the
+    user asked for (real ids, names, ability lists), not a recap of the
+    tools you called.
     """
 
     adversary_emulation_task: str = dspy.InputField()
-    process_result: str = dspy.OutputField(
-        desc=(
-            "Message that summarizes the result of the newly created adversary."
-        )
-    )
+    process_result: str = dspy.OutputField(desc=_AUTHOR_OUTPUT_DESC)
 
 class DSPyCalderaFactoryClientWithRAG(dspy.Signature):
     """You are an ability factory for the Caldera adversary emulation platform,
@@ -105,6 +120,10 @@ class DSPyCalderaFactoryClientWithRAG(dspy.Signature):
     Use only the tools needed to create the requested artifact. If a tool
     deploys VMs, runs operations, or performs destructive actions, do not
     call it unless the user's request explicitly requires it.
+
+    When you produce process_result, return the substantive content the
+    user asked for (real ids, names, ability lists), not a recap of the
+    tools you called.
     """
 
     adversary_emulation_task: str = dspy.InputField()
@@ -113,8 +132,10 @@ class DSPyCalderaFactoryClientWithRAG(dspy.Signature):
     )
     process_result: str = dspy.OutputField(
         desc=(
-            "Message that summarizes the result of the newly created adversary, "
-            "including how CTI information was used to enhance the adversary profile."
+            _AUTHOR_OUTPUT_DESC
+            + " When CTI context shaped what you authored, briefly note "
+            "which CTI elements drove which design choices, but keep that "
+            "note secondary to the substantive results themselves."
         )
     )
 
