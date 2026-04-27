@@ -129,6 +129,8 @@ async def enable(services):
     app.router.add_route('POST', "/plugin/mcp/rag/upload", mcp_api.upload_rag)
     app.router.add_route('GET', "/plugin/mcp/rag/list", mcp_api.list_rag)
     app.router.add_route('GET', '/plugin/mcp/servers', mcp_api.list_servers)
+    app.router.add_route('GET', '/plugin/mcp/workflows', mcp_api.list_workflows)
+    app.router.add_route('GET', '/plugin/mcp/capabilities', mcp_api.list_capabilities)
     app.router.add_route('GET', '/plugin/mcp/defaults', mcp_api.defaults)
     app.router.add_route('GET', '/plugin/mcp/history/runs', mcp_api.list_runs)
     app.router.add_route('GET', '/plugin/mcp/history/run', mcp_api.get_run_detail)

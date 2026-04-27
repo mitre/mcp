@@ -122,6 +122,65 @@ class McpAPI:
             self.log.error(f"[MCP] Error listing servers: {e}")
             return web.json_response({"error": str(e)}, status=500)
 
+    async def list_workflows(self, request):
+        """Return discovered Workflow registry so the UI can render cards.
+
+        Workflows whose required servers are not all present in the discovered
+        server registry are filtered out, since they cannot run anyway. This
+        keeps a workflow card from appearing for, say, "Range Architect" when
+        the RANGE plugin is not installed.
+        """
+        try:
+            wf_registry = getattr(self.mcp_svc, "workflow_registry", None) or {}
+            srv_registry = getattr(self.mcp_svc, "server_registry", None) or {}
+            available_servers = set(srv_registry.keys())
+
+            workflows = []
+            for wf in wf_registry.values():
+                missing = [s for s in wf.required_servers if s not in available_servers]
+                if missing:
+                    self.log.info(
+                        f"[MCP] Hiding workflow '{wf.id}'; missing required servers: {missing}"
+                    )
+                    continue
+                workflows.append({
+                    "id": wf.id,
+                    "display_name": wf.display_name,
+                    "description": wf.description,
+                    "required_servers": list(wf.required_servers),
+                    "optional_servers": [
+                        s for s in wf.optional_servers if s in available_servers
+                    ],
+                    "accepted_capabilities": list(wf.accepted_capabilities),
+                    "ui_component": wf.ui_component,
+                    "example_prompts": list(wf.example_prompts),
+                    "plan_validator": wf.plan_validator,
+                })
+            workflows.sort(key=lambda w: w["display_name"].lower())
+            return web.json_response({"workflows": workflows})
+        except Exception as e:
+            self.log.error(f"[MCP] Error listing workflows: {e}")
+            return web.json_response({"error": str(e)}, status=500)
+
+    async def list_capabilities(self, request):
+        """Return discovered Capability registry so the UI can render settings panels."""
+        try:
+            cap_registry = getattr(self.mcp_svc, "capability_registry", None) or {}
+            capabilities = []
+            for cap in cap_registry.values():
+                capabilities.append({
+                    "id": cap.id,
+                    "display_name": cap.display_name,
+                    "description": cap.description,
+                    "ui_settings_component": cap.ui_settings_component,
+                    "contributes_fields": list(cap.contributes_fields),
+                })
+            capabilities.sort(key=lambda c: c["display_name"].lower())
+            return web.json_response({"capabilities": capabilities})
+        except Exception as e:
+            self.log.error(f"[MCP] Error listing capabilities: {e}")
+            return web.json_response({"error": str(e)}, status=500)
+
     async def status(self, request):
         run_id = request.query.get("run_id")
         if not run_id:
