@@ -89,7 +89,7 @@ try:
     from plugins.mcp.app.mcp_svc import MCPService
     from plugins.mcp.app.mcp_gui import McpGUI
     from plugins.mcp.app.mcp_api import McpAPI
-    from plugins.mcp.app.server_registry import discover_mcp_servers
+    from plugins.mcp.app.discovery.servers import discover_mcp_servers
     logging.getLogger("litellm_logging").setLevel(logging.ERROR)
 
 except ImportError as e:

@@ -1,9 +1,9 @@
 import logging
 import dspy
 from app.utility.base_service import BaseService
-from plugins.mcp.app.mcp_factory_client import run as factory_run
-from plugins.mcp.app.mcp_planner_client import run as planner_run
-from plugins.mcp.app.rag import RAGService
+from plugins.mcp.app.workflows.author import run as factory_run
+from plugins.mcp.app.workflows.plan_execute import run as planner_run
+from plugins.mcp.app.capabilities.rag import RAGService
 from enum import Enum
 import mlflow
 import asyncio

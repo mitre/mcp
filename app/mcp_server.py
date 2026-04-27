@@ -7,7 +7,7 @@ import time
 import collections
 import uuid
 
-from factory import CreateCommand
+from dspy_env import CreateCommand
 
 MCP_METADATA = {
     "display_name": "CALDERA Core",

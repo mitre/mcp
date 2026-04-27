@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from datetime import datetime
 
-from plugins.mcp.app.mcp_factory_client import get_llm_config
+from plugins.mcp.app.workflows.author import get_llm_config
 
 # Hard-coded fallbacks for fields the yaml doesn't (yet) name. Keep this
 # list in sync with the inputs rendered in mcp.vue's Global Model Config.

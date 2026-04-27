@@ -210,9 +210,11 @@ async def run(adversary_emulation_task: str, lm_obj = None, rag_context=None, ru
     if not enabled_servers:
         enabled_servers = ["caldera_core"]
     if server_registry is None:
+        # Fallback used only when run() is invoked without a registry (e.g. tests).
+        # mcp_server.py lives one directory up after the workflows/ split.
         server_registry = {
             "caldera_core": {
-                "path": os.path.join(current_dir, "mcp_server.py"),
+                "path": os.path.join(os.path.dirname(current_dir), "mcp_server.py"),
                 "metadata": {"display_name": "CALDERA Core", "default_enabled": True},
             }
         }

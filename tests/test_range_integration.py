@@ -33,7 +33,7 @@ if str(REPO_ROOT) not in sys.path:
 # ---- Layer 1: discovery -------------------------------------------------
 
 def test_discovery_finds_range_server():
-    from plugins.mcp.app.server_registry import discover_mcp_servers
+    from plugins.mcp.app.discovery.servers import discover_mcp_servers
 
     registry = discover_mcp_servers(PLUGINS_ROOT)
     assert "caldera_core" in registry
@@ -52,7 +52,7 @@ def test_discovery_finds_range_server():
 def test_metadata_parsed_without_executing_module():
     """server_registry uses ast.literal_eval so it must not crash even
     if the range plugin's runtime deps aren't installed in the parent."""
-    from plugins.mcp.app.server_registry import _safe_load_metadata
+    from plugins.mcp.app.discovery.servers import _safe_load_metadata
 
     md = _safe_load_metadata(RANGE_SERVER)
     assert md is not None
@@ -128,7 +128,7 @@ async def test_factory_client_merges_core_and_range_tools(monkeypatch):
 
     monkeypatch.setattr(dspy, "ReAct", _FakeReAct)
 
-    from plugins.mcp.app import mcp_factory_client as fc
+    from plugins.mcp.app.workflows import author as fc
 
     registry = {
         "caldera_core": {
