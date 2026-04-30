@@ -6,16 +6,13 @@ import asyncio
 from plugins.mcp.app.config import resolve_llm_config
 
 
-# Legacy ExecuteStyle string values mapped to new (workflow_id, capability_ids).
-# Inbound /execute requests with `type` set to one of these are translated to
-# the new payload shape. Once the UI ships the new payload exclusively, this
-# shim and its callers can be deleted.
 _LEGACY_TYPE_MAP = {
     "factory":     ("author",        []),
     "planner":     ("plan_execute",  []),
     "rag_factory": ("author",        ["rag"]),
     "rag_planner": ("plan_execute",  ["rag"]),
 }
+
 
 class MCPService(BaseService):
     def __init__(self, services, server_registry=None, workflow_registry=None, capability_registry=None):
@@ -26,13 +23,7 @@ class MCPService(BaseService):
         self.auth_svc = services.get("auth_svc")
         self.log = logging.getLogger("plugins.mcp")
 
-        # Build RAG per run when requested
         self.rag_service = None
-
-        # Discovery registries built once at hook.enable() and handed in here.
-        # The orchestrator hasn't switched to consuming workflow_registry or
-        # capability_registry yet; they live on the service so /plugin/mcp/*
-        # routes can expose them and so the upcoming switch is wiring-only.
         self.server_registry = server_registry or {}
         self.workflow_registry = workflow_registry or {}
         self.capability_registry = capability_registry or {}
@@ -58,19 +49,12 @@ class MCPService(BaseService):
                       enabled_capabilities=None, capability_settings=None):
         """Start an MLflow run and launch a background workflow execution.
 
-        Accepts both the new payload shape and the legacy one. The HTTP layer
-        decides which fields to fill; this method maps the legacy ones onto
-        the new ones via _LEGACY_TYPE_MAP.
-
-        New payload (preferred):
-          workflow_id, prompt, lm_config, enabled_servers, enabled_capabilities,
-          capability_settings
-
-        Legacy payload (supported until the UI catches up):
-          focus (== "factory"|"planner"|"rag_factory"|"rag_planner"),
-          prompt, model_config, enabled_servers
+        Accepts both the new payload shape (workflow_id + lm_config +
+        enabled_capabilities + capability_settings) and the legacy one
+        (focus type string + flat config). Legacy payloads are mapped via
+        _LEGACY_TYPE_MAP and can be removed once the UI ships exclusively
+        on the new shape.
         """
-        # ---- 1. Translate legacy payload into the new shape ----
         legacy_rag_settings = None
         if workflow_id is None and focus is not None:
             mapped = _LEGACY_TYPE_MAP.get(focus)
@@ -81,8 +65,6 @@ class MCPService(BaseService):
             for c in mapped_caps:
                 if c not in enabled_capabilities:
                     enabled_capabilities.append(c)
-            # Legacy clients also enable RAG implicitly when they include
-            # rag_files in model_config, even when type is plain factory/planner.
             mc = model_config or {}
             if mc.get("rag_files") and "rag" not in enabled_capabilities:
                 enabled_capabilities.append("rag")
@@ -98,7 +80,6 @@ class MCPService(BaseService):
         if workflow_id is None:
             raise ValueError("execute() requires either workflow_id or focus")
 
-        # ---- 2. Resolve workflow + filter inputs against its declared scope ----
         if workflow_id not in self.workflow_registry:
             raise ValueError(
                 f"Unknown workflow_id: {workflow_id}. "
@@ -108,7 +89,6 @@ class MCPService(BaseService):
 
         allowed_servers = set(workflow.required_servers + workflow.optional_servers)
         scoped_servers = [s for s in (enabled_servers or []) if s in allowed_servers]
-        # Required servers always run, even if the caller didn't include them.
         for req in workflow.required_servers:
             if req not in scoped_servers:
                 scoped_servers.append(req)
@@ -118,27 +98,17 @@ class MCPService(BaseService):
             if c in workflow.accepted_capabilities and c in self.capability_registry
         ]
 
-        # ---- 3. Resolve LM config through the single resolver and merge
-        #         per-capability settings ----
-        # resolve_llm_config layers yaml defaults, env-resolved credentials, and
-        # the UI's per-session overrides. Empty UI fields fall back to defaults;
-        # fields_locked entries in yaml ignore UI overrides entirely.
         resolved_lm = resolve_llm_config(lm_config or {})
         lm_obj = self._create_dspy_client(resolved_lm)
 
         cap_settings = dict(capability_settings or {})
-        # Hand the legacy rag settings forward under the new key.
         if legacy_rag_settings is not None and "rag" not in cap_settings:
             cap_settings["rag"] = legacy_rag_settings
-        # The rag capability uses the resolved LLM key for embeddings by
-        # default. Callers can supply embed_api_key (and embed_api_base) in
-        # capability_settings.rag to point embeddings at a different provider.
         if "rag" in scoped_capabilities:
             rag_cfg = dict(cap_settings.get("rag") or {})
             rag_cfg.setdefault("api_key", resolved_lm.get("api_key", ""))
             cap_settings["rag"] = rag_cfg
 
-        # ---- 4. Start MLflow run and launch the background task ----
         run = mlflow.start_run(run_name=f"MCP {workflow.display_name}")
         run_id = run.info.run_id
         mlflow.end_run()
@@ -164,8 +134,8 @@ class MCPService(BaseService):
         """Run a workflow end-to-end in the background, tracking via MLflow.
 
         Per-request LM is set via dspy.context() inside each workflow's run()
-        function, so we deliberately do not call dspy.configure() from this
-        async task (it raises across tasks and adds nothing).
+        function, so dspy.configure() is deliberately not called here (it
+        raises across asyncio tasks and adds nothing).
         """
         try:
             mlflow.end_run()
@@ -177,8 +147,6 @@ class MCPService(BaseService):
                 mlflow.log_param("enabled_servers", ",".join(enabled_servers))
                 mlflow.log_param("enabled_capabilities", ",".join(enabled_capabilities))
 
-                # ---- Run capabilities sequentially. Each contributes kwargs
-                #      that get merged into the workflow's run() context. ----
                 capability_context = {}
                 for cap_id in enabled_capabilities:
                     cap = self.capability_registry[cap_id]
@@ -199,7 +167,6 @@ class MCPService(BaseService):
                         mlflow.set_tag(f"capability_{cap_id}_stage", "error")
                         self.log.warning(f"[MCP] Capability '{cap_id}' enrich failed: {e}")
 
-                # ---- Invoke the workflow ----
                 if workflow.run is None:
                     raise RuntimeError(f"Workflow {workflow.id} has no run() function")
 
