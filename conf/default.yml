@@ -1,12 +1,24 @@
 ---
+# LLM provider used by DSPy signatures, the ReAct loop, and embeddings.
+# Values shipped here are non-secret defaults. The api_key is supplied at
+# runtime via the env var named in api_key_env (set in plugins/mcp/.env)
+# or per-session through the UI's Global Model Configuration.
+#
+# fields_locked declares which fields the deployment fixes; locked fields
+# ignore UI overrides and the UI greys out the corresponding inputs.
 llm:
   model: openai/nemotron-3-super
-  api_key: ${API_KEY}
   api_base: https://models.k8s.aip.mitre.org/v1
+  api_key_env: MCP_LLM_API_KEY
   offline: true
   use_mock: false
-factory:
-  model: openai/nemotron-3-super
-  api_key: ${API_KEY}
-  api_base: https://models.k8s.aip.mitre.org/v1
-  temperature: 0.4
+  fields_locked:
+    model: false
+    api_base: false
+
+# Caldera REST API used by the caldera_core MCP subprocess to call /api/v2/*
+# on the running Caldera server. Credentials live in plugins/mcp/.env;
+# this block only names the env vars to consult.
+caldera:
+  url_env: CALDERA_URL
+  api_key_env: CORE_CALDERA_API_KEY

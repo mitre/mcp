@@ -70,7 +70,7 @@ async def test_range_server_spawns_and_lists_tools():
     env = os.environ.copy()
     # Tools call Caldera lazily, so listing doesn't require it to be up.
     env.setdefault("CALDERA_URL", "http://localhost:8888/api/v2/")
-    env.setdefault("CALDERA_API_KEY", "ADMIN123")
+    env.setdefault("CORE_CALDERA_API_KEY", "ADMIN123")
 
     params = StdioServerParameters(
         command=VENV_PY, args=[str(RANGE_SERVER)], env=env

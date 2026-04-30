@@ -54,7 +54,7 @@ class CalderaRequest:
 
 caldera_request = CalderaRequest(
     url=os.environ.get("CALDERA_URL", "http://localhost:8888/api/v2/"),
-    api_key=os.environ.get("CALDERA_API_KEY", "ADMIN123"),
+    api_key=os.environ.get("CORE_CALDERA_API_KEY", "ADMIN123"),
 )
 
 

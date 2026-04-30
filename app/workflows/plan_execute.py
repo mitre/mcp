@@ -70,9 +70,11 @@ def get_env(lm_settings=None):
         env['DSPY_TEMPERATURE'] = str(lm_settings.get('temperature') or 0.5)
         env['DSPY_MAX_TOKENS'] = str(lm_settings.get('max_tokens') or 10000)
 
-    # Forward Caldera credentials so each MCP server subprocess can hit the API
+    # Forward Caldera credentials so each MCP server subprocess can hit the API.
+    # Names match the .env / conf/default.yml contract: CORE_CALDERA_API_KEY is
+    # the admin key the caldera_core MCP server uses to call /api/v2/*.
     env['CALDERA_URL'] = os.environ.get('CALDERA_URL', 'http://localhost:8888/api/v2/')
-    env['CALDERA_API_KEY'] = os.environ.get('CALDERA_API_KEY', 'ADMIN123')
+    env['CORE_CALDERA_API_KEY'] = os.environ.get('CORE_CALDERA_API_KEY', 'ADMIN123')
 
     return env
 
