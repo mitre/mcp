@@ -2,3 +2,4 @@ dspy
 mcp
 mlflow
 psutil
+python-dotenv

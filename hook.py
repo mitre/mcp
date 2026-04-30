@@ -5,8 +5,16 @@ import time
 import traceback
 import logging
 import psutil
+from dotenv import load_dotenv
 
 from app.utility.base_world import BaseWorld
+
+# Load the plugin's .env once in the parent process. Every MCP server
+# subprocess and DSPy worker spawned later inherits this environment, so
+# CORE_CALDERA_API_KEY and MCP_LLM_API_KEY are visible everywhere without
+# each child reloading the file itself.
+_PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(dotenv_path=os.path.join(_PLUGIN_DIR, '.env'))
 
 name = 'mcp'
 description = 'Attachment for Model Context Protocol'
