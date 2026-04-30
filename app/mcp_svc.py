@@ -3,6 +3,8 @@ from app.utility.base_service import BaseService
 import mlflow
 import asyncio
 
+from plugins.mcp.app.config import resolve_llm_config
+
 
 # Legacy ExecuteStyle string values mapped to new (workflow_id, capability_ids).
 # Inbound /execute requests with `type` set to one of these are translated to
@@ -41,7 +43,7 @@ class MCPService(BaseService):
         )
 
     def _create_dspy_client(self, model_config: dict):
-        lm = {
+        return {
             "model": model_config.get("model"),
             "api_key": model_config.get("api_key"),
             "api_base": model_config.get("api_base"),
@@ -49,7 +51,6 @@ class MCPService(BaseService):
             "max_tokens": model_config.get("max_tokens"),
             "max_tool_calls": model_config.get("max_tool_calls"),
         }
-        return lm
 
     async def execute(self, focus: str = None, prompt: str = "", model_config: dict = None,
                       enabled_servers=None, file: dict = None,
@@ -117,20 +118,24 @@ class MCPService(BaseService):
             if c in workflow.accepted_capabilities and c in self.capability_registry
         ]
 
-        # ---- 3. Build LM dict + merge per-capability settings ----
-        lm_obj = None
-        if lm_config and lm_config.get("api_key"):
-            lm_obj = self._create_dspy_client(lm_config)
+        # ---- 3. Resolve LM config through the single resolver and merge
+        #         per-capability settings ----
+        # resolve_llm_config layers yaml defaults, env-resolved credentials, and
+        # the UI's per-session overrides. Empty UI fields fall back to defaults;
+        # fields_locked entries in yaml ignore UI overrides entirely.
+        resolved_lm = resolve_llm_config(lm_config or {})
+        lm_obj = self._create_dspy_client(resolved_lm)
 
         cap_settings = dict(capability_settings or {})
         # Hand the legacy rag settings forward under the new key.
         if legacy_rag_settings is not None and "rag" not in cap_settings:
             cap_settings["rag"] = legacy_rag_settings
-        # The rag capability needs an api_key for embedding; inject from lm_config
-        # when the caller didn't supply one explicitly.
-        if "rag" in scoped_capabilities and lm_obj:
+        # The rag capability uses the resolved LLM key for embeddings by
+        # default. Callers can supply embed_api_key (and embed_api_base) in
+        # capability_settings.rag to point embeddings at a different provider.
+        if "rag" in scoped_capabilities:
             rag_cfg = dict(cap_settings.get("rag") or {})
-            rag_cfg.setdefault("api_key", lm_obj.get("api_key", ""))
+            rag_cfg.setdefault("api_key", resolved_lm.get("api_key", ""))
             cap_settings["rag"] = rag_cfg
 
         # ---- 4. Start MLflow run and launch the background task ----

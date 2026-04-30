@@ -6,14 +6,13 @@ import json
 from pathlib import Path
 from datetime import datetime
 
-from plugins.mcp.app.workflows.author import get_llm_config
+from plugins.mcp.app.config import llm_defaults
 
-# Hard-coded fallbacks for fields the yaml doesn't (yet) name. Keep this
-# list in sync with the inputs rendered in mcp.vue's Global Model Config.
-_CONFIG_FALLBACKS = {
-    "temperature": 0.5,
-    "max_tokens": 10000,
-    "max_tool_calls": 5,
+# Fallbacks for UI fields the yaml doesn't model. The numeric LM tunables
+# come back from llm_defaults() which already applies its own fallbacks;
+# the RAG-specific defaults stay here because they belong to the capability
+# rather than the LLM provider.
+_RAG_DEFAULTS = {
     "rag_embed_model": "openai/text-embedding-3-small",
     "rag_topk": 5,
 }
@@ -83,21 +82,30 @@ class McpAPI:
             return web.json_response({"error": str(e)}, status=500)
 
     async def defaults(self, request):
-        """Yaml-resolved defaults for the Global Model Config UI panel.
+        """Resolved defaults for the Global Model Config UI panel.
 
-        api_key is always returned as empty string — the user supplies their
-        own. Everything else comes from conf/default.yml so the UI never
-        drifts from the backend's single source of truth.
+        api_key is always returned as empty string so the server-side
+        credential never reaches the browser; the UI prompts the user to
+        enter their own (or leave blank to fall back to the .env value at
+        request time).
+
+        fields_locked tells the UI which inputs the deployment fixes (e.g.
+        a gateway with a constrained model list); the UI greys those out
+        and the resolver also drops any UI overrides for them.
         """
         try:
-            yaml_cfg = get_llm_config() or {}
+            cfg = llm_defaults()
             payload = {
-                "model": yaml_cfg.get("model"),
+                "model": cfg.get("model"),
                 "api_key": "",
-                "api_base": yaml_cfg.get("api_base"),
+                "api_base": cfg.get("api_base"),
+                "temperature": cfg.get("temperature"),
+                "max_tokens": cfg.get("max_tokens"),
+                "max_tool_calls": cfg.get("max_tool_calls"),
+                "fields_locked": cfg.get("fields_locked") or {},
             }
-            for key, fallback in _CONFIG_FALLBACKS.items():
-                payload[key] = yaml_cfg.get(key, fallback)
+            for key, fallback in _RAG_DEFAULTS.items():
+                payload[key] = cfg.get(key, fallback)
             return web.json_response(payload)
         except Exception as e:
             self.log.error(f"[MCP] Error fetching defaults: {e}")
