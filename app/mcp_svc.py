@@ -1,3 +1,4 @@
+import collections
 import logging
 from app.utility.base_service import BaseService
 import mlflow
@@ -13,6 +14,11 @@ _LEGACY_TYPE_MAP = {
     "rag_planner": ("plan_execute",  ["rag"]),
 }
 
+# Bound on the in-memory live-run cache. Older snapshots fall off LRU-style
+# once this limit is hit; finished runs remain available via /history/run
+# which still reads from MLflow.
+_RUN_CACHE_LIMIT = 256
+
 
 class MCPService(BaseService):
     def __init__(self, services, server_registry=None, workflow_registry=None, capability_registry=None):
@@ -27,11 +33,29 @@ class MCPService(BaseService):
         self.server_registry = server_registry or {}
         self.workflow_registry = workflow_registry or {}
         self.capability_registry = capability_registry or {}
+
+        # Live-run cache. run_id -> snapshot dict the API surfaces directly:
+        #   {status, stage, workflow_id, prompt, process_result, reasoning,
+        #    trajectory, error?}
+        # OrderedDict gives us O(1) LRU eviction without an extra dependency.
+        self._runs: "collections.OrderedDict[str, dict]" = collections.OrderedDict()
+
         self.log.info(
             f"[MCP] Initialized MCPService with servers={list(self.server_registry.keys())} "
             f"workflows={list(self.workflow_registry.keys())} "
             f"capabilities={list(self.capability_registry.keys())}"
         )
+
+    def get_run(self, run_id: str) -> dict | None:
+        """Return the cached snapshot for run_id, or None if not in cache."""
+        return self._runs.get(run_id)
+
+    def _record_run(self, run_id: str, snapshot: dict) -> None:
+        """Write a run snapshot to the cache, evicting the oldest if full."""
+        self._runs[run_id] = snapshot
+        self._runs.move_to_end(run_id)
+        while len(self._runs) > _RUN_CACHE_LIMIT:
+            self._runs.popitem(last=False)
 
     def _create_dspy_client(self, model_config: dict):
         return {
@@ -136,7 +160,22 @@ class MCPService(BaseService):
         Per-request LM is set via dspy.context() inside each workflow's run()
         function, so dspy.configure() is deliberately not called here (it
         raises across asyncio tasks and adds nothing).
+
+        Live state for the polling /status endpoint is mirrored into
+        self._runs as the run progresses. MLflow keeps logging tags and
+        params for the History tab and the MLflow UI; it is no longer the
+        source of truth for active runs.
         """
+        self._record_run(run_id, {
+            "status": "RUNNING",
+            "stage": "initializing",
+            "workflow_id": workflow.id,
+            "prompt": prompt,
+            "process_result": "",
+            "reasoning": "",
+            "trajectory": {},
+        })
+
         try:
             mlflow.end_run()
             with mlflow.start_run(run_id=run_id):
@@ -185,17 +224,38 @@ class MCPService(BaseService):
 
                 mlflow.set_tag("stage", "complete")
                 mlflow.set_tag("status", "success")
-                if (result or {}).get("process_result"):
+                result_dict = result or {}
+                if result_dict.get("process_result"):
                     mlflow.set_tag(
                         "process_result_summary",
-                        str(result.get("process_result", ""))[:250],
+                        str(result_dict.get("process_result", ""))[:250],
                     )
+
+                self._record_run(run_id, {
+                    "status": "FINISHED",
+                    "stage": "complete",
+                    "workflow_id": workflow.id,
+                    "prompt": prompt,
+                    "process_result": result_dict.get("process_result", ""),
+                    "reasoning": result_dict.get("reasoning", ""),
+                    "trajectory": result_dict.get("trajectory") or {},
+                })
 
         except Exception as e:
             self.log.error(f"[MCP] Execution failed: {e}")
             mlflow.set_tag("stage", "error")
             mlflow.set_tag("status", "error")
             mlflow.log_param("error", str(e))
+            self._record_run(run_id, {
+                "status": "FAILED",
+                "stage": "error",
+                "workflow_id": workflow.id,
+                "prompt": prompt,
+                "process_result": "",
+                "reasoning": "",
+                "trajectory": {},
+                "error": str(e),
+            })
 
         finally:
             mlflow.end_run()

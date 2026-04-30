@@ -277,6 +277,8 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
             mlflow.set_tag("stage", "completed")
             mlflow.set_tag("status", "complete")
             mlflow.set_tag("reasoning", result.reasoning)
+            # Prefer param for process_result to match status API
+            mlflow.log_param("process_result", result.process_result)
             mlflow.set_tag("process_result", result.process_result)
             for k, v in result.trajectory.items():
                 mlflow.set_tag(k, json.dumps(v) if isinstance(v, (dict, list)) else str(v))
@@ -284,7 +286,11 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
             mlflow.log_param("result_summary", result.process_result)
             mlflow.end_run()
             print(json.dumps(result.toDict(), indent=4))
-            return {"process_result": result.process_result}
+            return {
+                "process_result": result.process_result,
+                "reasoning": result.reasoning,
+                "trajectory": dict(result.trajectory),
+            }
 
     except Exception as e:
         tb = traceback.format_exc()

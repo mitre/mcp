@@ -287,7 +287,11 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
             if created_local_run:
                 mlflow.end_run()
 
-            return {"process_result": result.process_result}
+            return {
+                "process_result": result.process_result,
+                "reasoning": result.reasoning,
+                "trajectory": dict(result.trajectory),
+            }
 
     except Exception as e:
         tb = traceback.format_exc()
