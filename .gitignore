@@ -6,8 +6,5 @@
 .env
 .env.local
 
-# Local planning and handoff documents (kept out of source control)
-CONFIG_REDESIGN.md
-HANDOFF_RANGE_TOOL_SCHEMA_BUG.md
-IMPLE_MCP_RANGE_PLUGINS.md
-MCP_IMPLE_SIDE.md
+# Local planning
+**/z_plans
