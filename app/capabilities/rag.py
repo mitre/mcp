@@ -6,17 +6,26 @@ import logging
 class RAGService:
     """RAG service for CTI (Cyber Threat Intelligence) data retrieval using STIX bundles."""
     
-    def __init__(self, stix_bundle_path: Optional[str] = None, api_key: Optional[str] = None, log: Optional[logging.Logger] = None):
+    def __init__(
+        self,
+        stix_bundle_path: Optional[str] = None,
+        api_key: Optional[str] = None,
+        api_base: Optional[str] = None,
+        log: Optional[logging.Logger] = None,
+    ):
         self.max_characters = 6000
         self.topk_objects_to_retrieve = 5
         self.corpus = []
         self.adv_step = {}
         self.search = None
+        # Embedding-side credentials. Default to the chat LLM key/base when
+        # the orchestrator does not supply a separate embedding provider.
         self.api_key = api_key
+        self.api_base = api_base
         self.log = log or logging.getLogger("plugins.mcp")
-        
+
         self.log.info(f"Loading STIX bundle from: {stix_bundle_path}")
-        
+
         # Initialize with STIX bundle if provided (single file)
         if stix_bundle_path:
             self.load_stix_bundle(stix_bundle_path)
@@ -45,7 +54,10 @@ class RAGService:
         self.adv_step = all_adv_step
         
         self.log.info("Initializing embeddings and retriever for STIX corpus")
-        embedder = dspy.Embedder(embed_model, api_key=self.api_key)
+        embedder_kwargs = {"api_key": self.api_key}
+        if self.api_base:
+            embedder_kwargs["api_base"] = self.api_base
+        embedder = dspy.Embedder(embed_model, **embedder_kwargs)
         self.search = dspy.retrievers.Embeddings(
             corpus=self.corpus,
             embedder=embedder, 
@@ -202,7 +214,12 @@ async def _enrich(prompt: str, settings: dict) -> dict:
       rag_files       list of filenames under plugins/mcp/data/
       topk            int, defaults to 5
       embed_model     str, defaults to openai/text-embedding-3-small
-      api_key         str, required by the embedding model
+      api_key         str, embedding key fallback (mcp_svc fills this with
+                      the resolved chat-LLM key when the caller does not
+                      override it via embed_api_key)
+      embed_api_key   str, optional override pointing embeddings at a
+                      different provider than the chat LLM
+      embed_api_base  str, optional override paired with embed_api_key
 
     Returns an empty dict when no files are selected so workflow signatures
     that accept cti_context fall back to their default (empty string).
@@ -211,7 +228,8 @@ async def _enrich(prompt: str, settings: dict) -> dict:
     if not rag_files:
         return {}
 
-    api_key = settings.get("api_key") or ""
+    embed_api_key = settings.get("embed_api_key") or settings.get("api_key") or ""
+    embed_api_base = settings.get("embed_api_base") or None
     embed_model = settings.get("embed_model") or "openai/text-embedding-3-small"
     topk = int(settings.get("topk") or 5)
 
@@ -224,7 +242,7 @@ async def _enrich(prompt: str, settings: dict) -> dict:
         with open(path, "r", encoding="utf-8") as f:
             bundles.append(json.load(f))
 
-    rag = RAGService(api_key=api_key)
+    rag = RAGService(api_key=embed_api_key, api_base=embed_api_base)
     rag.topk_objects_to_retrieve = topk
     rag.initialize_from_bundles(bundles, embed_model=embed_model)
     raw_context = rag.get_context_for_task(prompt)
