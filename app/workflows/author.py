@@ -11,28 +11,30 @@ import asyncio
 from contextlib import AsyncExitStack
 
 from plugins.mcp.app.config import llm_defaults
+from plugins.mcp.app.dspy_env import (
+    ENV_API_BASE,
+    ENV_API_KEY,
+    ENV_MAX_TOKENS,
+    ENV_MODEL,
+    ENV_TEMPERATURE,
+)
 
 
 def get_env(lm_settings=None):
     env = os.environ.copy()
     venv_site_packages = os.path.join(sys.prefix, "Lib", "site-packages")
-    if 'PYTHONPATH' in env:
-        env['PYTHONPATH'] = f"{venv_site_packages}:{env['PYTHONPATH']}"
-    else:
-        env['PYTHONPATH'] = venv_site_packages
+    env['PYTHONPATH'] = (
+        f"{venv_site_packages}:{env['PYTHONPATH']}"
+        if 'PYTHONPATH' in env else venv_site_packages
+    )
 
-    # Pass LLM config to subprocess via environment variables
     if lm_settings:
-        # Use 'or' to handle None values and ensure we always get strings
-        env['DSPY_MODEL'] = str(lm_settings.get('model') or 'gpt-4o')
-        env['DSPY_API_KEY'] = str(lm_settings.get('api_key') or '')
-        env['DSPY_API_BASE'] = str(lm_settings.get('api_base') or '')
-        env['DSPY_TEMPERATURE'] = str(lm_settings.get('temperature') or 0.5)
-        env['DSPY_MAX_TOKENS'] = str(lm_settings.get('max_tokens') or 10000)
+        env[ENV_MODEL] = str(lm_settings.get('model') or 'gpt-4o')
+        env[ENV_API_KEY] = str(lm_settings.get('api_key') or '')
+        env[ENV_API_BASE] = str(lm_settings.get('api_base') or '')
+        env[ENV_TEMPERATURE] = str(lm_settings.get('temperature') or 0.5)
+        env[ENV_MAX_TOKENS] = str(lm_settings.get('max_tokens') or 10000)
 
-    # Forward Caldera credentials so each MCP server subprocess can hit the API.
-    # Names match the .env / conf/default.yml contract: CORE_CALDERA_API_KEY is
-    # the admin key the caldera_core MCP server uses to call /api/v2/*.
     env['CALDERA_URL'] = os.environ.get('CALDERA_URL', 'http://localhost:8888/api/v2/')
     env['CORE_CALDERA_API_KEY'] = os.environ.get('CORE_CALDERA_API_KEY', 'ADMIN123')
 
