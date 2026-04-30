@@ -190,35 +190,32 @@ class McpAPI:
             return web.json_response({"error": str(e)}, status=500)
 
     async def status(self, request):
+        """Live status of an in-flight or recently-finished run.
+
+        Reads from the in-memory cache on MCPService rather than from
+        MLflow. The cache is the single source of truth for live state
+        and carries exactly what the agent loop returned. MLflow stays
+        as the observability backbone and the data source for the
+        History tab (see list_runs / get_run_detail below).
+
+        Returns 404 when the run_id is unknown to the cache (typically
+        means the server restarted, or the run is older than the LRU
+        bound). The History endpoints can still surface those runs.
+        """
         run_id = request.query.get("run_id")
         if not run_id:
             return web.json_response({"error": "Missing run_id"}, status=400)
-        try:
-            client = mlflow.tracking.MlflowClient()
-            run = client.get_run(run_id)
-            
-            # Extract full trajectory
-            trajectory = {
-                k: v for k, v in run.data.tags.items()
-                if k.startswith("thought_") or k.startswith("observation_") or k.startswith("tool_name_") or k.startswith("tool_args_")
-            }
-            
-            response = {
-                "run_id": run_id,
-                "status": run.info.status,
-                "stage": run.data.tags.get("stage"),
-                "prompt": run.data.params.get("prompt"),
-                "reasoning": run.data.tags.get("reasoning"),
-                "process_result": run.data.params.get("process_result"),
-                "trajectory": trajectory
-            }
-            self.log.info(f"[MCP] Status for run {run_id} retrieved")
 
-            return web.json_response(response)
+        snapshot = self.mcp_svc.get_run(run_id)
+        if snapshot is None:
+            return web.json_response(
+                {"run_id": run_id, "status": "UNKNOWN",
+                 "error": "run not in live cache; try /history/run for older runs"},
+                status=404,
+            )
 
-        except Exception as e:
-            self.log.error(f"[MCP] Error fetching run {run_id}: {e}")
-            return web.json_response({"error": str(e)}, status=500)
+        self.log.info(f"[MCP] Status for run {run_id} served from cache")
+        return web.json_response({"run_id": run_id, **snapshot})
 
     async def upload_rag(self, request):
         try:
