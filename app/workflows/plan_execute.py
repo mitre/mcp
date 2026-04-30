@@ -5,53 +5,42 @@ from mcp.client.stdio import stdio_client
 import json
 import sys
 import mlflow
-from app.utility.base_world import BaseWorld
 import traceback
 from mlflow.tracking import MlflowClient
 import asyncio
 from contextlib import AsyncExitStack
 
-def _expand_env(value):
-    if isinstance(value, str):
-        return os.path.expandvars(value)
-    if isinstance(value, dict):
-        return {k: _expand_env(v) for k, v in value.items()}
-    if isinstance(value, list):
-        return [_expand_env(v) for v in value]
-    return value
+from plugins.mcp.app.config import llm_defaults
 
-def get_llm_config():
-    try:
-        config = BaseWorld.strip_yml('plugins/mcp/conf/default.yml')[0]
-        return _expand_env(config.get('llm', {}))
-    except Exception as e:
-        print(f"[MCP] Failed to load LLM config: {e}")
-        return {}
 
-def build_lm_from_dict(settings: dict) -> dspy.LM:
-    # Support offline mode if present
+def _build_lm_from_settings(settings: dict) -> dspy.LM:
+    """Build a dspy.LM from a resolved settings dict.
+
+    Settings come from mcp_svc's resolver in production, or from
+    llm_defaults() when run() is invoked directly without lm_obj.
+    Either way the dict already has model + api_key + api_base merged.
+    """
     if settings.get("offline", False):
         os.environ["LITELLM_MODEL_METADATA_LOCAL_PATH"] = "/path/to/local.json"
 
-    # Get API key with proper None handling
     api_key = settings.get("api_key") or ""
-
-    # Validate API key is provided
     if not api_key:
-        raise ValueError("API key is required but not provided. Please set your API key in the Global Model Configuration.")
+        raise ValueError(
+            "API key is required but not provided. Set MCP_LLM_API_KEY in "
+            "plugins/mcp/.env or enter one in the UI's Global Model Configuration."
+        )
 
     lm_kwargs = {
         "model": settings.get("model") or "gpt-4o",
         "api_key": api_key,
         "api_base": settings.get("api_base"),
     }
-    # Optional params if provided
     if settings.get("temperature") is not None:
         lm_kwargs["temperature"] = settings.get("temperature")
     if settings.get("max_tokens") is not None:
         lm_kwargs["max_tokens"] = settings.get("max_tokens")
-
     return dspy.LM(**lm_kwargs)
+
 
 def get_env(lm_settings=None):
     env = os.environ.copy()
@@ -168,32 +157,21 @@ def format_rag_context(rag_context):
 async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_id=None, enabled_servers=None, server_registry=None, cti_context: str = "", **_extra_capability_context):
     """
     lm_obj can be:
-      - a dict with keys like model, api_key, api_base, temperature, max_tokens, offline
-      - a dspy.LM instance
-      - None, to fall back to config from default.yml
+      - a dict produced by mcp_svc.resolve_llm_config (yaml + .env + UI
+        overrides already merged, with fields_locked enforced)
+      - a dspy.LM instance (kept for backwards compatibility with callers
+        that build their own LM)
+      - None, to fall back to llm_defaults() from the shared config module
+        (used by tests / direct invocation)
     """
-    # Resolve LM configuration
-    max_tool_calls = 5  # Default value
     if isinstance(lm_obj, dspy.LM):
         lm_instance = lm_obj
-        lm_settings = None  # Can't extract settings from LM instance
-    elif isinstance(lm_obj, dict):
-        # Overlay GUI dict onto yaml; when yaml pins a gateway via api_base,
-        # its model/api_base win over GUI submissions (gateway has constrained
-        # model list, GUI default may not match).
-        yaml_cfg = get_llm_config() or {}
-        merged = {**yaml_cfg, **{k: v for k, v in lm_obj.items() if v not in (None, "")}}
-        if yaml_cfg.get("api_base") and yaml_cfg.get("model"):
-            merged["model"] = yaml_cfg["model"]
-            merged["api_base"] = yaml_cfg["api_base"]
-        lm_instance = build_lm_from_dict(merged)
-        lm_settings = merged
-        max_tool_calls = lm_obj.get("max_tool_calls") or 5
+        lm_settings = None
+        max_tool_calls = 5
     else:
-        cfg = get_llm_config()
-        lm_instance = build_lm_from_dict(cfg)
-        lm_settings = cfg
-        max_tool_calls = cfg.get("max_tool_calls") or 5
+        lm_settings = dict(lm_obj) if isinstance(lm_obj, dict) else llm_defaults()
+        lm_instance = _build_lm_from_settings(lm_settings)
+        max_tool_calls = lm_settings.get("max_tool_calls") or 5
 
     # Start or resume MLflow run
     if run_id:

@@ -5,48 +5,13 @@ from mcp.client.stdio import stdio_client
 import json
 import sys
 import mlflow
-from app.utility.base_world import BaseWorld
 import traceback
 from mlflow.tracking import MlflowClient
 import asyncio
-import copy
 from contextlib import AsyncExitStack
 
-def _expand_env(value):
-    if isinstance(value, str):
-        return os.path.expandvars(value)
-    if isinstance(value, dict):
-        return {k: _expand_env(v) for k, v in value.items()}
-    if isinstance(value, list):
-        return [_expand_env(v) for v in value]
-    return value
+from plugins.mcp.app.config import llm_defaults
 
-def get_llm_config():
-    try:
-        config = BaseWorld.strip_yml('plugins/mcp/conf/default.yml')[0]
-        return _expand_env(config.get('llm', {}))
-    except Exception as e:
-        print(f"[MCP] Failed to load LLM config: {e}")
-        return {}
-
-def configure_llm(llm_config, use_mock=False):
-    if use_mock:
-        class MockLM:
-            def __call__(self, prompt):
-                return "Mocked response"
-        dspy.configure(lm=MockLM())
-        return
-
-    if llm_config.get("offline", False):
-        os.environ["LITELLM_MODEL_METADATA_LOCAL_PATH"] = "/path/to/local.json"
-
-    lm = {
-        "model": llm_config.get("model", "gpt-4o"),
-        "api_key": llm_config.get("api_key", ""),
-        "api_base": llm_config.get("api_base")
-    }
-    
-    dspy.configure(lm=lm)
 
 def get_env(lm_settings=None):
     env = os.environ.copy()
@@ -177,36 +142,13 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
     # (raw dict) is the legacy mcp_svc shim. Either may be supplied; cti_context
     # wins. **_extra_capability_context absorbs unknown kwargs from future
     # capabilities so adding one doesn't break this signature.
-    # Build LM settings safely (support defaults)
-    lm_settings = {}
-    max_tool_calls = 5  # Default value
-    if lm_obj:
-        lm_obj_safe = copy.deepcopy(lm_obj) or {}
-        yaml_cfg = get_llm_config()
-        # When yaml configures an alternate gateway (api_base set), the yaml model
-        # is authoritative — the gateway only accepts a constrained model list.
-        if yaml_cfg.get("api_base") and yaml_cfg.get("model"):
-            resolved_model = yaml_cfg["model"]
-        else:
-            resolved_model = lm_obj_safe.get("model") or yaml_cfg.get("model") or "gpt-4o"
-        lm_settings = {
-            "model": resolved_model,
-            "api_key": lm_obj_safe.get("api_key") or yaml_cfg.get("api_key") or "",
-            "api_base": lm_obj_safe.get("api_base") or yaml_cfg.get("api_base") or "",
-            "temperature": lm_obj_safe.get("temperature") or 0.5,
-            "max_tokens": lm_obj_safe.get("max_tokens") or 10000,
-        }
-        max_tool_calls = lm_obj_safe.get("max_tool_calls") or 5
-    else:
-        llm_config = get_llm_config()
-        lm_settings = {
-            "model": llm_config.get("model") or "gpt-4o",
-            "api_key": llm_config.get("api_key") or "",
-            "api_base": llm_config.get("api_base") or "",
-            "temperature": llm_config.get("temperature") or 0.5,
-            "max_tokens": llm_config.get("max_tokens") or 10000,
-        }
-        max_tool_calls = llm_config.get("max_tool_calls") or 5
+    #
+    # lm_obj is the dict mcp_svc produces from resolve_llm_config (yaml + .env
+    # + UI overrides, with fields_locked enforced). Workflows trust it; they
+    # do not re-merge yaml here. Tests that call run() directly without
+    # lm_obj fall back to the same yaml-resolved defaults.
+    lm_settings = dict(lm_obj) if lm_obj else llm_defaults()
+    max_tool_calls = lm_settings.get("max_tool_calls") or 5
 
     # Validate API key is provided
     if not lm_settings.get("api_key"):
