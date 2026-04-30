@@ -883,34 +883,40 @@ onMounted(() => {
   border: 1px solid #e6e6e6;
 }
 .result-content {
-  background-color: #f4f0ff;
-  color: #1a1a1a;
+  background-color: #1f1a2e;
+  color: #f5f5f5;
   padding: 1rem 1rem 1rem 1.25rem;
   border-radius: 6px;
-  border-left: 4px solid #7a00cc;
+  border-left: 4px solid #b075ff;
   margin-top: 0.25rem;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 .result-content p {
   margin: 0 0 0.5rem 0;
+  color: #f5f5f5;
 }
 .result-content p:last-child {
   margin-bottom: 0;
 }
 .result-content ul {
-  margin: 0.25rem 0 0.5rem 1.25rem;
+  margin: 0.35rem 0 0.6rem 1.5rem;
   padding: 0;
   list-style: disc outside;
 }
 .result-content ul ul {
-  margin-top: 0.1rem;
-  margin-bottom: 0.1rem;
+  margin-top: 0.15rem;
+  margin-bottom: 0.15rem;
   list-style: circle outside;
 }
 .result-content li {
-  margin: 0.1rem 0;
+  margin: 0.15rem 0;
+  color: #f5f5f5;
+}
+.result-content li::marker {
+  color: #b075ff;
 }
 .result-content strong {
-  color: #4a148c;
+  color: #d8b8ff !important;
+  font-weight: 700;
 }
 </style>
