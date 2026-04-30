@@ -1,45 +1,88 @@
 <link rel="stylesheet" href="/mcp/css/mcp.css">
-<script src="/mcp/js/mcp.js"></script>
 
 <div x-data="alpineMcp()" x-init="initPage()">
-    <div>
-        <h2 x-text="name"></h2>
-        <p x-text="description"></p>
-    </div>
-    <hr>
-    <div>
-        <button class="button is-primary is-small" @click="sampleFunction()">Click Me</button>
-        <p x-text="sampleVariable"></p>
+    <div class="card">
+        <header class="card-header">
+            <p class="card-header-title">{{ name }}</p>
+        </header>
+        <div class="card-content">
+            <p>{{ description }}</p>
+
+            <h3 class="title is-6 mt-4">Plugin readiness</h3>
+            <ul>
+                <li>
+                    <strong>LLM provider:</strong>
+                    {% if llm_configured %}
+                        <span class="tag is-success is-light">configured</span>
+                        &nbsp;model <code>{{ llm_model }}</code>
+                        {% if llm_api_base %}&middot; base <code>{{ llm_api_base }}</code>{% endif %}
+                    {% else %}
+                        <span class="tag is-warning is-light">no key</span>
+                        &nbsp;set <code>{{ llm_api_key_env }}</code> in <code>plugins/mcp/.env</code>
+                        or enter one per-session in the workspace's Global Model Configuration.
+                    {% endif %}
+                </li>
+                <li class="mt-2">
+                    <strong>Caldera REST:</strong>
+                    <code>{{ caldera_url }}</code>
+                    &middot; key from <code>{{ caldera_api_key_env }}</code>
+                </li>
+                <li class="mt-2">
+                    <strong>MCP servers discovered:</strong> {{ server_count }}
+                    {% if server_names %}
+                        &mdash; {% for s in server_names %}<code>{{ s }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+                    {% endif %}
+                </li>
+                <li class="mt-2">
+                    <strong>Workflows discovered:</strong> {{ workflow_count }}
+                    {% if workflow_names %}
+                        &mdash; {% for w in workflow_names %}<code>{{ w }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+                    {% endif %}
+                </li>
+                <li class="mt-2">
+                    <strong>Capabilities discovered:</strong> {{ capability_count }}
+                    {% if capability_names %}
+                        &mdash; {% for c in capability_names %}<code>{{ c }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+                    {% endif %}
+                </li>
+            </ul>
+
+            <p class="mt-4">
+                <button class="button is-primary is-small" @click="openWorkspace()">
+                    Open MCP workspace
+                </button>
+                <button class="button is-light is-small" @click="refresh()">
+                    Refresh
+                </button>
+            </p>
+
+            {% if not llm_configured %}
+            <article class="message is-warning mt-4">
+                <div class="message-body">
+                    The plugin will still load, but every workflow run will fail with
+                    "No LLM API key" until either <code>MCP_LLM_API_KEY</code> is
+                    set in the .env or a key is supplied via the workspace's
+                    Global Model Configuration panel.
+                </div>
+            </article>
+            {% endif %}
+        </div>
     </div>
 </div>
 
 <script>
-/*
-  Templates in CALDERA are now enhanced with Alpine.js! It's essentially
-  a replacement for jQuery that has similar features to Vue and React.
-  Read up on the docs before you get started working on the UI: https://alpinejs.dev/
-*/
-
 function alpineMcp() {
     return {
-        name: '{{ name }}',
-        description: '{{ description }}',
-        sampleVariable: '',
-
         initPage() {
-            // Sample API request
-            apiV2('GET', '/api/v2/health').then((response) => {
-                console.log('Woohoo, this page can talk to the API!');
-            }).catch((error) => {
-                // Call toast from anywhere within CALDERA to notify users of events
-                // toast(message, isSuccess)
-                toast('Error loading page', false);
-                console.error(error);
-            });
+            // Reserved for live readiness polling; static render is enough today.
         },
-
-        sampleFunction() {
-            this.sampleVariable = 'You clicked the button!';
+        openWorkspace() {
+            // The Vue SPA route inside Caldera's magma-bundled shell. Adjust
+            // here if magma's plugin route ever changes.
+            window.location.href = '/plugins/mcp/views/mcp';
+        },
+        refresh() {
+            window.location.reload();
         }
     };
 }

@@ -130,6 +130,10 @@ async def enable(services):
     )
     mcp_gui = McpGUI(services, name=name, description=description)
     app.router.add_static('/mcp', 'plugins/mcp/static/', append_version=True)
+    # Server-rendered landing page. Reports plugin readiness (LLM key,
+    # Caldera connection, discovered registries) before the user steps
+    # into the Vue workspace.
+    app.router.add_route('GET', '/plugin/mcp/gui', mcp_gui.splash)
 
     mcp_api = McpAPI(services)
     app.router.add_route('POST', '/plugin/mcp/execute', mcp_api.execute)
