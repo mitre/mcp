@@ -252,6 +252,13 @@
         </p>
       </div>
 
+      <div v-if="uiPhase === 'finished' && pollFinalResult" class="mt-5">
+        <div class="box">
+          <h3 class="title is-5">Result</h3>
+          <pre class="result-pre">{{ pollFinalResult }}</pre>
+        </div>
+      </div>
+
       <div v-if="uiPhase === 'running' || uiPhase === 'finished'" class="mt-5" v-show="thoughts.length">
         <div class="box">
           <h3 class="title is-5">Thoughts</h3>
@@ -872,5 +879,16 @@ onMounted(() => {
   max-height: 260px;
   overflow: auto;
   border: 1px solid #e6e6e6;
+}
+.result-pre {
+  white-space: pre-wrap;
+  font-family: inherit;
+  background-color: #f4f0ff;
+  color: #1a1a1a;
+  padding: 1rem;
+  border-radius: 6px;
+  border-left: 4px solid #7a00cc;
+  margin-top: 0.25rem;
+  line-height: 1.5;
 }
 </style>
