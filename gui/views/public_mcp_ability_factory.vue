@@ -255,7 +255,7 @@
       <div v-if="uiPhase === 'finished' && pollFinalResult" class="mt-5">
         <div class="box">
           <h3 class="title is-5">Result</h3>
-          <pre class="result-pre">{{ pollFinalResult }}</pre>
+          <div class="result-content" v-html="formattedResult"></div>
         </div>
       </div>
 
@@ -313,6 +313,7 @@
 import { inject, ref, watch, computed, onMounted } from "vue"
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faPlus, faMinus } from '@fortawesome/free-solid-svg-icons'
+import { formatProcessResult } from './format_result.js'
 
 const props = defineProps({
   // Workflow registration object from /plugin/mcp/workflows. May be missing
@@ -404,6 +405,7 @@ const pollPrompt = ref('')
 const pollTrajectory = ref({})
 const pollReasoning = ref('')
 const pollFinalResult = ref('')
+const formattedResult = computed(() => formatProcessResult(pollFinalResult.value))
 const uiPhase = ref('idle')
 const animatedStatus = ref('RUNNING')
 const parsedAbilityLines = ref([])
@@ -880,15 +882,35 @@ onMounted(() => {
   overflow: auto;
   border: 1px solid #e6e6e6;
 }
-.result-pre {
-  white-space: pre-wrap;
-  font-family: inherit;
+.result-content {
   background-color: #f4f0ff;
   color: #1a1a1a;
-  padding: 1rem;
+  padding: 1rem 1rem 1rem 1.25rem;
   border-radius: 6px;
   border-left: 4px solid #7a00cc;
   margin-top: 0.25rem;
   line-height: 1.5;
+}
+.result-content p {
+  margin: 0 0 0.5rem 0;
+}
+.result-content p:last-child {
+  margin-bottom: 0;
+}
+.result-content ul {
+  margin: 0.25rem 0 0.5rem 1.25rem;
+  padding: 0;
+  list-style: disc outside;
+}
+.result-content ul ul {
+  margin-top: 0.1rem;
+  margin-bottom: 0.1rem;
+  list-style: circle outside;
+}
+.result-content li {
+  margin: 0.1rem 0;
+}
+.result-content strong {
+  color: #4a148c;
 }
 </style>
