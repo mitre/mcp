@@ -25,13 +25,11 @@ Resolution order for an LLM request:
   2. env-resolved api_key (read from the env var named in api_key_env)
   3. UI overrides (only non-empty fields, only fields not declared
      fields_locked: true in yaml)
-
-Caldera framework imports (BaseWorld) are deferred to the function
-bodies so this module imports cleanly in the subprocess context too,
-even though the subprocess never calls these functions. That keeps the
-package's __init__.py simple.
 """
 import os
+
+from app.utility.base_world import BaseWorld
+
 
 _YAML_PATH = 'plugins/mcp/conf/default.yml'
 
@@ -45,7 +43,6 @@ _NUMERIC_FALLBACKS = {
 def _load_defaults() -> dict:
     """Returns the parsed yaml file as a dict. Empty dict on failure."""
     try:
-        from app.utility.base_world import BaseWorld
         return BaseWorld.strip_yml(_YAML_PATH)[0] or {}
     except Exception:
         return {}
