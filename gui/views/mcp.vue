@@ -428,7 +428,7 @@ async function handleCustomSubmit() {
 
 <script setup>
 import { ref, provide, reactive, watch, onMounted, computed } from 'vue'
-import McpPromptFactory from './local_mcp_ability_factory.vue'
+import McpPromptFactory from './chat/ChatWorkflow.vue'
 import McpPromptPlanner from './public_mcp_ability_factory.vue'
 import McpHistory from './mcp_history.vue'
 
@@ -505,10 +505,7 @@ function applyServerDefaults(d) {
 const _BUILTIN_COMPONENTS = {
   'author.vue': McpPromptFactory,
   'plan_execute.vue': McpPromptPlanner,
-  // Backwards-compatible aliases for the pre-rename component names so
-  // workflows that reference the old paths keep working until the magma
-  // bundler picks up the new file names.
-  'local_mcp_ability_factory.vue': McpPromptFactory,
+  // Backwards-compatible alias for the pre-rename plan_execute component.
   'public_mcp_ability_factory.vue': McpPromptPlanner,
 }
 
