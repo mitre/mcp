@@ -395,6 +395,10 @@ onMounted(() => {
   color: #888888;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+  text-align: left;
+  align-self: flex-start;
+  display: block;
+  width: 100%;
 }
 .num-input, .text-input {
   background-color: #2a2a2a;
@@ -447,6 +451,7 @@ onMounted(() => {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: #888888;
+  text-align: left;
   margin-bottom: 0.3rem;
 }
 .muted { color: #6b6585; font-size: 0.8rem; font-style: italic; }
