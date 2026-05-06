@@ -14,6 +14,18 @@
     <main class="chat-main">
       <header class="chat-header">
         <div class="header-left">
+          <button
+            class="back-button"
+            @click="$emit('back')"
+            type="button"
+            :disabled="run.isRunning.value"
+            :title="run.isRunning.value
+              ? 'Cannot leave while a run is in progress'
+              : 'Back to workflow list'"
+          >
+            <font-awesome-icon :icon="['fas', 'angle-left']" />
+            <span>Back</span>
+          </button>
           <h2 class="header-title">{{ workflow?.display_name || 'MCP Workflow' }}</h2>
           <span v-if="run.isRunning.value" class="header-status running">
             <span class="status-dot"></span> Working
@@ -79,7 +91,6 @@
       v-model:selectedRag="selectedRag"
       :collapsed="sidebarCollapsed"
       @toggle="sidebarCollapsed = !sidebarCollapsed"
-      @back="$emit('back')"
     />
   </div>
 </template>
@@ -350,6 +361,28 @@ function clearTranscript() {
   display: flex;
   align-items: center;
   gap: 0.85rem;
+}
+.back-button {
+  background: transparent;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  color: #888888;
+  cursor: pointer;
+  font-size: 0.82rem;
+  padding: 0.4rem 0.7rem 0.4rem 0.55rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+.back-button:hover:not(:disabled) {
+  color: #d0d0d0;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: #555555;
+}
+.back-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .header-title {
   font-size: 1.1rem;

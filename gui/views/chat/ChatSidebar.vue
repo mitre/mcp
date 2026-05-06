@@ -12,11 +12,6 @@
     </button>
 
     <div v-if="!collapsed" class="sidebar-body">
-      <button class="back-button" @click="$emit('back')" type="button">
-        <font-awesome-icon :icon="['fas', 'angle-left']" />
-        <span>Back</span>
-      </button>
-
       <h3 class="sidebar-title">{{ workflow?.display_name || 'Workflow' }}</h3>
       <p v-if="workflow?.description" class="sidebar-desc">
         {{ workflow.description }}
@@ -154,7 +149,7 @@ const props = defineProps({
   selectedRag: { type: Array, default: () => [] },
   collapsed: { type: Boolean, default: false },
 })
-const emit = defineEmits(['back', 'toggle', 'update:selectedRag'])
+const emit = defineEmits(['toggle', 'update:selectedRag'])
 
 // Tiny inline section component to avoid yet another file for a label+slot.
 const Section = {
@@ -328,23 +323,12 @@ onMounted(() => {
 }
 .collapse-toggle:hover { background-color: rgba(255, 255, 255, 0.05); }
 .sidebar-body {
-  padding: 0.9rem 1rem 1.2rem 1rem;
+  /* Extra top padding clears the absolutely-positioned collapse-toggle
+     pinned to the top-left of the panel. */
+  padding: 2.4rem 1rem 1.2rem 1rem;
   overflow-y: auto;
   flex: 1;
 }
-.back-button {
-  background: transparent;
-  border: none;
-  color: #888888;
-  cursor: pointer;
-  font-size: 0.85rem;
-  padding: 0.2rem 0 0.2rem 1.8rem;
-  margin-bottom: 0.6rem;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-.back-button:hover { color: #d0d0d0; }
 .sidebar-title {
   font-size: 1.05rem;
   font-weight: 600;
