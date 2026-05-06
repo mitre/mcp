@@ -87,6 +87,16 @@ _PLAN_EXECUTE_OUTPUT_DESC = (
 )
 
 
+_CHAT_HISTORY_DESC = (
+    "Prior turns in this chat session, oldest first. Each turn is "
+    "labelled 'User:' / 'Assistant:'. Use them to resolve follow-up "
+    "references like 'that profile', 'the instance I just created', "
+    "or 'add it to the deployment from earlier'. The current request "
+    "still arrives in adversary_emulation_task; chat_history is "
+    "context for interpreting it. Empty string on the first turn."
+)
+
+
 class DSPyCalderaPlannerClient(dspy.Signature):
     """You are a planner for the Caldera adversary emulation platform.
     You have access to MCP tool servers that wrap Caldera's core API and any
@@ -96,11 +106,16 @@ class DSPyCalderaPlannerClient(dspy.Signature):
     Prefer reusing existing artifacts over creating new ones. Use range or
     infrastructure tools only when the operation requires live targets.
 
+    When chat_history is non-empty, treat it as the conversation so far and
+    interpret the current request in that context. Reuse entity ids that
+    appeared in earlier turns rather than asking the user to repeat them.
+
     When you produce process_result, return the substantive content the
     user asked for (real names, counts, ids, statuses), not a recap of the
     tools you called.
     """
     adversary_emulation_task: str = dspy.InputField()
+    chat_history: str = dspy.InputField(default="", desc=_CHAT_HISTORY_DESC)
     process_result: str = dspy.OutputField(desc=_PLAN_EXECUTE_OUTPUT_DESC)
 
 class DSPyCalderaPlannerClientWithRAG(dspy.Signature):
@@ -115,6 +130,10 @@ class DSPyCalderaPlannerClientWithRAG(dspy.Signature):
     Ground your plan in the provided CTI context so the operation mirrors
     real-world threat actor behavior.
 
+    When chat_history is non-empty, treat it as the conversation so far and
+    interpret the current request in that context. Reuse entity ids that
+    appeared in earlier turns rather than asking the user to repeat them.
+
     When you produce process_result, return the substantive content the
     user asked for (real names, counts, ids, statuses), not a recap of the
     tools you called.
@@ -123,6 +142,7 @@ class DSPyCalderaPlannerClientWithRAG(dspy.Signature):
     cti_context: str = dspy.InputField(
         desc="Relevant CTI (Cyber Threat Intelligence) information including attack patterns, techniques, and threat actor behaviors"
     )
+    chat_history: str = dspy.InputField(default="", desc=_CHAT_HISTORY_DESC)
     process_result: str = dspy.OutputField(
         desc=(
             _PLAN_EXECUTE_OUTPUT_DESC
@@ -156,7 +176,7 @@ def format_rag_context(rag_context):
             formatted_parts.append(f"{ctx['description']}")
     return "\n".join(formatted_parts)
 
-async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_id=None, enabled_servers=None, server_registry=None, cti_context: str = "", **_extra_capability_context):
+async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_id=None, enabled_servers=None, server_registry=None, cti_context: str = "", chat_history: str = "", **_extra_capability_context):
     """
     lm_obj can be:
       - a dict produced by mcp_svc.resolve_llm_config (yaml + .env + UI
@@ -264,15 +284,20 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
                     mlflow.set_tag("stage", "executing DSPy ReAct with RAG")
                     result = await react.acall(
                         adversary_emulation_task=adversary_emulation_task,
-                        cti_context=resolved_cti
+                        cti_context=resolved_cti,
+                        chat_history=chat_history,
                     )
                 else:
                     signature = DSPyCalderaPlannerClient
                     react = dspy.ReAct(signature, tools=dspy_tools, max_iters=max_tool_calls)
                     mlflow.set_tag("stage", "executing DSPy ReAct")
                     result = await react.acall(
-                        adversary_emulation_task=adversary_emulation_task
+                        adversary_emulation_task=adversary_emulation_task,
+                        chat_history=chat_history,
                     )
+
+            if chat_history:
+                mlflow.set_tag("chat_history_length", len(chat_history))
 
             # Log outputs and trajectory. The live /status endpoint reads
             # from mcp_svc's in-memory run cache, not from MLflow; these
