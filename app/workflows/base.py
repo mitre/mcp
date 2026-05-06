@@ -76,3 +76,13 @@ class Workflow:
     # framework-supplied keys like enabled_servers, server_registry, run_id.
     # Returns a dict with at minimum {"process_result": str}.
     run: Callable[..., Awaitable[dict[str, Any]]] | None = None
+
+    # Whether this workflow benefits from prior-turn context. When True, the
+    # orchestrator threads accumulated (prompt, process_result) pairs from the
+    # same session into the signature's chat_history input. When False, every
+    # turn runs single-shot: the chat UI still renders past turns visually,
+    # but the LLM sees a fresh context each time. Author-style workflows where
+    # each request is fully self-described should leave this False; workflows
+    # that produce entities (instances, profiles, deployments) referenced by
+    # later turns should opt in.
+    supports_chat_history: bool = False

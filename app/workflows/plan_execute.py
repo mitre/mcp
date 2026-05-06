@@ -351,5 +351,6 @@ WORKFLOWS = [
             "Stand up a small ICS testbed with two Windows hosts and one Linux jumpbox, then run a discovery operation against it.",
         ],
         run=run,
+        supports_chat_history=True,
     ),
 ]

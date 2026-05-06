@@ -163,6 +163,7 @@ class McpAPI:
                     "ui_component": wf.ui_component,
                     "example_prompts": list(wf.example_prompts),
                     "plan_validator": wf.plan_validator,
+                    "supports_chat_history": bool(getattr(wf, "supports_chat_history", False)),
                 })
             workflows.sort(key=lambda w: w["display_name"].lower())
             return web.json_response({"workflows": workflows})
