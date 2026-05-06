@@ -19,14 +19,21 @@ mcp = FastMCP("Caldera Core MCP Server")
 
 class CalderaRequest:
     def __init__(self, url, api_key):
-        self.caldera_url = url
+        # Defensive normalization: callers historically passed CALDERA_URL via
+        # env var, and a dropped trailing slash produces malformed endpoints
+        # like "http://localhost:8888health" once you f-string in the path.
+        # Always store with exactly one trailing slash so concat is safe.
+        self.caldera_url = url.rstrip('/') + '/' if url else url
         self.api_key = api_key
         self.headers = {"KEY": f"{self.api_key}", "Content-Type": "application/json"}
         self.total_get_requests = collections.defaultdict(list)
         self.total_post_requests = collections.defaultdict(list)
 
+    def _join(self, endpoint):
+        return f"{self.caldera_url}{endpoint.lstrip('/')}"
+
     def make_get_request(self, endpoint):
-        response = requests.get(f"{self.caldera_url}{endpoint}", headers=self.headers)
+        response = requests.get(self._join(endpoint), headers=self.headers)
         self.total_get_requests[endpoint].append(
             {
                 "time_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -39,7 +46,7 @@ class CalderaRequest:
 
     def make_post_request(self, endpoint, body):
         response = requests.post(
-            f"{self.caldera_url}{endpoint}", headers=self.headers, json=body
+            self._join(endpoint), headers=self.headers, json=body
         )
         self.total_post_requests[endpoint].append(
             {
@@ -113,14 +120,12 @@ def get_abilities_by_tactic(tactic: str):
     """
     req = caldera_request.make_get_request("abilities")
     stockpile_abilities = filter_abilities(req, tactic, atomic=False)
-    print(f"Stockpile Abilities: {stockpile_abilities}")
     if stockpile_abilities:
         return stockpile_abilities
-    else:
-        stockpile_abilities = filter_abilities(req, tactic, atomic=True)
-        print(f"Stockpile Abilities: {stockpile_abilities}")
-        if len(stockpile_abilities) > 5:
-            return stockpile_abilities[:5]
+    stockpile_abilities = filter_abilities(req, tactic, atomic=True)
+    if len(stockpile_abilities) > 5:
+        return stockpile_abilities[:5]
+    return stockpile_abilities
 
 
 @mcp.tool(name="core_get_ability_by_id")
