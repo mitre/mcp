@@ -54,6 +54,11 @@ class McpAPI:
             enabled_capabilities = data.get("enabled_capabilities")
             capability_settings = data.get("capability_settings")
             enabled_servers = data.get("enabled_servers")
+            # Optional. Absent on the first turn of a chat; the response
+            # echoes back the assigned session_id so the client can pass it
+            # on follow-up turns. Workflows that opt out of chat history
+            # ignore this value entirely.
+            session_id = data.get("session_id")
 
             # Legacy fields (only used when workflow_id is absent)
             focus = data.get("type")
@@ -61,6 +66,7 @@ class McpAPI:
 
             self.log.info(
                 f"[MCP] workflow_id={workflow_id} legacy_type={focus} "
+                f"session_id={session_id} "
                 f"enabled_servers={enabled_servers} "
                 f"enabled_capabilities={enabled_capabilities}"
             )
@@ -74,6 +80,7 @@ class McpAPI:
                 enabled_servers=enabled_servers,
                 enabled_capabilities=enabled_capabilities,
                 capability_settings=capability_settings,
+                session_id=session_id,
             )
             return web.json_response(result)
 
