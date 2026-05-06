@@ -95,6 +95,17 @@ const composerText = ref('')
 const selectedRag = ref([])
 const messages = ref([])  // [{ id, role, text|finalResult, status, ... }]
 
+// Server-assigned identifier for the current chat session. Null means the
+// next prompt will start a fresh session; once set, follow-up prompts pass
+// this value back so the backend threads accumulated chat history into the
+// signature (only for workflows that opt in via supports_chat_history).
+const sessionId = ref(null)
+
+// True when the workflow has opted in to per-session chat history. Drives
+// composer copy and the meaning of the "New chat" button. Defaults to false
+// for safety if the field is missing from the workflow registration.
+const supportsChatHistory = computed(() => !!props.workflow?.supports_chat_history)
+
 // --- Viewport-fit -----------------------------------------------------------
 // This view is full-screen (sidebar + chat fill the space between Caldera's
 // outer chrome and the viewport bottom). Two things happen here:
@@ -176,7 +187,11 @@ watch(
 const examplePrompts = computed(() => props.workflow?.example_prompts || [])
 const composerPlaceholder = computed(() => {
   if (run.isRunning.value) return 'Working on the previous request…'
-  if (messages.value.length) return 'Send a follow-up prompt…'
+  if (messages.value.length) {
+    return supportsChatHistory.value
+      ? 'Send a follow-up prompt in this session…'
+      : 'Send another prompt (each one runs independently)…'
+  }
   return 'Describe what you want this workflow to do…'
 })
 
@@ -213,9 +228,7 @@ function handleSubmit() {
   _startRun(text)
 }
 
-function _startRun(text) {
-  // Mirror the legacy payload shape from local_mcp_ability_factory.vue so
-  // backend behavior is identical to the old single-shot UI.
+async function _startRun(text) {
   const filesAttached = selectedRag.value.length > 0
   const baseCaps = new Set(globalConfig.capabilitiesByWorkflow?.[props.workflow.id] || [])
   if (filesAttached) baseCaps.add('rag')
@@ -241,14 +254,31 @@ function _startRun(text) {
       max_tool_calls: globalConfig.maxToolCalls,
       max_tokens: globalConfig.maxTokens,
     },
+    // Null on the very first turn of a session; the backend assigns one
+    // and the response echoes it back. Subsequent turns pass it so the
+    // backend threads accumulated chat history (opt-in workflows only).
+    session_id: sessionId.value,
   }
 
-  run.start(payload).catch(() => { /* errorMessage already populated */ })
+  try {
+    const resp = await run.start(payload)
+    if (resp?.session_id && !sessionId.value) {
+      sessionId.value = resp.session_id
+    }
+  } catch {
+    // run.errorMessage is already populated by useMcpRun.
+  }
 }
 
 function clearTranscript() {
   if (run.isRunning.value) return
+  // For opt-in workflows the session id is what the server uses to look
+  // up accumulated history. Clearing the transcript means starting a
+  // fresh conversation, so drop the session id too. Single-shot
+  // workflows reset the same field; it just had no semantic meaning
+  // for them.
   messages.value = []
+  sessionId.value = null
   run.reset()
   pendingAssistantId = null
 }

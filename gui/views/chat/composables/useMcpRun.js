@@ -48,6 +48,9 @@ export function useMcpRun($api) {
       const response = await $api.post('/plugin/mcp/execute', payload)
       runId.value = response.data.run_id
       _beginPolling(runId.value)
+      // Hand the parsed response back so the caller can grab fields like
+      // session_id that live above the per-run scope.
+      return response.data
     } catch (err) {
       status.value = 'FAILED'
       errorMessage.value = err?.response?.data?.error || 'Submission failed.'
