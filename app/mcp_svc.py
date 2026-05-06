@@ -19,6 +19,13 @@ _LEGACY_TYPE_MAP = {
 # which still reads from MLflow.
 _RUN_CACHE_LIMIT = 256
 
+# Bound on the in-memory chat-session store. Each session holds the last
+# _SESSION_TURN_CAP (prompt, response) pairs for workflows that opt in to
+# chat history; older turns drop off the front. Whole sessions evict
+# LRU-style when the count exceeds _SESSION_CACHE_LIMIT.
+_SESSION_CACHE_LIMIT = 64
+_SESSION_TURN_CAP = 8
+
 
 class MCPService(BaseService):
     def __init__(self, services, server_registry=None, workflow_registry=None, capability_registry=None):
@@ -40,6 +47,13 @@ class MCPService(BaseService):
         # OrderedDict gives us O(1) LRU eviction without an extra dependency.
         self._runs: "collections.OrderedDict[str, dict]" = collections.OrderedDict()
 
+        # Per-session chat history for workflows whose registration sets
+        # supports_chat_history=True. session_id -> list of
+        #   {"prompt": str, "response": str}
+        # Author-style workflows never read or write to this map; their
+        # session_ids hit it as no-ops.
+        self._sessions: "collections.OrderedDict[str, list[dict]]" = collections.OrderedDict()
+
         self.log.info(
             f"[MCP] Initialized MCPService with servers={list(self.server_registry.keys())} "
             f"workflows={list(self.workflow_registry.keys())} "
@@ -57,6 +71,40 @@ class MCPService(BaseService):
         while len(self._runs) > _RUN_CACHE_LIMIT:
             self._runs.popitem(last=False)
 
+    def _session_turns(self, session_id: str) -> list[dict]:
+        """Return the recorded turns for a session, or [] if unknown."""
+        return self._sessions.get(session_id) or []
+
+    def _format_session_history(self, session_id: str) -> str:
+        """Render a session's prior turns as a single string for the LLM.
+
+        Uses a simple labelled transcript format the signature docstring
+        knows how to read. Empty string when there are no prior turns.
+        """
+        turns = self._session_turns(session_id)
+        if not turns:
+            return ""
+        recent = turns[-_SESSION_TURN_CAP:]
+        lines = []
+        for turn in recent:
+            lines.append(f"User: {turn['prompt']}")
+            lines.append(f"Assistant: {turn['response']}")
+            lines.append("")  # blank separator between turns
+        return "\n".join(lines).rstrip()
+
+    def _record_session_turn(self, session_id: str, prompt: str, response: str) -> None:
+        """Append a (prompt, response) turn, capping per-session and total."""
+        bucket = self._sessions.get(session_id)
+        if bucket is None:
+            bucket = []
+            self._sessions[session_id] = bucket
+        bucket.append({"prompt": prompt, "response": response})
+        if len(bucket) > _SESSION_TURN_CAP:
+            del bucket[: len(bucket) - _SESSION_TURN_CAP]
+        self._sessions.move_to_end(session_id)
+        while len(self._sessions) > _SESSION_CACHE_LIMIT:
+            self._sessions.popitem(last=False)
+
     def _create_dspy_client(self, model_config: dict):
         return {
             "model": model_config.get("model"),
@@ -70,7 +118,8 @@ class MCPService(BaseService):
     async def execute(self, focus: str = None, prompt: str = "", model_config: dict = None,
                       enabled_servers=None, file: dict = None,
                       workflow_id: str = None, lm_config: dict = None,
-                      enabled_capabilities=None, capability_settings=None):
+                      enabled_capabilities=None, capability_settings=None,
+                      session_id: str = None):
         """Start an MLflow run and launch a background workflow execution.
 
         Accepts both the new payload shape (workflow_id + lm_config +
@@ -137,10 +186,17 @@ class MCPService(BaseService):
         run_id = run.info.run_id
         mlflow.end_run()
 
+        # Resolve the session this run belongs to. The first turn auto-starts
+        # a session keyed by its own run_id; follow-up turns echo the same
+        # session_id back. Workflows that don't opt in still get tagged so
+        # MLflow can group their (single-turn) sessions consistently.
+        resolved_session_id = session_id or run_id
+
         asyncio.create_task(self._run_execution(
             workflow=workflow,
             prompt=prompt,
             run_id=run_id,
+            session_id=resolved_session_id,
             lm_obj=lm_obj,
             enabled_servers=scoped_servers,
             enabled_capabilities=scoped_capabilities,
@@ -148,13 +204,15 @@ class MCPService(BaseService):
         ))
         return {
             "run_id": run_id,
+            "session_id": resolved_session_id,
             "workflow_id": workflow.id,
             "enabled_servers": scoped_servers,
             "enabled_capabilities": scoped_capabilities,
         }
 
     async def _run_execution(self, workflow, prompt, run_id, lm_obj,
-                             enabled_servers, enabled_capabilities, capability_settings):
+                             enabled_servers, enabled_capabilities, capability_settings,
+                             session_id=None):
         """Run a workflow end-to-end in the background, tracking via MLflow.
 
         Per-request LM is set via dspy.context() inside each workflow's run()
@@ -170,17 +228,35 @@ class MCPService(BaseService):
             "status": "RUNNING",
             "stage": "initializing",
             "workflow_id": workflow.id,
+            "session_id": session_id or run_id,
             "prompt": prompt,
             "process_result": "",
             "reasoning": "",
             "trajectory": {},
         })
 
+        # Decide once whether this run participates in chat history. The
+        # session_id is always tagged for MLflow grouping; the chat_history
+        # string is only built and threaded into run() when the workflow opts
+        # in via supports_chat_history.
+        supports_history = bool(getattr(workflow, "supports_chat_history", False))
+        effective_session_id = session_id or run_id
+        prior_turn_count = (
+            len(self._session_turns(effective_session_id)) if supports_history else 0
+        )
+        chat_history = (
+            self._format_session_history(effective_session_id) if supports_history else ""
+        )
+
         try:
             mlflow.end_run()
             with mlflow.start_run(run_id=run_id):
                 mlflow.set_tag("stage", "initializing")
                 mlflow.set_tag("workflow_id", workflow.id)
+                mlflow.set_tag("mcp.session_id", effective_session_id)
+                mlflow.set_tag("mcp.turn_index", prior_turn_count)
+                if supports_history:
+                    mlflow.set_tag("mcp.session_history_chars", len(chat_history))
                 mlflow.log_param("workflow", workflow.id)
                 mlflow.log_param("prompt", prompt)
                 mlflow.log_param("enabled_servers", ",".join(enabled_servers))
@@ -213,13 +289,19 @@ class MCPService(BaseService):
                     f"[MCP] Executing workflow '{workflow.id}' with prompt={prompt!r}"
                 )
                 mlflow.set_tag("stage", "executing workflow")
+                run_kwargs = dict(capability_context)
+                if supports_history:
+                    # Workflows that opt in receive accumulated session history
+                    # as a labelled transcript. Workflows that don't opt in
+                    # never see the kwarg, so their signatures stay unchanged.
+                    run_kwargs["chat_history"] = chat_history
                 result = await workflow.run(
                     prompt,
                     lm_obj,
                     run_id=run_id,
                     enabled_servers=enabled_servers,
                     server_registry=self.server_registry,
-                    **capability_context,
+                    **run_kwargs,
                 )
 
                 mlflow.set_tag("stage", "complete")
@@ -235,11 +317,22 @@ class MCPService(BaseService):
                     "status": "FINISHED",
                     "stage": "complete",
                     "workflow_id": workflow.id,
+                    "session_id": effective_session_id,
                     "prompt": prompt,
                     "process_result": result_dict.get("process_result", ""),
                     "reasoning": result_dict.get("reasoning", ""),
                     "trajectory": result_dict.get("trajectory") or {},
                 })
+
+                # Append this turn to the session bucket only on success and
+                # only for opt-in workflows. Failed runs and single-shot
+                # workflows leave the session store untouched.
+                if supports_history and result_dict.get("process_result"):
+                    self._record_session_turn(
+                        effective_session_id,
+                        prompt,
+                        str(result_dict.get("process_result", "")),
+                    )
 
         except Exception as e:
             self.log.error(f"[MCP] Execution failed: {e}")
@@ -250,6 +343,7 @@ class MCPService(BaseService):
                 "status": "FAILED",
                 "stage": "error",
                 "workflow_id": workflow.id,
+                "session_id": effective_session_id,
                 "prompt": prompt,
                 "process_result": "",
                 "reasoning": "",
