@@ -26,6 +26,20 @@
         </div>
         <div class="header-right">
           <button
+            v-if="supportsChatHistory"
+            class="header-action history-toggle"
+            :class="{ 'is-on': historyEnabled }"
+            @click="historyEnabled = !historyEnabled"
+            :disabled="run.isRunning.value"
+            type="button"
+            :title="historyEnabled
+              ? 'Chat history is being threaded into each prompt. Click to disable for the rest of this session.'
+              : 'Chat history is disabled for this session. Click to re-enable.'"
+          >
+            <span class="toggle-dot"></span>
+            <span>History {{ historyEnabled ? 'on' : 'off' }}</span>
+          </button>
+          <button
             v-if="messages.length"
             class="header-action"
             @click="clearTranscript"
@@ -105,6 +119,16 @@ const sessionId = ref(null)
 // composer copy and the meaning of the "New chat" button. Defaults to false
 // for safety if the field is missing from the workflow registration.
 const supportsChatHistory = computed(() => !!props.workflow?.supports_chat_history)
+
+// User-controlled session-wide override on top of the workflow flag.
+// Defaults to ON for opt-in workflows; flipping it OFF turns the rest of
+// the session into independent runs (no read of prior turns, no write of
+// the new turn) until flipped back ON or the user clicks "New chat".
+// Has no effect on workflows that opt out.
+const historyEnabled = ref(true)
+const historyActive = computed(
+  () => supportsChatHistory.value && historyEnabled.value
+)
 
 // --- Viewport-fit -----------------------------------------------------------
 // This view is full-screen (sidebar + chat fill the space between Caldera's
@@ -188,9 +212,10 @@ const examplePrompts = computed(() => props.workflow?.example_prompts || [])
 const composerPlaceholder = computed(() => {
   if (run.isRunning.value) return 'Working on the previous request…'
   if (messages.value.length) {
-    return supportsChatHistory.value
-      ? 'Send a follow-up prompt in this session…'
-      : 'Send another prompt (each one runs independently)…'
+    if (historyActive.value) return 'Send a follow-up prompt in this session…'
+    if (supportsChatHistory.value)
+      return 'History is off for this session, each prompt runs independently…'
+    return 'Send another prompt (each one runs independently)…'
   }
   return 'Describe what you want this workflow to do…'
 })
@@ -258,6 +283,11 @@ async function _startRun(text) {
     // and the response echoes it back. Subsequent turns pass it so the
     // backend threads accumulated chat history (opt-in workflows only).
     session_id: sessionId.value,
+    // True only when the user has flipped the header toggle off mid-
+    // session. The backend already gates on workflow opt-in, so sending
+    // false here is the no-op default for workflows that don't support
+    // history at all.
+    disable_history: supportsChatHistory.value && !historyEnabled.value,
   }
 
   try {
@@ -279,6 +309,10 @@ function clearTranscript() {
   // for them.
   messages.value = []
   sessionId.value = null
+  // Reset the per-session history toggle to its default (on). For
+  // opt-out workflows this has no visible effect since the toggle is
+  // not rendered.
+  historyEnabled.value = true
   run.reset()
   pendingAssistantId = null
 }
@@ -368,5 +402,28 @@ function clearTranscript() {
 .header-action:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+.history-toggle {
+  /* Off state: muted grey, blends into the header. Subtle by design so
+     people aren't constantly drawn to it. */
+  color: #888888;
+  border-color: #3a3a3a;
+}
+.history-toggle.is-on {
+  /* On state: slightly lifted background + brighter text so the user
+     can tell at a glance that history threading is active. */
+  color: #d0d0d0;
+  background-color: rgba(255, 255, 255, 0.04);
+  border-color: #555555;
+}
+.toggle-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #555555;
+  display: inline-block;
+}
+.history-toggle.is-on .toggle-dot {
+  background-color: #d0d0d0;
 }
 </style>

@@ -59,6 +59,12 @@ class McpAPI:
             # on follow-up turns. Workflows that opt out of chat history
             # ignore this value entirely.
             session_id = data.get("session_id")
+            # Per-request override letting the user disable chat history
+            # mid-session even when the workflow opts in. The flag gates
+            # both reading prior turns into this prompt and recording the
+            # new turn afterwards, so a history-off prompt is a clean
+            # side conversation that does not affect the session thread.
+            disable_history = bool(data.get("disable_history", False))
 
             # Legacy fields (only used when workflow_id is absent)
             focus = data.get("type")
@@ -81,6 +87,7 @@ class McpAPI:
                 enabled_capabilities=enabled_capabilities,
                 capability_settings=capability_settings,
                 session_id=session_id,
+                disable_history=disable_history,
             )
             return web.json_response(result)
 

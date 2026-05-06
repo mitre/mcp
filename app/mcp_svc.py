@@ -119,7 +119,7 @@ class MCPService(BaseService):
                       enabled_servers=None, file: dict = None,
                       workflow_id: str = None, lm_config: dict = None,
                       enabled_capabilities=None, capability_settings=None,
-                      session_id: str = None):
+                      session_id: str = None, disable_history: bool = False):
         """Start an MLflow run and launch a background workflow execution.
 
         Accepts both the new payload shape (workflow_id + lm_config +
@@ -201,6 +201,7 @@ class MCPService(BaseService):
             enabled_servers=scoped_servers,
             enabled_capabilities=scoped_capabilities,
             capability_settings=cap_settings,
+            disable_history=disable_history,
         ))
         return {
             "run_id": run_id,
@@ -208,11 +209,12 @@ class MCPService(BaseService):
             "workflow_id": workflow.id,
             "enabled_servers": scoped_servers,
             "enabled_capabilities": scoped_capabilities,
+            "history_disabled": bool(disable_history),
         }
 
     async def _run_execution(self, workflow, prompt, run_id, lm_obj,
                              enabled_servers, enabled_capabilities, capability_settings,
-                             session_id=None):
+                             session_id=None, disable_history=False):
         """Run a workflow end-to-end in the background, tracking via MLflow.
 
         Per-request LM is set via dspy.context() inside each workflow's run()
@@ -238,8 +240,11 @@ class MCPService(BaseService):
         # Decide once whether this run participates in chat history. The
         # session_id is always tagged for MLflow grouping; the chat_history
         # string is only built and threaded into run() when the workflow opts
-        # in via supports_chat_history.
-        supports_history = bool(getattr(workflow, "supports_chat_history", False))
+        # in via supports_chat_history AND the per-request disable_history
+        # flag is False. Disabling history is a clean side conversation:
+        # neither read nor written, so the session thread is unaffected.
+        workflow_opts_in = bool(getattr(workflow, "supports_chat_history", False))
+        supports_history = workflow_opts_in and not disable_history
         effective_session_id = session_id or run_id
         prior_turn_count = (
             len(self._session_turns(effective_session_id)) if supports_history else 0
@@ -255,6 +260,8 @@ class MCPService(BaseService):
                 mlflow.set_tag("workflow_id", workflow.id)
                 mlflow.set_tag("mcp.session_id", effective_session_id)
                 mlflow.set_tag("mcp.turn_index", prior_turn_count)
+                if workflow_opts_in and disable_history:
+                    mlflow.set_tag("mcp.history_disabled", "true")
                 if supports_history:
                     mlflow.set_tag("mcp.session_history_chars", len(chat_history))
                 mlflow.log_param("workflow", workflow.id)
