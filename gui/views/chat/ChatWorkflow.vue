@@ -362,11 +362,12 @@ function clearTranscript() {
 }
 .header-left {
   display: flex;
-  /* Baseline (not center) so the bottoms of "Back" and "Author" sit on
-     the same line. With centred boxes the eye still reads misalignment
-     when one item is bordered text at a smaller font size and the
-     other is unbordered text at a larger font size. */
-  align-items: baseline;
+  /* Centred so the row has even padding above and below. With both
+     items locked to the same 28px height and matching line-height: 1
+     the small baseline mismatch from differing font sizes is under
+     2px, which is below the visual threshold; what the eye notices
+     is asymmetric padding around the row, not sub-pixel baselines. */
+  align-items: center;
   gap: 0.85rem;
 }
 .back-button {
