@@ -401,11 +401,13 @@ function clearTranscript() {
   opacity: 0.45;
   cursor: not-allowed;
 }
-.header-title {
-  /* Same 28px box and font-size as .back-button so the two read on
-     exactly the same horizontal line. Visual hierarchy comes from
-     font-weight 600 and a brighter foreground colour, not from a
-     larger font that would force baselines apart. */
+/* Selector chained through .chat-header to outrank the global
+   .content h2:not(:first-child) { margin-top: 1.1428em } rule that
+   Bulma's typography pack applies to every h2 nested inside
+   <div class="content"> (which is what mcp.vue wraps us in). Without
+   this bump the h2 picks up ~18px of margin-top and floats below
+   the back button instead of sitting beside it. */
+.chat-header .header-title {
   height: 28px;
   display: inline-flex;
   align-items: center;
