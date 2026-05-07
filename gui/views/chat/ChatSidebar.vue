@@ -6,10 +6,12 @@
 -->
 <template>
   <aside class="chat-sidebar" :class="{ collapsed }">
-    <button class="collapse-toggle" @click="$emit('toggle')" type="button"
-            :title="collapsed ? 'Expand panel' : 'Collapse panel'">
-      <font-awesome-icon :icon="['fas', collapsed ? 'angle-left' : 'angle-right']" />
-    </button>
+    <header class="sidebar-header">
+      <button class="collapse-toggle" @click="$emit('toggle')" type="button"
+              :title="collapsed ? 'Expand panel' : 'Collapse panel'">
+        <font-awesome-icon :icon="['fas', collapsed ? 'angle-left' : 'angle-right']" />
+      </button>
+    </header>
 
     <div v-if="!collapsed" class="sidebar-body">
       <h3 class="sidebar-title">{{ workflow?.display_name || 'Workflow' }}</h3>
@@ -305,12 +307,20 @@ onMounted(() => {
   overflow: hidden;
 }
 .chat-sidebar.collapsed { width: 36px; }
+.sidebar-header {
+  /* Mirrors .chat-header on the left so the bottom border reads as one
+     continuous line across the top of the screen and the collapse-toggle
+     sits at the same vertical centerline as the Back button + workflow
+     title in the chat header. */
+  display: flex;
+  align-items: center;
+  padding: 0.85rem 0.85rem;
+  border-bottom: 1px solid #3a3a3a;
+  flex-shrink: 0;
+}
 .collapse-toggle {
-  position: absolute;
-  top: 12px;
-  left: 8px;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 4px;
   background: transparent;
   border: 1px solid #3a3a3a;
@@ -323,9 +333,7 @@ onMounted(() => {
 }
 .collapse-toggle:hover { background-color: rgba(255, 255, 255, 0.05); }
 .sidebar-body {
-  /* Extra top padding clears the absolutely-positioned collapse-toggle
-     pinned to the top-left of the panel. */
-  padding: 2.4rem 1rem 1.2rem 1rem;
+  padding: 0.9rem 1rem 1.2rem 1rem;
   overflow-y: auto;
   flex: 1;
 }
