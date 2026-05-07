@@ -370,6 +370,14 @@ function clearTranscript() {
   align-items: center;
   gap: 0.85rem;
 }
+.header-right {
+  /* Explicit horizontal flex with a fixed gap so the History toggle
+     and New chat button sit side-by-side with consistent spacing,
+     instead of relying on each button's display value to do it. */
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
 .back-button {
   /* Same fixed height as the collapse-toggle in the sidebar header so
      both top-bar strips end at the exact same Y. Matches the
@@ -444,6 +452,12 @@ function clearTranscript() {
   50%      { opacity: 1; }
 }
 .header-action {
+  /* inline-flex so multiple actions sit side-by-side as siblings;
+     plain `display: flex` would make each button block-level and the
+     two buttons would stack vertically. */
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   background-color: transparent;
   color: #d0d0d0;
   border: 1px solid #3a3a3a;
@@ -451,9 +465,6 @@ function clearTranscript() {
   padding: 0.4rem 0.75rem;
   font-size: 0.82rem;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
 }
 .header-action:hover:not(:disabled) {
   background-color: rgba(255, 255, 255, 0.05);
