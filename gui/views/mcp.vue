@@ -428,8 +428,11 @@ async function handleCustomSubmit() {
 
 <script setup>
 import { ref, provide, reactive, watch, onMounted, computed } from 'vue'
-import McpPromptFactory from './chat/ChatWorkflow.vue'
-import McpPromptPlanner from './public_mcp_ability_factory.vue'
+// Both built-in workflows render through the same chat-style component;
+// per-workflow behaviour (system prompt, accepted capabilities, chat
+// history opt-in) is driven entirely by the workflow's registration
+// data, which the component reads off props.workflow.
+import McpChatWorkflow from './chat/ChatWorkflow.vue'
 import McpHistory from './mcp_history.vue'
 
 // selectedPath holds either a workflow id (e.g. "author", "plan_execute") or
@@ -498,19 +501,17 @@ function applyServerDefaults(d) {
 }
 
 // Resolve which Vue component renders a given workflow's session page.
-// Built-in workflows ship with the MCP plugin and have known component names;
-// external plugins reference their own files via workflow.ui_component, which
-// the magma bundler is responsible for resolving relative to the plugin's
-// gui/views/ directory.
+// Built-in workflows ship with the MCP plugin and currently all use the
+// same chat-style component; external plugins can supply their own via
+// workflow.ui_component, which the magma bundler resolves relative to
+// the plugin's gui/views/ directory.
 const _BUILTIN_COMPONENTS = {
-  'author.vue': McpPromptFactory,
-  'plan_execute.vue': McpPromptPlanner,
-  // Backwards-compatible alias for the pre-rename plan_execute component.
-  'public_mcp_ability_factory.vue': McpPromptPlanner,
+  'author.vue': McpChatWorkflow,
+  'plan_execute.vue': McpChatWorkflow,
 }
 
 function resolveWorkflowComponent(wf) {
-  return _BUILTIN_COMPONENTS[wf.ui_component] || McpPromptFactory
+  return _BUILTIN_COMPONENTS[wf.ui_component] || McpChatWorkflow
 }
 
 const activeWorkflow = computed(() =>
