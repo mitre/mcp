@@ -318,9 +318,7 @@ WORKFLOWS = [
         id="author",
         display_name="Author",
         description=(
-            "Create new abilities and adversaries from a description. "
-            "Best for authoring reusable artifacts; does not run operations or "
-            "deploy infrastructure."
+            "Create new abilities and adversaries from a description."
         ),
         signature=DSPyCalderaFactoryClient,
         required_servers=["caldera_core"],
