@@ -352,7 +352,10 @@ function clearTranscript() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.85rem 1.6rem;
+  /* Tight vertical padding so the header strip feels like a thin top
+     bar rather than a chunky chrome row. The 28px controls inside
+     dominate the height. */
+  padding: 0.5rem 1.6rem;
   background-color: #1f1f1f;
   border-bottom: 1px solid #3a3a3a;
   flex-shrink: 0;
@@ -367,11 +370,9 @@ function clearTranscript() {
   gap: 0.85rem;
 }
 .back-button {
-  /* Pinning a fixed height on both back-button and header-title is what
-     actually fixes the alignment: align-items: center on the row centres
-     boxes, but if the boxes are different heights the text inside still
-     looks offset. Same height, content centred, lined up. */
-  height: 32px;
+  /* Same fixed height as the collapse-toggle in the sidebar header so
+     both top-bar strips end at the exact same Y. */
+  height: 28px;
   background: transparent;
   border: 1px solid #3a3a3a;
   border-radius: 6px;
@@ -396,9 +397,9 @@ function clearTranscript() {
   cursor: not-allowed;
 }
 .header-title {
-  /* Same 32px box as .back-button so the text inside both boxes lands
+  /* Same 28px box as .back-button so the text inside both boxes lands
      on the same horizontal centerline. */
-  height: 32px;
+  height: 28px;
   display: inline-flex;
   align-items: center;
   font-size: 1.1rem;

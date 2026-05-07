@@ -314,7 +314,7 @@ onMounted(() => {
      title in the chat header. */
   display: flex;
   align-items: center;
-  padding: 0.85rem 0.85rem;
+  padding: 0.5rem 0.85rem;
   border-bottom: 1px solid #3a3a3a;
   flex-shrink: 0;
 }
