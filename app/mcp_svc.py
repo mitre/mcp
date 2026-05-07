@@ -1,10 +1,28 @@
 import collections
 import logging
+import re
 from app.utility.base_service import BaseService
 import mlflow
 import asyncio
 
 from plugins.mcp.app.config import resolve_llm_config
+
+
+# DSPy's chat adapter wraps each output field in '[[ ## field_name ## ]]'
+# markers and emits '[[ ## completed ## ]]' to signal end-of-response. Its
+# parser usually strips these, but a slightly malformed variant (e.g.
+# '[[ ## completed ]]' with no closing '##') does not match the parser's
+# regex and ends up in the parsed field's content. We sanitise here once so
+# both the live cache and the MLflow tag and the per-turn chat history all
+# get clean text instead of leaking the marker into the chat UI or back into
+# the LLM on the next turn.
+_DSPY_MARKER_RE = re.compile(r"\[\[\s*##\s*\w+\s*(?:##\s*)?\]\]")
+
+
+def _strip_dspy_markers(text: str) -> str:
+    if not text:
+        return text or ""
+    return _DSPY_MARKER_RE.sub("", text).rstrip()
 
 
 _LEGACY_TYPE_MAP = {
@@ -314,11 +332,14 @@ class MCPService(BaseService):
                 mlflow.set_tag("stage", "complete")
                 mlflow.set_tag("status", "success")
                 result_dict = result or {}
-                if result_dict.get("process_result"):
-                    mlflow.set_tag(
-                        "process_result_summary",
-                        str(result_dict.get("process_result", ""))[:250],
-                    )
+                process_result = _strip_dspy_markers(
+                    str(result_dict.get("process_result", ""))
+                )
+                reasoning = _strip_dspy_markers(
+                    str(result_dict.get("reasoning", ""))
+                )
+                if process_result:
+                    mlflow.set_tag("process_result_summary", process_result[:250])
 
                 self._record_run(run_id, {
                     "status": "FINISHED",
@@ -326,19 +347,17 @@ class MCPService(BaseService):
                     "workflow_id": workflow.id,
                     "session_id": effective_session_id,
                     "prompt": prompt,
-                    "process_result": result_dict.get("process_result", ""),
-                    "reasoning": result_dict.get("reasoning", ""),
+                    "process_result": process_result,
+                    "reasoning": reasoning,
                     "trajectory": result_dict.get("trajectory") or {},
                 })
 
                 # Append this turn to the session bucket only on success and
                 # only for opt-in workflows. Failed runs and single-shot
                 # workflows leave the session store untouched.
-                if supports_history and result_dict.get("process_result"):
+                if supports_history and process_result:
                     self._record_session_turn(
-                        effective_session_id,
-                        prompt,
-                        str(result_dict.get("process_result", "")),
+                        effective_session_id, prompt, process_result
                     )
 
         except Exception as e:
