@@ -359,7 +359,11 @@ function clearTranscript() {
 }
 .header-left {
   display: flex;
-  align-items: center;
+  /* Baseline (not center) so the bottoms of "Back" and "Author" sit on
+     the same line. With centred boxes the eye still reads misalignment
+     when one item is bordered text at a smaller font size and the
+     other is unbordered text at a larger font size. */
+  align-items: baseline;
   gap: 0.85rem;
 }
 .back-button {
