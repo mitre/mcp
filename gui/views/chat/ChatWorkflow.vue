@@ -372,14 +372,18 @@ function clearTranscript() {
 }
 .back-button {
   /* Same fixed height as the collapse-toggle in the sidebar header so
-     both top-bar strips end at the exact same Y. */
+     both top-bar strips end at the exact same Y. Matches the
+     header-title's font-size so the two read on the same horizontal
+     line; visual hierarchy comes from font-weight and the muted
+     colour, not from a smaller font. */
   height: 28px;
   background: transparent;
   border: 1px solid #3a3a3a;
   border-radius: 6px;
   color: #888888;
   cursor: pointer;
-  font-size: 0.82rem;
+  font-size: 0.95rem;
+  font-weight: 500;
   line-height: 1;
   padding: 0 0.7rem 0 0.55rem;
   margin: 0;
@@ -398,12 +402,14 @@ function clearTranscript() {
   cursor: not-allowed;
 }
 .header-title {
-  /* Same 28px box as .back-button so the text inside both boxes lands
-     on the same horizontal centerline. */
+  /* Same 28px box and font-size as .back-button so the two read on
+     exactly the same horizontal line. Visual hierarchy comes from
+     font-weight 600 and a brighter foreground colour, not from a
+     larger font that would force baselines apart. */
   height: 28px;
   display: inline-flex;
   align-items: center;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   line-height: 1;
   color: #d0d0d0;
