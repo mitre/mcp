@@ -363,23 +363,23 @@ function clearTranscript() {
   gap: 0.85rem;
 }
 .back-button {
+  /* Flat nav-link style, not a bordered button: it should read as a
+     subdued return link sitting just left of the page heading, not as
+     a peer button competing with it for visual weight. */
   background: transparent;
-  border: 1px solid #3a3a3a;
-  border-radius: 6px;
+  border: none;
   color: #888888;
   cursor: pointer;
-  font-size: 0.82rem;
-  padding: 0.4rem 0.7rem 0.4rem 0.55rem;
-  display: flex;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+  gap: 0.3rem;
+  transition: color 0.15s ease;
 }
-.back-button:hover:not(:disabled) {
-  color: #d0d0d0;
-  background-color: rgba(255, 255, 255, 0.05);
-  border-color: #555555;
-}
+.back-button:hover:not(:disabled) { color: #d0d0d0; }
 .back-button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
