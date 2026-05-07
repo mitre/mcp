@@ -363,30 +363,43 @@ function clearTranscript() {
   gap: 0.85rem;
 }
 .back-button {
-  /* Flat nav-link style, not a bordered button: it should read as a
-     subdued return link sitting just left of the page heading, not as
-     a peer button competing with it for visual weight. */
+  /* Pinning a fixed height on both back-button and header-title is what
+     actually fixes the alignment: align-items: center on the row centres
+     boxes, but if the boxes are different heights the text inside still
+     looks offset. Same height, content centred, lined up. */
+  height: 32px;
   background: transparent;
-  border: none;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
   color: #888888;
   cursor: pointer;
-  font-size: 0.95rem;
+  font-size: 0.82rem;
   line-height: 1;
-  padding: 0;
+  padding: 0 0.7rem 0 0.55rem;
   margin: 0;
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  transition: color 0.15s ease;
+  gap: 0.35rem;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
-.back-button:hover:not(:disabled) { color: #d0d0d0; }
+.back-button:hover:not(:disabled) {
+  color: #d0d0d0;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: #555555;
+}
 .back-button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 .header-title {
+  /* Same 32px box as .back-button so the text inside both boxes lands
+     on the same horizontal centerline. */
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
   font-size: 1.1rem;
   font-weight: 600;
+  line-height: 1;
   color: #d0d0d0;
   margin: 0;
 }
