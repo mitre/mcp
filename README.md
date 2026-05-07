@@ -57,10 +57,16 @@ In the Global Model Configuration panel:
 
 **Frontend (Vue.js)**
 - `mcp.vue`: Main landing page with navigation
-- `local_mcp_ability_factory.vue`: Ability creation interface
-- `public_mcp_ability_factory.vue`: Public ability interface
+- `chat/ChatWorkflow.vue`: Chat-style session page used for every built-in
+  workflow (Author, Plan and Execute); reads display_name, description,
+  accepted_capabilities, and supports_chat_history off the workflow
+  registration so a single component covers all workflows
+- `chat/ChatSidebar.vue`, `ChatTranscript.vue`, `ChatMessage.vue`,
+  `ChatComposer.vue`, `ChatThoughts.vue`, `ChatLoadingState.vue`: leaf
+  components composed by ChatWorkflow
+- `chat/composables/useMcpRun.js`, `useTrajectory.js`: reactive helpers
+  for the run lifecycle and trajectory parsing
 - `mcp_history.vue`: Historical run browser
-- `mcp_extension_guide.vue`: Developer extension guide
 
 **Backend (Python)**
 - `mcp_api.py`: aiohttp API routes
@@ -212,10 +218,16 @@ plugins/mcp/
 │   └── rag.py             # CTI retrieval
 ├── gui/views/             # Vue frontend
 │   ├── mcp.vue
-│   ├── local_mcp_ability_factory.vue
-│   ├── public_mcp_ability_factory.vue
-│   ├── mcp_history.vue
-│   └── mcp_extension_guide.vue
+│   ├── chat/              # chat-style workflow session page
+│   │   ├── ChatWorkflow.vue
+│   │   ├── ChatSidebar.vue
+│   │   ├── ChatTranscript.vue
+│   │   ├── ChatMessage.vue
+│   │   ├── ChatComposer.vue
+│   │   ├── ChatThoughts.vue
+│   │   ├── ChatLoadingState.vue
+│   │   └── composables/{useMcpRun,useTrajectory}.js
+│   └── mcp_history.vue
 ├── conf/default.yml       # Default configuration
 ├── data/                  # STIX JSON files
 ├── hook.py                # Plugin initialization

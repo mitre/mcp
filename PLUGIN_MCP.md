@@ -442,20 +442,28 @@ Vue components live in `plugins/<your_plugin>/gui/views/*.vue`. Magma's
 ### 7.1 Workflow session page
 
 A workflow's `ui_component: "my_workflow.vue"` resolves to
-`plugins/<your_plugin>/gui/views/my_workflow.vue`.
+`plugins/<your_plugin>/gui/views/my_workflow.vue`. Built-in workflows
+omit `ui_component` (or point at `author.vue` / `plan_execute.vue`),
+which routes them through the shared chat module at
+[gui/views/chat/ChatWorkflow.vue](gui/views/chat/ChatWorkflow.vue).
 
-Look at
-[plugins/mcp/gui/views/public_mcp_ability_factory.vue](gui/views/public_mcp_ability_factory.vue)
-or
-[plugins/mcp/gui/views/local_mcp_ability_factory.vue](gui/views/local_mcp_ability_factory.vue)
-for working templates. Re-usable parts:
+Most third-party workflows do not need a custom session page: the
+shared chat component is workflow-agnostic and renders correctly off
+the workflow registration alone (display_name, description,
+accepted_capabilities, supports_chat_history, example_prompts). If
+your workflow needs custom rendering, look at
+[gui/views/chat/ChatWorkflow.vue](gui/views/chat/ChatWorkflow.vue) for
+the orchestrator and re-use these pieces:
 
-- The poll loop that fills `pollFinalResult` / `pollReasoning` / `thoughts`.
-- The `formatProcessResult` helper at
-  [gui/views/format_result.js](gui/views/format_result.js) — handles
-  bold + nested bullets safely.
-- The Result / Reasoning / Thoughts panel structure — match the
-  existing markup so your workflow blends in.
+- [gui/views/chat/composables/useMcpRun.js](gui/views/chat/composables/useMcpRun.js) drives the
+  POST /execute + GET /status poll loop and exposes reactive run state.
+- [gui/views/chat/composables/useTrajectory.js](gui/views/chat/composables/useTrajectory.js) parses
+  the DSPy ReAct trajectory into thoughts and (Author-specific) ability
+  / adversary cards.
+- [gui/views/format_result.js](gui/views/format_result.js)'s
+  `formatProcessResult` helper safely renders bold + nested bullets.
+- The leaf chat components (ChatTranscript, ChatMessage, ChatThoughts,
+  ChatComposer, ChatLoadingState) compose into the standard chat shape.
 
 ### 7.2 Capability settings panel
 

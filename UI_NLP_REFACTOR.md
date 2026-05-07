@@ -1,14 +1,19 @@
 # MCP NLP UI Refactor — Chat-Style Workflow Page
 
-**Status:** Implementation already on disk on branch `multi-mcp-layer`
-(see "Reverting" below). This document describes the design so it can be
-reviewed before being kept or rolled back.
+**Status:** Shipped. Both built-in workflows (Author and Plan and
+Execute) now render through `chat/ChatWorkflow.vue`. The
+`local_mcp_ability_factory.vue` and `public_mcp_ability_factory.vue`
+legacy views have been deleted; nothing references them. Multi-turn
+chat history landed for opt-in workflows (Plan and Execute is opted
+in, Author is not) — see [MULTI_TURN_PLAN.md](MULTI_TURN_PLAN.md) for
+the design and what is already in place.
 
-**Scope:** the `author` workflow page only. The `plan_execute` workflow
-(`public_mcp_ability_factory.vue`) is intentionally untouched in this pass.
-No backend or MLflow changes — the chat UI shape is the structural
-foundation for true multi-turn, but each prompt is still a single-shot
-`/plugin/mcp/execute` call today.
+**Original scope (kept below for context):** the `author` workflow page
+only. The `plan_execute` workflow was intentionally untouched in the
+first pass; it migrated to the same chat component in a follow-up
+commit once the shape stabilised. No backend or MLflow changes were
+needed for that migration because the chat module was already
+workflow-agnostic.
 
 ---
 
@@ -136,8 +141,9 @@ panels at a glance.
 
 - **Multi-turn backend.** Each prompt still creates an isolated MLflow
   run. Sending a follow-up does not pass prior trajectory as context.
-- **`plan_execute` workflow.** `public_mcp_ability_factory.vue` still
-  uses the legacy single-page UI.
+- (Originally) **`plan_execute` workflow** stayed on the legacy UI.
+  Now also using `chat/ChatWorkflow.vue` after the follow-up
+  migration; nothing left to do here.
 - **Run history page.** `mcp_history.vue` is unchanged.
 - **Streaming.** Polling at 1 Hz is unchanged. No SSE, no WebSocket.
 
