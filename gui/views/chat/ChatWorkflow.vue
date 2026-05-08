@@ -87,7 +87,6 @@
       :capabilities="capabilities"
       :available-servers="availableServers"
       :global-config="globalConfig"
-      :$api="$api"
       v-model:selectedRag="selectedRag"
       :collapsed="sidebarCollapsed"
       @toggle="sidebarCollapsed = !sidebarCollapsed"
