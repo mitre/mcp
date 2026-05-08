@@ -18,6 +18,7 @@ from plugins.mcp.app.dspy_env import (
     ENV_MODEL,
     ENV_TEMPERATURE,
 )
+from plugins.mcp.app.dspy_runner import safe_react_acall
 
 
 def _build_lm_from_settings(settings: dict) -> dspy.LM:
@@ -62,7 +63,7 @@ def get_env(lm_settings=None):
         env[ENV_API_KEY] = str(lm_settings.get('api_key') or '')
         env[ENV_API_BASE] = str(lm_settings.get('api_base') or '')
         env[ENV_TEMPERATURE] = str(lm_settings.get('temperature') or 0.5)
-        env[ENV_MAX_TOKENS] = str(lm_settings.get('max_tokens') or 10000)
+        env[ENV_MAX_TOKENS] = str(lm_settings.get('max_tokens') or 24000)
 
     env['CALDERA_URL'] = os.environ.get('CALDERA_URL', 'http://localhost:8888/api/v2/')
     env['CORE_CALDERA_API_KEY'] = os.environ.get('CORE_CALDERA_API_KEY', 'ADMIN123')
@@ -282,7 +283,8 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
 
                     react = dspy.ReAct(signature, tools=dspy_tools, max_iters=max_tool_calls)
                     mlflow.set_tag("stage", "executing DSPy ReAct with RAG")
-                    result = await react.acall(
+                    result = await safe_react_acall(
+                        react,
                         adversary_emulation_task=adversary_emulation_task,
                         cti_context=resolved_cti,
                         chat_history=chat_history,
@@ -291,7 +293,8 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
                     signature = DSPyCalderaPlannerClient
                     react = dspy.ReAct(signature, tools=dspy_tools, max_iters=max_tool_calls)
                     mlflow.set_tag("stage", "executing DSPy ReAct")
-                    result = await react.acall(
+                    result = await safe_react_acall(
+                        react,
                         adversary_emulation_task=adversary_emulation_task,
                         chat_history=chat_history,
                     )

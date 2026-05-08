@@ -33,9 +33,17 @@ from app.utility.base_world import BaseWorld
 
 _YAML_PATH = 'plugins/mcp/conf/default.yml'
 
+# max_tokens is the per-completion budget DSPy passes to the LM. Each
+# ReAct iteration consumes one completion, and a verbose model on a
+# multi-server tool surface (caldera_core + range = 27 tools) routinely
+# produces a long `next_thought` per iteration. With the previous 10k
+# default, those iterations would truncate, the closing parser marker
+# never got emitted, and DSPy's ChatAdapter would fail the whole run.
+# 24k buys enough headroom for the verbose path without inflating cost
+# on short turns (LMs only bill for tokens actually emitted).
 _NUMERIC_FALLBACKS = {
     "temperature": 0.5,
-    "max_tokens": 10000,
+    "max_tokens": 24000,
     "max_tool_calls": 5,
 }
 
