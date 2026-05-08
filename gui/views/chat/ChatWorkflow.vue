@@ -102,6 +102,7 @@ import ChatTranscript from './ChatTranscript.vue'
 import ChatComposer from './ChatComposer.vue'
 import { useMcpRun } from './composables/useMcpRun.js'
 import { useTrajectory } from './composables/useTrajectory.js'
+import { useChatSession } from './composables/useChatSession.js'
 
 const props = defineProps({
   workflow: { type: Object, default: () => ({}) },
@@ -113,29 +114,33 @@ const $api = inject('$api')
 const globalConfig = inject('mcpGlobalConfig')
 const availableServers = inject('mcpAvailableServers', ref([]))
 
+// --- Persistent per-workflow chat state -------------------------------------
+// useChatSession owns messages / sessionId / historyEnabled / selectedRag
+// and persists them to localStorage keyed by workflow.id. Hydrates once on
+// mount so leaving the view and coming back re-renders the same transcript;
+// reset() is the only path that wipes them (called by clearTranscript).
+//
+// composerText is intentionally NOT persisted: a half-typed prompt
+// surviving a remount is a worse UX than a clean text box.
+const session = useChatSession(props.workflow.id || '__default__')
+const messages = session.messages
+const sessionId = session.sessionId
+const historyEnabled = session.historyEnabled
+const selectedRag = session.selectedRag
+
 // --- UI state ---------------------------------------------------------------
 const sidebarCollapsed = ref(false)
 const composerText = ref('')
-const selectedRag = ref([])
-const messages = ref([])  // [{ id, role, text|finalResult, status, ... }]
-
-// Server-assigned identifier for the current chat session. Null means the
-// next prompt will start a fresh session; once set, follow-up prompts pass
-// this value back so the backend threads accumulated chat history into the
-// signature (only for workflows that opt in via supports_chat_history).
-const sessionId = ref(null)
 
 // True when the workflow has opted in to per-session chat history. Drives
 // composer copy and the meaning of the "New chat" button. Defaults to false
 // for safety if the field is missing from the workflow registration.
 const supportsChatHistory = computed(() => !!props.workflow?.supports_chat_history)
 
-// User-controlled session-wide override on top of the workflow flag.
-// Defaults to ON for opt-in workflows; flipping it OFF turns the rest of
-// the session into independent runs (no read of prior turns, no write of
-// the new turn) until flipped back ON or the user clicks "New chat".
-// Has no effect on workflows that opt out.
-const historyEnabled = ref(true)
+// historyEnabled is owned by the session composable above so the user's
+// choice survives navigating away. The convenience computed below mirrors
+// the legacy contract: true only when the workflow opts in AND the user
+// has not flipped the toggle off.
 const historyActive = computed(
   () => supportsChatHistory.value && historyEnabled.value
 )
@@ -164,6 +169,11 @@ function syncHeight() {
 }
 
 onMounted(() => {
+  // Bring saved transcript / sessionId / historyEnabled / selectedRag back
+  // before the first render pass. Has to happen before the height sync so
+  // the transcript scroll position settles correctly on a hydrated view.
+  session.hydrate()
+
   prevBodyOverflow = document.body.style.overflow
   prevHtmlOverflow = document.documentElement.style.overflow
   document.body.style.overflow = 'hidden'
@@ -312,17 +322,15 @@ async function _startRun(text) {
 
 function clearTranscript() {
   if (run.isRunning.value) return
-  // For opt-in workflows the session id is what the server uses to look
-  // up accumulated history. Clearing the transcript means starting a
-  // fresh conversation, so drop the session id too. Single-shot
-  // workflows reset the same field; it just had no semantic meaning
-  // for them.
-  messages.value = []
-  sessionId.value = null
-  // Reset the per-session history toggle to its default (on). For
-  // opt-out workflows this has no visible effect since the toggle is
-  // not rendered.
-  historyEnabled.value = true
+  // "New chat" is the only path that wipes durable session state. The
+  // composable resets messages, sessionId, historyEnabled, and
+  // selectedRag in memory AND removes this workflow's slice from
+  // localStorage so a future remount starts genuinely fresh. For
+  // opt-in workflows this also tells the server to forget the prior
+  // session_id (it's the keying field the backend uses to look up
+  // accumulated chat history); single-shot workflows reset the same
+  // fields, they just have no semantic meaning for them.
+  session.reset()
   run.reset()
   pendingAssistantId = null
 }
