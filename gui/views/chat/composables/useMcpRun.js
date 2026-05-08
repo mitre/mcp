@@ -69,6 +69,11 @@ export function useMcpRun($api) {
         reasoning.value = res.data.reasoning || ''
         finalResult.value = res.data.process_result || ''
         trajectory.value = res.data.trajectory || {}
+        // The backend writes a per-run `error` field into the run cache when
+        // the workflow raises (see mcp_svc._run_execution's except branch).
+        // Surface it so ChatMessage can render the actual cause under the
+        // "Run failed." headline instead of leaving it blank.
+        if (res.data.error) errorMessage.value = res.data.error
 
         if (status.value === 'FINISHED' || status.value === 'FAILED') {
           clearInterval(pollTimer)
