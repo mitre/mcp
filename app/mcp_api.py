@@ -229,7 +229,11 @@ class McpAPI:
                 status=404,
             )
 
-        self.log.info(f"[MCP] Status for run {run_id} served from cache")
+        # The chat UI polls this endpoint roughly every second while a run
+        # is in flight; INFO would print hundreds of lines per long run for
+        # the expected happy path. Drop to DEBUG so operators can still
+        # opt in via log level when troubleshooting.
+        self.log.debug(f"[MCP] Status for run {run_id} served from cache")
         return web.json_response({"run_id": run_id, **snapshot})
 
     async def upload_rag(self, request):
