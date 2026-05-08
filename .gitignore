@@ -9,12 +9,9 @@
 # Local planning
 **/z_plans
 
-# .graphifyignore
-node_modules/
-dist/
-*.generated.py
+# Graphify build context (rules for graphify itself live in .graphifyignore)
+graphify-out/
 
-# only index src/, ignore everything else
-*
-!src/
-!src/**
+# Claude Code local settings
+.claude/
+CLAUDE.md
