@@ -1,11 +1,23 @@
 import collections
+import json
 import logging
+import os
 import re
+import tempfile
+from pathlib import Path
 from app.utility.base_service import BaseService
 import mlflow
 import asyncio
 
 from plugins.mcp.app.config import resolve_llm_config
+
+
+# Where chat session history lives on disk. Co-located with RAG uploads
+# under plugins/mcp/data/. Single JSON file rather than one-per-session
+# because the load is once at boot and the writes happen at the end of
+# successful runs, where one extra ~tens-of-KB write is invisible against
+# the LLM round-trip we just finished.
+_SESSIONS_FILE = Path(__file__).resolve().parent.parent / "data" / "sessions.json"
 
 
 # DSPy's chat adapter wraps each output field in '[[ ## field_name ## ]]'
@@ -70,7 +82,14 @@ class MCPService(BaseService):
         #   {"prompt": str, "response": str}
         # Author-style workflows never read or write to this map; their
         # session_ids hit it as no-ops.
-        self._sessions: "collections.OrderedDict[str, list[dict]]" = collections.OrderedDict()
+        #
+        # Loaded from _SESSIONS_FILE on boot so chat threads persist across
+        # Caldera restarts. Saved on every _record_session_turn. The file is
+        # only authoritative for opt-in workflows; runs that never write a
+        # turn (Author, single-shot) leave nothing on disk.
+        self._sessions: "collections.OrderedDict[str, list[dict]]" = (
+            self._load_sessions_from_disk()
+        )
 
         self.log.info(
             f"[MCP] Initialized MCPService with servers={list(self.server_registry.keys())} "
@@ -122,6 +141,106 @@ class MCPService(BaseService):
         self._sessions.move_to_end(session_id)
         while len(self._sessions) > _SESSION_CACHE_LIMIT:
             self._sessions.popitem(last=False)
+        self._save_sessions_to_disk()
+
+    # ------------------------------------------------------------------
+    # Disk persistence for self._sessions
+    # ------------------------------------------------------------------
+    # Keeps opt-in workflow chat history alive across Caldera restarts.
+    # The file format is intentionally trivial JSON so it can be inspected
+    # or hand-edited if a session needs surgery:
+    #
+    #   {"schema": 1,
+    #    "sessions": {"<session_id>": [{"prompt": "...", "response": "..."}, ...]}}
+    #
+    # Reads tolerate a missing or malformed file (returns empty); a stale
+    # file with the wrong schema is dropped rather than coerced. Writes use
+    # write-then-rename so a crash mid-write cannot leave a half-written
+    # JSON file in place of a known-good one.
+
+    _SESSIONS_SCHEMA_VERSION = 1
+
+    def _load_sessions_from_disk(self) -> "collections.OrderedDict[str, list[dict]]":
+        """Best-effort hydrate of the chat-history map from disk.
+
+        Returns an empty OrderedDict if the file is absent, malformed, or
+        carries an unrecognised schema version. Logs at debug level only;
+        a missing sessions file is the normal first-boot state.
+        """
+        try:
+            if not _SESSIONS_FILE.exists():
+                return collections.OrderedDict()
+            with open(_SESSIONS_FILE, "r", encoding="utf-8") as f:
+                blob = json.load(f)
+            if blob.get("schema") != self._SESSIONS_SCHEMA_VERSION:
+                self.log.warning(
+                    f"[MCP] Ignoring sessions file with unknown schema "
+                    f"{blob.get('schema')!r}; starting fresh"
+                )
+                return collections.OrderedDict()
+            sessions = blob.get("sessions") or {}
+            if not isinstance(sessions, dict):
+                return collections.OrderedDict()
+            # Cap at boot too; a file that grew past the cap (e.g. limit
+            # was raised then lowered) should not bypass our memory budget.
+            restored: "collections.OrderedDict[str, list[dict]]" = (
+                collections.OrderedDict()
+            )
+            for sid, turns in sessions.items():
+                if not isinstance(turns, list):
+                    continue
+                clean_turns = [
+                    t for t in turns
+                    if isinstance(t, dict)
+                    and isinstance(t.get("prompt"), str)
+                    and isinstance(t.get("response"), str)
+                ]
+                if not clean_turns:
+                    continue
+                if len(clean_turns) > _SESSION_TURN_CAP:
+                    clean_turns = clean_turns[-_SESSION_TURN_CAP:]
+                restored[sid] = clean_turns
+                if len(restored) >= _SESSION_CACHE_LIMIT:
+                    break
+            self.log.info(
+                f"[MCP] Restored {len(restored)} chat session(s) from {_SESSIONS_FILE}"
+            )
+            return restored
+        except Exception as e:
+            self.log.warning(f"[MCP] Failed to load sessions file: {e}")
+            return collections.OrderedDict()
+
+    def _save_sessions_to_disk(self) -> None:
+        """Atomically persist self._sessions to _SESSIONS_FILE.
+
+        Writes to a sibling temp file in the same directory and renames
+        on top of the target so a crash leaves either the previous good
+        copy or the new good copy, never a truncated one. Failures here
+        only log; the in-memory map is still authoritative for the
+        running process.
+        """
+        try:
+            _SESSIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
+            blob = {
+                "schema": self._SESSIONS_SCHEMA_VERSION,
+                "sessions": dict(self._sessions),
+            }
+            fd, tmp_path = tempfile.mkstemp(
+                prefix=".sessions-", suffix=".json.tmp", dir=str(_SESSIONS_FILE.parent),
+            )
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    json.dump(blob, f, ensure_ascii=False)
+                os.replace(tmp_path, _SESSIONS_FILE)
+            except Exception:
+                # Make sure we don't leak the temp file on a write failure.
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
+                raise
+        except Exception as e:
+            self.log.warning(f"[MCP] Failed to persist sessions file: {e}")
 
     def _create_dspy_client(self, model_config: dict):
         return {

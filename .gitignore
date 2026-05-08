@@ -15,3 +15,6 @@ graphify-out/
 # Claude Code local settings
 .claude/
 CLAUDE.md
+
+# Per-deployment runtime state
+data/sessions.json
