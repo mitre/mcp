@@ -380,6 +380,8 @@ def create_windows_ability(
     technique_name: str,
     technique_id: str = None,
     payloads: list = None,
+    parsers: list = None,
+    cleanup: list = None,
 ):
     """
     Create a new windows ability with the specified parameters.
@@ -392,7 +394,9 @@ def create_windows_ability(
         technique_name: Name of the MITRE ATT&CK technique
         technique_id: Optional MITRE ATT&CK technique ID (e.g., 'T1548.002')
         payloads: Optional list of payload files needed
-
+        parsers: Optional list of parser configurations
+        cleanup: Optional list of cleanup commands
+        
     Returns:
         The response from the Caldera API
     """
@@ -409,8 +413,8 @@ def create_windows_ability(
         "payloads": payloads or [],
         "uploads": [],
         "timeout": 60,
-        "parsers": [],
-        "cleanup": [],
+        "parsers": parsers or [],
+        "cleanup": cleanup or [],
         "variations": [],
         "additional_info": {},
     }
@@ -446,6 +450,8 @@ def create_linux_ability(
     technique_name: str,
     technique_id: str = None,
     payloads: list = None,
+    parsers: list = None,
+    cleanup: list = None,
 ):
     """
     Create a new linux ability with the specified parameters.
@@ -458,7 +464,9 @@ def create_linux_ability(
         technique_name: Name of the MITRE ATT&CK technique
         technique_id: Optional MITRE ATT&CK technique ID (e.g., 'T1548.002')
         payloads: Optional list of payload files needed
-
+        parsers: Optional list of parser configurations
+        cleanup: Optional list of cleanup commands
+        
     Returns:
         The response from the Caldera API
     """
@@ -476,8 +484,8 @@ def create_linux_ability(
         "payloads": payloads or [],
         "uploads": [],
         "timeout": 60,
-        "parsers": [],
-        "cleanup": [],
+        "parsers": parsers or [],
+        "cleanup": cleanup or [],
         "variations": [],
         "additional_info": {},
     }
