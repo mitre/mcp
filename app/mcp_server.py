@@ -511,6 +511,13 @@ def get_payloads():
     """
     return caldera_request.make_get_request("payloads")
 
+@mcp.tool()
+def finish():
+    """
+    Call this tool when you have completed all tasks and are ready to finish.
+    This signals the end of the agent's work.
+    """
+    return "Completed."
 
 if __name__ == "__main__":
     mcp.run()
