@@ -223,23 +223,28 @@ plugins/mcp/
 +-- app/
 |   +-- mcp_api.py                 # aiohttp routes used by the UI
 |   +-- mcp_svc.py                 # service orchestration
-|   +-- mcp_server.py              # MCP server and tool registration
-|   +-- mcp_factory_client.py      # Author workflow client
-|   +-- plan_execute.py            # Plan and Execute workflow client
-|   +-- rag.py                     # STIX retrieval support
+|   +-- mcp_gui.py                 # UI route registration
+|   +-- mcp_server.py              # in-process MCP server tools
+|   +-- capabilities/
+|   |   +-- rag.py                 # STIX retrieval support
+|   +-- workflows/
+|   |   +-- author.py              # Author workflow
+|   |   +-- plan_execute.py        # Plan and Execute workflow
+|   |   +-- prompts/               # centralized prompt context
 |   +-- utilities/
 |       +-- cti_deploy_spec.py     # topology and deploy-spec synthesis
-|       +-- cti_ingest.py          # raw CTI extraction helpers
+|       +-- cti_*                  # CTI extraction, validation, enrichment
 +-- conf/
 |   +-- default.yml                # safe defaults only
 +-- docs/
 |   +-- images/                    # README screenshots
 +-- gui/views/
 |   +-- mcp.vue                    # landing page
-|   +-- cti_ingest.vue             # CTI ingest workflow
+|   +-- cti.vue                    # CTI ingest workflow
 |   +-- chat/                      # chat workflow components
-+-- prompt_context/                # centralized workflow prompt context
++-- mcp_server.py                  # standalone MCP entrypoint
 +-- requirements.txt
++-- tests/                         # pytest suite
 +-- hook.py                        # plugin initialization
 ```
 
@@ -248,7 +253,7 @@ plugins/mcp/
 Run tests from the plugin repository when available:
 
 ```bash
-pytest
+pytest tests
 ```
 
 Useful CALDERA startup commands from the CALDERA root:
