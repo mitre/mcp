@@ -234,7 +234,7 @@ class TestRestoreConfig:
                     "provider": "openai_compatible",
                     "model": "devstral",
                     "api_base": "https://localhost:8443/v1",
-                    "api_key": "***REDACTED-MITRE-GATEWAY-KEY***",
+                    "api_key": "test-api-key",
                     "temperature": 0.0,
                     "top_p": 1.0,
                     "max_tokens": 4000,
