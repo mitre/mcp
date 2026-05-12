@@ -29,12 +29,45 @@ _SESSIONS_FILE = Path(__file__).resolve().parent.parent / "data" / "sessions.jso
 # get clean text instead of leaking the marker into the chat UI or back into
 # the LLM on the next turn.
 _DSPY_MARKER_RE = re.compile(r"\[\[\s*##\s*\w+\s*(?:##\s*)?\]\]")
+_SECRET_RE = re.compile(r"\bsk-[A-Za-z0-9_-]{8,}\b")
 
 
 def _strip_dspy_markers(text: str) -> str:
     if not text:
         return text or ""
     return _DSPY_MARKER_RE.sub("", text).rstrip()
+
+
+def _scrub_secrets(text: str) -> str:
+    return _SECRET_RE.sub("sk-***", str(text or ""))
+
+
+def _leaf_exceptions(exc: BaseException) -> list[BaseException]:
+    if isinstance(exc, BaseExceptionGroup):
+        leaves = []
+        for child in exc.exceptions:
+            leaves.extend(_leaf_exceptions(child))
+        return leaves
+    return [exc]
+
+
+def _summarize_exception(exc: BaseException) -> str:
+    leaves = _leaf_exceptions(exc)
+    if not leaves:
+        return _scrub_secrets(str(exc))
+    primary = leaves[-1]
+    summary = _scrub_secrets(str(primary)).strip() or primary.__class__.__name__
+    if "failure to get a peer from the ring-balancer" in summary:
+        return (
+            "LLM provider unavailable: the AI Platform model gateway returned "
+            "'failure to get a peer from the ring-balancer' after retries."
+        )
+    if "Incorrect API key provided" in summary:
+        return (
+            "LLM authentication failed: the configured API key was rejected by "
+            "the selected provider."
+        )
+    return summary
 
 
 _LEGACY_TYPE_MAP = {
@@ -256,6 +289,7 @@ class MCPService(BaseService):
                       enabled_servers=None, file: dict = None,
                       workflow_id: str = None, lm_config: dict = None,
                       enabled_capabilities=None, capability_settings=None,
+                      workflow_context: dict | None = None,
                       session_id: str = None, disable_history: bool = False):
         """Start an MLflow run and launch a background workflow execution.
 
@@ -316,12 +350,31 @@ class MCPService(BaseService):
             cap_settings["rag"] = legacy_rag_settings
         if "rag" in scoped_capabilities:
             rag_cfg = dict(cap_settings.get("rag") or {})
-            rag_cfg.setdefault("api_key", resolved_lm.get("api_key", ""))
+            if not rag_cfg.get("api_key"):
+                rag_cfg["api_key"] = resolved_lm.get("api_key", "")
+            if not rag_cfg.get("api_base"):
+                rag_cfg["api_base"] = resolved_lm.get("api_base", "")
+            if not rag_cfg.get("embed_model"):
+                rag_cfg["embed_model"] = (
+                    resolved_lm.get("embed_model") or resolved_lm.get("rag_embed_model")
+                )
             cap_settings["rag"] = rag_cfg
 
-        run = mlflow.start_run(run_name=f"MCP {workflow.display_name}")
+        # mlflow keeps a single "active run" per Python process; firing
+        # two concurrent /plugin/mcp/execute requests would collide on
+        # the second one with "Run X is already active". Use the
+        # MlflowClient to mint a run record WITHOUT making it the
+        # process-wide active run — the actual work in _run_execution
+        # below uses `mlflow.start_run(run_id=...)` in its own context
+        # manager, which is per-task and doesn't conflict.
+        from mlflow.tracking import MlflowClient as _Mlc
+        _exp = mlflow.get_experiment_by_name("caldera-mcp-client-1")
+        _exp_id = _exp.experiment_id if _exp else "0"
+        run = _Mlc().create_run(
+            experiment_id=_exp_id,
+            tags={"mlflow.runName": f"MCP {workflow.display_name}"},
+        )
         run_id = run.info.run_id
-        mlflow.end_run()
 
         # Resolve the session this run belongs to. The first turn auto-starts
         # a session keyed by its own run_id; follow-up turns echo the same
@@ -338,6 +391,7 @@ class MCPService(BaseService):
             enabled_servers=scoped_servers,
             enabled_capabilities=scoped_capabilities,
             capability_settings=cap_settings,
+            workflow_context=workflow_context if isinstance(workflow_context, dict) else {},
             disable_history=disable_history,
         ))
         return {
@@ -351,7 +405,8 @@ class MCPService(BaseService):
 
     async def _run_execution(self, workflow, prompt, run_id, lm_obj,
                              enabled_servers, enabled_capabilities, capability_settings,
-                             session_id=None, disable_history=False):
+                             workflow_context=None, session_id=None,
+                             disable_history=False):
         """Run a workflow end-to-end in the background, tracking via MLflow.
 
         Per-request LM is set via dspy.context() inside each workflow's run()
@@ -405,6 +460,11 @@ class MCPService(BaseService):
                 mlflow.log_param("prompt", prompt)
                 mlflow.log_param("enabled_servers", ",".join(enabled_servers))
                 mlflow.log_param("enabled_capabilities", ",".join(enabled_capabilities))
+                if isinstance(workflow_context, dict) and workflow_context:
+                    mlflow.log_param(
+                        "workflow_context_keys",
+                        ",".join(sorted(workflow_context.keys())),
+                    )
 
                 capability_context = {}
                 for cap_id in enabled_capabilities:
@@ -439,6 +499,8 @@ class MCPService(BaseService):
                     # as a labelled transcript. Workflows that don't opt in
                     # never see the kwarg, so their signatures stay unchanged.
                     run_kwargs["chat_history"] = chat_history
+                if isinstance(workflow_context, dict) and workflow_context:
+                    run_kwargs["workflow_context"] = workflow_context
                 result = await workflow.run(
                     prompt,
                     lm_obj,
@@ -480,10 +542,11 @@ class MCPService(BaseService):
                     )
 
         except Exception as e:
-            self.log.error(f"[MCP] Execution failed: {e}")
+            error_summary = _summarize_exception(e)
+            self.log.error(f"[MCP] Execution failed: {error_summary}")
             mlflow.set_tag("stage", "error")
             mlflow.set_tag("status", "error")
-            mlflow.log_param("error", str(e))
+            mlflow.log_param("error", error_summary)
             self._record_run(run_id, {
                 "status": "FAILED",
                 "stage": "error",
@@ -493,7 +556,7 @@ class MCPService(BaseService):
                 "process_result": "",
                 "reasoning": "",
                 "trajectory": {},
-                "error": str(e),
+                "error": error_summary,
             })
 
         finally:

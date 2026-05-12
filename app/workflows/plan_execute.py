@@ -10,7 +10,7 @@ from mlflow.tracking import MlflowClient
 import asyncio
 from contextlib import AsyncExitStack
 
-from plugins.mcp.app.config import llm_defaults
+from plugins.mcp.app.config import caldera_connection, llm_defaults
 from plugins.mcp.app.dspy_env import (
     ENV_API_BASE,
     ENV_API_KEY,
@@ -19,6 +19,20 @@ from plugins.mcp.app.dspy_env import (
     ENV_TEMPERATURE,
 )
 from plugins.mcp.app.dspy_runner import safe_react_acall
+from plugins.mcp.app.workflows.prompts.common import (
+    CHAT_HISTORY_DESC,
+    CTI_CONTEXT_DESC,
+    PLAN_EXECUTE_OUTPUT_DESC,
+    format_rag_context,
+)
+from plugins.mcp.app.workflows.prompts.plan_execute import (
+    PLAN_EXECUTE_AGENT_DOC,
+    PLAN_EXECUTE_AGENT_WITH_CTI_DOC,
+    PLAN_EXECUTE_DESCRIPTION,
+    PLAN_EXECUTE_EXAMPLES,
+    PLAN_EXECUTE_OPERATION_CONTEXT_DESC,
+    format_plan_execute_context,
+)
 
 
 def _build_lm_from_settings(settings: dict) -> dspy.LM:
@@ -65,8 +79,9 @@ def get_env(lm_settings=None):
         env[ENV_TEMPERATURE] = str(lm_settings.get('temperature') or 0.5)
         env[ENV_MAX_TOKENS] = str(lm_settings.get('max_tokens') or 24000)
 
-    env['CALDERA_URL'] = os.environ.get('CALDERA_URL', 'http://localhost:8888/api/v2/')
-    env['CORE_CALDERA_API_KEY'] = os.environ.get('CORE_CALDERA_API_KEY', 'ADMIN123')
+    caldera = caldera_connection()
+    env['CALDERA_URL'] = os.environ.get('CALDERA_URL') or caldera['url']
+    env['CORE_CALDERA_API_KEY'] = os.environ.get('CORE_CALDERA_API_KEY') or caldera['api_key']
 
     return env
 
@@ -75,83 +90,36 @@ mlflow.set_experiment("caldera-mcp-client-1")
 mlflow.dspy.autolog()
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-_PLAN_EXECUTE_OUTPUT_DESC = (
-    "The substantive answer to the user's request. Include the actual data "
-    "observed from your tool calls: counts, names, ids, statuses, and any "
-    "values the user asked about. When listing things, use a short bulleted "
-    "or numbered list with the real names from the observations, not "
-    "placeholders. Do NOT narrate which tools you called or describe your "
-    "methodology. Do NOT say things like 'I first listed X, then I retrieved "
-    "Y'. The user wants the results, not a recap of how you got them. "
-    "If a tool failed and you could not retrieve some data, say so clearly "
-    "and name what is missing, but still return whatever data you did get."
-)
-
-
-_CHAT_HISTORY_DESC = (
-    "Prior turns in this chat session, oldest first. Each turn is "
-    "labelled 'User:' / 'Assistant:'. Use them to resolve follow-up "
-    "references like 'that profile', 'the instance I just created', "
-    "or 'add it to the deployment from earlier'. The current request "
-    "still arrives in adversary_emulation_task; chat_history is "
-    "context for interpreting it. Empty string on the first turn."
-)
-
 
 class DSPyCalderaPlannerClient(dspy.Signature):
-    """You are a planner for the Caldera adversary emulation platform.
-    You have access to MCP tool servers that wrap Caldera's core API and any
-    installed plugins. Your job is to PLAN and EXECUTE operations using
-    existing abilities and adversaries.
-
-    Prefer reusing existing artifacts over creating new ones. Use range or
-    infrastructure tools only when the operation requires live targets.
-
-    When chat_history is non-empty, treat it as the conversation so far and
-    interpret the current request in that context. Reuse entity ids that
-    appeared in earlier turns rather than asking the user to repeat them.
-
-    When you produce process_result, return the substantive content the
-    user asked for (real names, counts, ids, statuses), not a recap of the
-    tools you called.
-    """
+    """Plan and execute a CALDERA adversary-emulation request."""
     adversary_emulation_task: str = dspy.InputField()
-    chat_history: str = dspy.InputField(default="", desc=_CHAT_HISTORY_DESC)
-    process_result: str = dspy.OutputField(desc=_PLAN_EXECUTE_OUTPUT_DESC)
+    operation_context: str = dspy.InputField(
+        default="", desc=PLAN_EXECUTE_OPERATION_CONTEXT_DESC,
+    )
+    chat_history: str = dspy.InputField(default="", desc=CHAT_HISTORY_DESC)
+    process_result: str = dspy.OutputField(desc=PLAN_EXECUTE_OUTPUT_DESC)
 
 class DSPyCalderaPlannerClientWithRAG(dspy.Signature):
-    """You are a planner for the Caldera adversary emulation platform,
-    enhanced with Cyber Threat Intelligence (CTI) data. You have access to MCP
-    tool servers that wrap Caldera's core API and any installed plugins. Your
-    job is to PLAN and EXECUTE operations informed by CTI, using existing
-    abilities and adversaries.
-
-    Prefer reusing existing artifacts over creating new ones. Use range or
-    infrastructure tools only when the operation requires live targets.
-    Ground your plan in the provided CTI context so the operation mirrors
-    real-world threat actor behavior.
-
-    When chat_history is non-empty, treat it as the conversation so far and
-    interpret the current request in that context. Reuse entity ids that
-    appeared in earlier turns rather than asking the user to repeat them.
-
-    When you produce process_result, return the substantive content the
-    user asked for (real names, counts, ids, statuses), not a recap of the
-    tools you called.
-    """
+    """Plan and execute a CTI-grounded CALDERA adversary-emulation request."""
     adversary_emulation_task: str = dspy.InputField()
-    cti_context: str = dspy.InputField(
-        desc="Relevant CTI (Cyber Threat Intelligence) information including attack patterns, techniques, and threat actor behaviors"
+    operation_context: str = dspy.InputField(
+        default="", desc=PLAN_EXECUTE_OPERATION_CONTEXT_DESC,
     )
-    chat_history: str = dspy.InputField(default="", desc=_CHAT_HISTORY_DESC)
+    cti_context: str = dspy.InputField(desc=CTI_CONTEXT_DESC)
+    chat_history: str = dspy.InputField(default="", desc=CHAT_HISTORY_DESC)
     process_result: str = dspy.OutputField(
         desc=(
-            _PLAN_EXECUTE_OUTPUT_DESC
+            PLAN_EXECUTE_OUTPUT_DESC
             + " When CTI context shaped the plan, briefly note which "
             "CTI elements drove which decisions, but keep that note "
             "secondary to the substantive results themselves."
         )
     )
+
+
+DSPyCalderaPlannerClient.__doc__ = PLAN_EXECUTE_AGENT_DOC
+DSPyCalderaPlannerClientWithRAG.__doc__ = PLAN_EXECUTE_AGENT_WITH_CTI_DOC
 
 # Factory function to create tool functions with proper closure
 def create_tool_function(session, tool_name, tool_description):
@@ -161,23 +129,11 @@ def create_tool_function(session, tool_name, tool_description):
     tool_function.__doc__ = tool_description
     return tool_function
 
-def format_rag_context(rag_context):
-    """Format RAG context into a string for the DSPy signature."""
-    if not rag_context:
-        return "No CTI context available."
-    formatted_parts = []
-    if "search_results" in rag_context:
-        formatted_parts.append("Relevant CTI findings:")
-        for i, result in enumerate(rag_context["search_results"][:3], 1):
-            formatted_parts.append(f"{i}. {result}")
-    if "detailed_context" in rag_context:
-        formatted_parts.append("\nDetailed CTI Information:")
-        for ctx in rag_context["detailed_context"]:
-            formatted_parts.append(f"\n{ctx['name']}:")
-            formatted_parts.append(f"{ctx['description']}")
-    return "\n".join(formatted_parts)
-
-async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_id=None, enabled_servers=None, server_registry=None, cti_context: str = "", chat_history: str = "", **_extra_capability_context):
+async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None,
+              run_id=None, enabled_servers=None, server_registry=None,
+              cti_context: str = "", chat_history: str = "",
+              workflow_context: dict | None = None,
+              **_extra_capability_context):
     """
     lm_obj can be:
       - a dict produced by mcp_svc.resolve_llm_config (yaml + .env + UI
@@ -210,16 +166,45 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
 
     # Resolve which MCP servers to spawn
     if not enabled_servers:
-        enabled_servers = ["caldera_core"]
+        # Default to both caldera_core and cti_pipeline so the planner has
+        # the full CTI -> STIX -> deploy -> operation -> detections toolset
+        # out of the box. cti_pipeline is filtered out below if its server
+        # file is missing (graceful fall-back to caldera_core-only mode).
+        enabled_servers = ["caldera_core", "cti_pipeline"]
     if server_registry is None:
         # Fallback used only when run() is invoked without a registry (e.g. tests).
         # mcp_server.py lives one directory up after the workflows/ split.
+        core_server_path = os.path.join(os.path.dirname(current_dir), "mcp_server.py")
+        # CTI pipeline server sits at the mcp plugin root.
+        cti_pipeline_server_path = os.path.abspath(
+            os.path.join(current_dir, "..", "..", "mcp_server.py")
+        )
         server_registry = {
             "caldera_core": {
-                "path": os.path.join(os.path.dirname(current_dir), "mcp_server.py"),
+                "path": core_server_path,
                 "metadata": {"display_name": "CALDERA Core", "default_enabled": True},
-            }
+            },
+            "cti_pipeline": {
+                "path": cti_pipeline_server_path,
+                "metadata": {
+                    "display_name": "CTI Pipeline",
+                    "default_enabled": True,
+                    "description": (
+                        "CTI ingest -> STIX -> topology -> deploy spec -> "
+                        "deploy -> operation -> detection-validation tools."
+                    ),
+                },
+            },
         }
+    # Drop any enabled server that is not in the resolved registry so the
+    # workflow degrades gracefully (e.g. caldera_core-only mode) when an
+    # optional server's mcp_server.py is missing on disk.
+    enabled_servers = [s for s in enabled_servers if s in server_registry]
+    if not enabled_servers:
+        raise ValueError(
+            "no usable MCP servers - expected caldera_core (and optionally "
+            "cti_pipeline) in the server registry"
+        )
 
     mlflow.log_param("enabled_servers", ",".join(enabled_servers))
 
@@ -236,7 +221,7 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
                     raise ValueError(f"Unknown MCP server: {server_name}")
                 info = server_registry[server_name]
                 params = StdioServerParameters(
-                    command="python",
+                    command=sys.executable,
                     args=[str(info["path"])],
                     env=get_env(lm_settings),
                 )
@@ -271,6 +256,10 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
                 resolved_cti = cti_context
                 if not resolved_cti and rag_context:
                     resolved_cti = format_rag_context(rag_context)
+                operation_context = format_plan_execute_context(workflow_context)
+                if operation_context:
+                    mlflow.log_param("operation_context_preview", operation_context[:1000])
+                    mlflow.set_tag("operation_context_length", len(operation_context))
 
                 if resolved_cti:
                     signature = DSPyCalderaPlannerClientWithRAG
@@ -286,6 +275,7 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
                     result = await safe_react_acall(
                         react,
                         adversary_emulation_task=adversary_emulation_task,
+                        operation_context=operation_context,
                         cti_context=resolved_cti,
                         chat_history=chat_history,
                     )
@@ -296,6 +286,7 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
                     result = await safe_react_acall(
                         react,
                         adversary_emulation_task=adversary_emulation_task,
+                        operation_context=operation_context,
                         chat_history=chat_history,
                     )
 
@@ -363,21 +354,13 @@ WORKFLOWS = [
     Workflow(
         id="plan_execute",
         display_name="Plan and Execute",
-        description=(
-            "Plan and execute operations using existing abilities, adversaries, "
-            "and infrastructure. With CTI ingestion enabled, can also provision "
-            "infrastructure that matches the environment described in the report."
-        ),
+        description=PLAN_EXECUTE_DESCRIPTION,
         signature=DSPyCalderaPlannerClient,
         required_servers=["caldera_core"],
-        optional_servers=["range"],
+        optional_servers=["cti_pipeline", "range"],
         accepted_capabilities=["rag"],
         ui_component="plan_execute.vue",
-        example_prompts=[
-            "Plan an emulation against the Discovery adversary on my available agents.",
-            "Build infrastructure that resembles the environment described in the attached CTI report.",
-            "Stand up a small ICS testbed with two Windows hosts and one Linux jumpbox, then run a discovery operation against it.",
-        ],
+        example_prompts=PLAN_EXECUTE_EXAMPLES,
         run=run,
         supports_chat_history=True,
     ),

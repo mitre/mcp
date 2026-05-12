@@ -1,0 +1,71 @@
+# privilege_keywords.yml
+#
+# Privilege-level vocabulary and the STIX 2.1 user-account `account_type-ov`
+# label that each privilege level maps to.
+#
+# Authoritative sources for every entry below:
+#   * "admin" group keywords --------- Microsoft "Active Directory Built-in
+#                                      Privileged Groups" reference
+#                                      (Domain Admins, Enterprise Admins,
+#                                      Schema Admins, Administrators).
+#                                      https://learn.microsoft.com/en-us/
+#                                      windows-server/identity/ad-ds/plan/
+#                                      security-best-practices/
+#                                      appendix-b--privileged-accounts-and-groups-in-active-directory
+#   * "local-admin" keywords -------- Microsoft "Local Users and Groups"
+#                                      (BUILTIN\Administrators local group).
+#                                      https://learn.microsoft.com/en-us/
+#                                      windows/security/identity-protection/
+#                                      access-control/local-accounts
+#   * "sudo" keywords --------------- sudo(8) manpage; /etc/sudoers(5);
+#                                      Debian/RHEL "wheel" group convention.
+#                                      https://www.sudo.ws/docs/man/sudoers.man/
+#   * "sql-admin" keywords ---------- Microsoft SQL Server fixed-server-roles
+#                                      (sysadmin) and fixed-database-roles
+#                                      (db_owner).
+#                                      https://learn.microsoft.com/en-us/sql/
+#                                      relational-databases/security/
+#                                      authentication-access/
+#                                      server-level-roles
+#   * "standard" keywords ----------- NIST SP 800-162 (RBAC) — non-privileged
+#                                      / least-privilege user definition.
+#
+# `account_type-ov` (STIX 2.1, §6.2 user-account SCO) is an OPEN vocabulary,
+# so the custom value `unix-sql` (used for DB-engine accounts) is permitted.
+
+privilege_keywords:
+  admin:
+    - domain admin
+    - domain administrator
+    - enterprise admin
+    - schema admin
+  local-admin:
+    - local administrator
+    - local admin
+    - administrator group
+  sudo:
+    - sudo
+    - root
+    - wheel group
+    - /etc/sudoers
+    - linux admin
+  sql-admin:
+    - sql administrator
+    - sql admin
+    - sysadmin
+    - db_owner
+  standard:
+    - standard user
+    - non-privileged
+    - non-admin
+    - regular user
+
+# Maps the normalized privilege label above onto the STIX user-account
+# `account_type-ov` value emitted in the IR.
+privilege_to_account_type:
+  admin:        windows-domain
+  local-admin:  windows-local
+  sudo:         unix
+  sql-admin:    unix-sql        # custom STIX open-vocab value
+  standard:     windows-domain  # default when privilege is "Standard user"
+  unknown:      windows-domain  # fallback when no privilege cue is present

@@ -2,6 +2,15 @@
 
 An AI-powered plugin for Caldera that orchestrates long-running LLM workflows to automatically create adversary emulation abilities and plan operations. Optionally enriches workflows with Retrieval-Augmented Generation (RAG) using Cyber Threat Intelligence (CTI) from STIX JSON files. All executions are tracked via MLflow for full observability into LLM reasoning and tool usage.
 
+## Recent changes
+
+- **`cti_pipeline` MCP server**: `mcp_server.py` now registers a dedicated `cti_pipeline` server exposing six tools the LLM can call in sequence — `cti_pipeline_ingest_cti`, `cti_pipeline_build_topology`, `cti_pipeline_synthesize_deploy_spec`, `cti_pipeline_deploy_range`, `cti_pipeline_run_operation`, `cti_pipeline_validate_detections`.
+- **`plan_execute` rewritten as zero-to-hero**: raw CTI → STIX 2.1 → topology → deploy spec → infrastructure → agents → operation → detection scoring. The DSPy program enforces two non-negotiable directives: **GROUNDING** (every fact must come from a tool call — never invented) and **AGNOSTIC TO INPUT** (any CTI domain — ransomware, APT, ICS, insider, AI/ML, supply chain).
+- **`ae-e2e` workflow card removed** from the landing page. The `AEEndToEndWorkflow` class is retained for the CLI client (`scripts/e2e_full_vision.sh`).
+- **`Upload CTI` landing-page card restored** from the previous github/CTI era so STIX bundles can be staged before a run.
+- **CTI extractor fidelity improvements**: against the CTID BlackCat plan eval — techniques recall 5.9% → 70.6%, services 0% → 42.9%, software 33% → 42%. All ontology-driven (NLTK / WordNet / IANA `/etc/services` / ATT&CK `x-mitre-data-source` SDOs / mimetypes); **no static lists** are used in the pipeline.
+- **`cti_pipeline_deploy_range`** now auto-registers the synthesised profile via `POST /plugin/range/onprem/save-profile` before deploying, so LLM-generated profile names no longer trip the range plugin's profile validation.
+
 ## Features
 
 - **LLM Ability Factory**: Generate custom Caldera abilities from natural language descriptions

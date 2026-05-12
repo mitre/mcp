@@ -12,6 +12,13 @@
 <template>
   <div ref="rootRef" class="chat-workflow">
     <main class="chat-main">
+      <section class="workflow-intro">
+        <h1 class="workflow-intro-title">{{ workflow?.display_name || 'MCP Workflow' }}</h1>
+        <p v-if="workflow?.description" class="workflow-intro-desc">
+          {{ workflow.description }}
+        </p>
+      </section>
+
       <header class="chat-header">
         <div class="header-left">
           <button
@@ -23,10 +30,9 @@
               ? 'Cannot leave while a run is in progress'
               : 'Back to workflow list'"
           >
-            <font-awesome-icon :icon="['fas', 'angle-left']" />
+            <font-awesome-icon :icon="backIcon" />
             <span>Back</span>
           </button>
-          <h2 class="header-title">{{ workflow?.display_name || 'MCP Workflow' }}</h2>
           <span v-if="run.isRunning.value" class="header-status running">
             <span class="status-dot"></span> Working
           </span>
@@ -59,7 +65,7 @@
             type="button"
             title="Start a new chat"
           >
-            <font-awesome-icon :icon="['fas', 'plus']" />
+            <font-awesome-icon :icon="plusIcon" />
             <span>New chat</span>
           </button>
         </div>
@@ -88,6 +94,7 @@
       :available-servers="availableServers"
       :global-config="globalConfig"
       v-model:selectedRag="selectedRag"
+      v-model:workflowContext="workflowContext"
       :collapsed="sidebarCollapsed"
       @toggle="sidebarCollapsed = !sidebarCollapsed"
     />
@@ -97,6 +104,7 @@
 <script setup>
 import { ref, computed, inject, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import { faAngleLeft, faPlus } from '@fortawesome/free-solid-svg-icons'
 import ChatSidebar from './ChatSidebar.vue'
 import ChatTranscript from './ChatTranscript.vue'
 import ChatComposer from './ChatComposer.vue'
@@ -113,6 +121,8 @@ defineEmits(['back'])
 const $api = inject('$api')
 const globalConfig = inject('mcpGlobalConfig')
 const availableServers = inject('mcpAvailableServers', ref([]))
+const backIcon = faAngleLeft
+const plusIcon = faPlus
 
 // --- Persistent per-workflow chat state -------------------------------------
 // useChatSession owns messages / sessionId / historyEnabled / selectedRag
@@ -131,6 +141,7 @@ const selectedRag = session.selectedRag
 // --- UI state ---------------------------------------------------------------
 const sidebarCollapsed = ref(false)
 const composerText = ref('')
+const workflowContext = ref({})
 
 // True when the workflow has opted in to per-session chat history. Drives
 // composer copy and the meaning of the "New chat" button. Defaults to false
@@ -274,31 +285,71 @@ function handleSubmit() {
 }
 
 async function _startRun(text) {
-  const filesAttached = selectedRag.value.length > 0
+  const context = workflowContext.value || {}
+  const selectedCtiFiles = Array.isArray(context.selected_stix_files)
+    ? context.selected_stix_files
+    : []
+  const ragFiles = [...new Set([...(selectedRag.value || []), ...selectedCtiFiles])]
+  const filesAttached = ragFiles.length > 0
   const baseCaps = new Set(globalConfig.capabilitiesByWorkflow?.[props.workflow.id] || [])
   if (filesAttached) baseCaps.add('rag')
+  const baseServers = new Set(globalConfig.serversByWorkflow?.[props.workflow.id] || [])
+  if (props.workflow?.id === 'plan_execute' && selectedCtiFiles.length) {
+    baseServers.add('cti_pipeline')
+  }
 
   const ragSettings = (globalConfig.capabilitySettings && globalConfig.capabilitySettings.rag) || {}
+  const inferredCtiRag = props.workflow?.id === 'plan_execute' && selectedCtiFiles.length > 0
+  const ctiRagModel = typeof context.cti_rag_model === 'string'
+    ? context.cti_rag_model.trim()
+    : ''
+  const ctiRagApiBase = typeof context.cti_rag_api_base === 'string'
+    ? context.cti_rag_api_base.trim()
+    : ''
+  const ctiRagApiKey = typeof context.cti_rag_api_key === 'string'
+    ? context.cti_rag_api_key
+    : ''
+  const ragModel = inferredCtiRag
+    ? (ctiRagModel || ragSettings.embed_model || globalConfig.modelName || '')
+    : (ragSettings.embed_model || '')
+  const ragApiBase = inferredCtiRag
+    ? (ctiRagApiBase || globalConfig.apiBase || '')
+    : (ragSettings.embed_api_base || ragSettings.api_base || globalConfig.apiBase || '')
+  const ragApiKey = inferredCtiRag
+    ? (ctiRagApiKey || globalConfig.apiKey || '')
+    : (ragSettings.embed_api_key || ragSettings.api_key || globalConfig.apiKey || '')
+  const ragTopk = inferredCtiRag
+    ? (context.cti_rag_topk || ragSettings.topk)
+    : ragSettings.topk
 
   const payload = {
     text,
     workflow_id: props.workflow.id,
-    enabled_servers: globalConfig.serversByWorkflow?.[props.workflow.id] || [],
+    enabled_servers: [...baseServers],
     enabled_capabilities: [...baseCaps],
     capability_settings: {
       rag: {
-        rag_files: selectedRag.value,
-        embed_model: ragSettings.embed_model || '',
-        topk: ragSettings.topk,
+        rag_files: ragFiles,
+        embed_model: ragModel,
+        embed_api_base: ragApiBase,
+        embed_api_key: ragApiKey,
+        api_base: ragApiBase,
+        api_key: ragApiKey,
+        temperature: inferredCtiRag ? context.cti_rag_temperature : ragSettings.temperature,
+        max_tool_calls: inferredCtiRag ? context.cti_rag_max_tool_calls : ragSettings.max_tool_calls,
+        max_tokens: inferredCtiRag ? context.cti_rag_max_tokens : ragSettings.max_tokens,
+        topk: ragTopk,
       },
     },
     lm_config: {
       model: globalConfig.modelName,
       temperature: globalConfig.temperature,
+      api_base: globalConfig.apiBase,
       api_key: globalConfig.apiKey,
       max_tool_calls: globalConfig.maxToolCalls,
       max_tokens: globalConfig.maxTokens,
     },
+    workflow_context: context,
     // Null on the very first turn of a session; the backend assigns one
     // and the response echoes it back. Subsequent turns pass it so the
     // backend threads accumulated chat history (opt-in workflows only).
@@ -345,7 +396,7 @@ function clearTranscript() {
   height: 100vh;
   color: #f5f5f5;
   overflow: hidden;
-  border-left: 1px solid #3a3a3a;
+  border-left: 1px solid rgba(158, 98, 255, 0.22);
 }
 .chat-main {
   flex: 1;
@@ -355,6 +406,31 @@ function clearTranscript() {
   min-height: 0;
   overflow: hidden;
 }
+.workflow-intro {
+  flex-shrink: 0;
+  padding: 1.25rem 1.6rem 1rem 1.6rem;
+  width: 100%;
+  box-sizing: border-box;
+  background:
+    linear-gradient(180deg, rgba(139, 92, 246, 0.12), rgba(23, 19, 31, 0.88)),
+    #17131f;
+  border-bottom: 1px solid rgba(158, 98, 255, 0.28);
+}
+.workflow-intro-title {
+  font-size: 1.28rem;
+  line-height: 1.15;
+  font-weight: 650;
+  color: #f3efff;
+  margin: 0 0 0.42rem 0;
+}
+.workflow-intro-desc {
+  width: 100%;
+  max-width: none;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: #d8d1e8;
+  margin: 0;
+}
 .chat-header {
   display: flex;
   align-items: center;
@@ -363,8 +439,8 @@ function clearTranscript() {
      bar rather than a chunky chrome row. The 28px controls inside
      dominate the height. */
   padding: 0.5rem 1.6rem;
-  background-color: #1f1f1f;
-  border-bottom: 1px solid #3a3a3a;
+  background-color: #17131f;
+  border-bottom: 1px solid rgba(158, 98, 255, 0.24);
   flex-shrink: 0;
 }
 .header-left {
@@ -392,10 +468,10 @@ function clearTranscript() {
      line; visual hierarchy comes from font-weight and the muted
      colour, not from a smaller font. */
   height: 28px;
-  background: transparent;
-  border: 1px solid #3a3a3a;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(169, 112, 255, 0.28);
   border-radius: 6px;
-  color: #888888;
+  color: #cfc3ff;
   cursor: pointer;
   font-size: 0.95rem;
   font-weight: 500;
@@ -408,29 +484,13 @@ function clearTranscript() {
   transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
 .back-button:hover:not(:disabled) {
-  color: #d0d0d0;
-  background-color: rgba(255, 255, 255, 0.05);
-  border-color: #555555;
+  color: #ffffff;
+  background-color: rgba(169, 112, 255, 0.16);
+  border-color: #a970ff;
 }
 .back-button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-}
-/* Selector chained through .chat-header to outrank the global
-   .content h2:not(:first-child) { margin-top: 1.1428em } rule that
-   Bulma's typography pack applies to every h2 nested inside
-   <div class="content"> (which is what mcp.vue wraps us in). Without
-   this bump the h2 picks up ~18px of margin-top and floats below
-   the back button instead of sitting beside it. */
-.chat-header .header-title {
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.95rem;
-  font-weight: 600;
-  line-height: 1;
-  color: #d0d0d0;
-  margin: 0;
 }
 .header-status {
   font-size: 0.78rem;
@@ -439,19 +499,24 @@ function clearTranscript() {
   gap: 0.4rem;
   padding: 0.25rem 0.6rem;
   border-radius: 999px;
+  border: 1px solid transparent;
 }
 .header-status.running {
-  color: #888888;
-  background-color: rgba(255, 255, 255, 0.06);
+  color: #ffe7b8;
+  background-color: rgba(245, 158, 11, 0.13);
+  border-color: rgba(245, 158, 11, 0.42);
 }
 .header-status.idle {
-  color: #888888;
+  color: #c9b8ff;
+  background-color: rgba(139, 92, 246, 0.12);
+  border-color: rgba(169, 112, 255, 0.28);
 }
 .status-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background-color: #888888;
+  background-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.16);
   animation: blink 1.4s infinite ease-in-out;
 }
 @keyframes blink {
@@ -465,17 +530,18 @@ function clearTranscript() {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  background-color: transparent;
-  color: #d0d0d0;
-  border: 1px solid #3a3a3a;
+  background-color: rgba(139, 92, 246, 0.08);
+  color: #d8d1e8;
+  border: 1px solid rgba(169, 112, 255, 0.28);
   border-radius: 6px;
   padding: 0.4rem 0.75rem;
   font-size: 0.82rem;
   cursor: pointer;
 }
 .header-action:hover:not(:disabled) {
-  background-color: rgba(255, 255, 255, 0.05);
-  border-color: #888888;
+  background-color: rgba(169, 112, 255, 0.16);
+  border-color: #a970ff;
+  color: #ffffff;
 }
 .header-action:disabled {
   opacity: 0.45;
@@ -484,24 +550,25 @@ function clearTranscript() {
 .history-toggle {
   /* Off state: muted grey, blends into the header. Subtle by design so
      people aren't constantly drawn to it. */
-  color: #888888;
-  border-color: #3a3a3a;
+  color: #a99dbe;
+  border-color: rgba(169, 112, 255, 0.22);
 }
 .history-toggle.is-on {
   /* On state: slightly lifted background + brighter text so the user
      can tell at a glance that history threading is active. */
-  color: #d0d0d0;
-  background-color: rgba(255, 255, 255, 0.04);
-  border-color: #555555;
+  color: #dcfff0;
+  background-color: rgba(45, 212, 191, 0.13);
+  border-color: rgba(45, 212, 191, 0.48);
 }
 .toggle-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: #555555;
+  background-color: #6b607a;
   display: inline-block;
 }
 .history-toggle.is-on .toggle-dot {
-  background-color: #d0d0d0;
+  background-color: #2dd4bf;
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.15);
 }
 </style>

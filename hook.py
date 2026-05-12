@@ -143,6 +143,33 @@ async def enable(services):
     app.router.add_route('GET', '/plugin/mcp/servers', mcp_api.list_servers)
     app.router.add_route('GET', '/plugin/mcp/workflows', mcp_api.list_workflows)
     app.router.add_route('GET', '/plugin/mcp/capabilities', mcp_api.list_capabilities)
+    app.router.add_route('GET', '/plugin/mcp/features', mcp_api.features)
     app.router.add_route('GET', '/plugin/mcp/defaults', mcp_api.defaults)
     app.router.add_route('GET', '/plugin/mcp/history/runs', mcp_api.list_runs)
     app.router.add_route('GET', '/plugin/mcp/history/run', mcp_api.get_run_detail)
+
+    # ===== CTI ingestion endpoints (imported from CTI branch) =====
+    # Configuration management for the CTI/LLM pipeline.
+    app.router.add_route('GET',  '/plugin/mcp/get_config', mcp_api.get_config)
+    app.router.add_route('POST', '/plugin/mcp/set_config', mcp_api.set_config)
+
+    # STIX bundle management.
+    app.router.add_route('POST', '/plugin/mcp/stix/upload',   mcp_api.upload_stix_cti)
+    app.router.add_route('GET',  '/plugin/mcp/stix/list',     mcp_api.list_stix_cti)
+    app.router.add_route('POST', '/plugin/mcp/stix/delete',   mcp_api.delete_stix_cti)
+    app.router.add_route('POST', '/plugin/mcp/stix/get_stix', mcp_api.get_stix_cti)
+    app.router.add_route('POST', '/plugin/mcp/stix/download', mcp_api.download_stix_cti)
+
+    # Raw CTI text/PDF/HTML ingestion + pipeline driver.
+    app.router.add_route('POST', '/plugin/mcp/cti/upload',     mcp_api.upload_cti_raw)
+    app.router.add_route('GET',  '/plugin/mcp/cti/raw',        mcp_api.list_cti_raw)
+    app.router.add_route('POST', '/plugin/mcp/cti/raw/delete', mcp_api.delete_cti_raw)
+    app.router.add_route('POST', '/plugin/mcp/cti/run',        mcp_api.cti_run)
+
+    # AE end-to-end orchestration. Replaces the shell driver as the
+    # canonical entry point for the full vision pipeline. See
+    # plugins/mcp/app/workflows/ae_e2e.py for the 12-stage state machine.
+    app.router.add_route(
+        'POST', '/plugin/mcp/workflows/run-ae-end-to-end',
+        mcp_api.run_ae_end_to_end,
+    )

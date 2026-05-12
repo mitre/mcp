@@ -34,8 +34,25 @@
               </p>
             </div>
             <div class="is-flex is-justify-content-flex-end mt-4">
-              <button class="button is-primary" @click="selectedPath = wf.id">
+              <button class="button is-primary" @click="setSelectedPath(wf.id)">
                 Start {{ wf.display_name }} Session
+              </button>
+            </div>
+          </div>
+
+          <!-- CTI Ingest (raw → STIX → topology → deploy_spec) -->
+          <div class="box" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div style="flex-grow: 1;">
+              <h3 class="title is-5">Upload CTI</h3>
+              <p>
+                Ingest raw Cyber Threat Intelligence (HTML, PDF, plaintext) and run the
+                MCP CTI pipeline: STIX 2.1 extraction → topology inference → range deploy
+                spec. The structured output is what the model uses to plan operations.
+              </p>
+            </div>
+            <div class="is-flex is-justify-content-flex-end mt-4">
+              <button class="button is-primary" @click="setSelectedPath('cti')">
+                Start CTI Ingest
               </button>
             </div>
           </div>
@@ -49,7 +66,7 @@
               </p>
             </div>
             <div class="is-flex is-justify-content-flex-end mt-4">
-              <button class="button is-info" @click="selectedPath = 'history'">
+              <button class="button is-info" @click="setSelectedPath('history')">
                 View History
               </button>
             </div>
@@ -64,7 +81,7 @@
               </p>
             </div>
             <div class="is-flex is-justify-content-flex-end mt-4">
-              <button class="button is-warning" @click="selectedPath = 'guide'">
+              <button class="button is-warning" @click="setSelectedPath('guide')">
                 View Guide
               </button>
             </div>
@@ -74,8 +91,52 @@
 
       <!-- Right Side: Global Model Configuration (Pinned) -->
       <div class="column is-one-third">
-        <div class="box" style="position: sticky; top: 1rem;">
-          <h3 class="title is-5 has-text-primary mb-4">Global Model Config</h3>
+          <div class="box" style="position: sticky; top: 1rem;">
+            <h3 class="title is-5 has-text-primary mb-4">Global Model Config</h3>
+
+          <div class="field">
+            <label class="label">Endpoint Profile</label>
+            <div class="control">
+              <div class="select is-fullwidth">
+                <select v-model="selectedEndpointProfileName" @change="applySelectedEndpointProfile">
+                  <option value="">Manual settings</option>
+                  <option
+                    v-for="profile in endpointProfiles"
+                    :key="profile.name"
+                    :value="profile.name"
+                  >
+                    {{ profile.name }}
+                  </option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="field has-addons">
+            <div class="control is-expanded">
+              <input
+                class="input"
+                type="text"
+                v-model="endpointProfileDraftName"
+                placeholder="Profile name"
+              />
+            </div>
+            <div class="control">
+              <button class="button is-primary" type="button" @click="saveEndpointProfile">
+                Save
+              </button>
+            </div>
+            <div class="control">
+              <button
+                class="button is-light"
+                type="button"
+                @click="deleteSelectedEndpointProfile"
+                :disabled="!selectedEndpointProfileName"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
 
           <div class="field">
             <label class="label">Model</label>
@@ -84,7 +145,7 @@
                 class="input"
                 type="text"
                 v-model="globalConfig.modelName"
-                placeholder="e.g., openai/nemotron-3-super"
+                placeholder="e.g., provider/model-name"
               />
             </div>
           </div>
@@ -99,6 +160,18 @@
                 step="0.1"
                 min="0.1"
                 max="1"
+              />
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="label">API Base</label>
+            <div class="control">
+              <input
+                class="input"
+                type="text"
+                v-model="globalConfig.apiBase"
+                placeholder="https://api.example.com/v1"
               />
             </div>
           </div>
@@ -156,9 +229,10 @@
       :is="resolveWorkflowComponent(activeWorkflow)"
       :workflow="activeWorkflow"
       :capabilities="availableCapabilities"
-      @back="selectedPath = null"
+      @back="setSelectedPath(null)"
     />
-    <McpHistory v-if="selectedPath === 'history'" @back="selectedPath = null" />
+    <McpHistory v-if="selectedPath === 'history'" @back="setSelectedPath(null)" />
+    <McpCti v-if="selectedPath === 'cti'" @back="setSelectedPath(null)" />
 
     <!-- Embedded Extension Guide -->
     <div v-if="selectedPath === 'guide'" class="is-flex is-justify-content-center" style="width: 100%;">
@@ -166,7 +240,7 @@
         <div class="box">
           <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
             <h2 class="title is-3 has-text-primary mb-0">MCP - Extend and Customize</h2>
-            <button class="button is-light" @click="selectedPath = null">
+            <button class="button is-light" @click="setSelectedPath(null)">
               ← Back to Main
             </button>
           </div>
@@ -434,10 +508,33 @@ import { ref, provide, reactive, watch, onMounted, computed } from 'vue'
 // data, which the component reads off props.workflow.
 import McpChatWorkflow from './chat/ChatWorkflow.vue'
 import McpHistory from './mcp_history.vue'
+import McpCti from './cti.vue'
+
+const SELECTED_PATH_STORAGE_KEY = 'mcp_selected_path'
+const SPECIAL_PATHS = new Set(['cti', 'history', 'guide'])
+
+function loadSelectedPath() {
+  try {
+    return localStorage.getItem(SELECTED_PATH_STORAGE_KEY) || null
+  } catch (e) {
+    console.warn('[MCP] Failed to load saved selected path:', e)
+  }
+  return null
+}
 
 // selectedPath holds either a workflow id (e.g. "author", "plan_execute") or
-// one of the always-on cards: "history", "guide".
-const selectedPath = ref(null)
+// one of the always-on cards: "history", "guide", "cti".
+const selectedPath = ref(loadSelectedPath())
+
+function setSelectedPath(path) {
+  selectedPath.value = path
+}
+
+function selectedPathExists(path) {
+  if (!path) return true
+  if (SPECIAL_PATHS.has(path)) return true
+  return availableWorkflows.value.some(w => w.id === path)
+}
 
 const availableWorkflows = ref([])
 const availableCapabilities = ref([])
@@ -465,8 +562,8 @@ function saveConfig(config) {
 
 // Global configuration shared with all child components.
 //
-// Holds LM credentials/limits (model, temperature, api_key, max_tool_calls,
-// max_tokens) plus per-workflow and per-capability state:
+// Holds LM credentials/limits (model, endpoint, temperature, api_key,
+// max_tool_calls, max_tokens) plus per-workflow and per-capability state:
 //
 //   serversByWorkflow    { <workflow_id>: [server_id, ...] }
 //   capabilitiesByWorkflow { <workflow_id>: [capability_id, ...] }
@@ -476,20 +573,95 @@ function saveConfig(config) {
 // not in the global LM config, since they belong to the RAG capability and
 // are settable per workflow run.
 const savedConfig = loadConfig()
+const LEGACY_CHAT_MODEL_DEFAULTS = new Set([
+  'openai/nemotron-3-super',
+  'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8',
+])
 const globalConfig = reactive({
   modelName: savedConfig?.modelName || '',
   temperature: savedConfig?.temperature,
+  apiBase: savedConfig?.apiBase || '',
   apiKey: savedConfig?.apiKey || '',
   maxToolCalls: savedConfig?.maxToolCalls,
   maxTokens: savedConfig?.maxTokens,
   serversByWorkflow: savedConfig?.serversByWorkflow || {},
   capabilitiesByWorkflow: savedConfig?.capabilitiesByWorkflow || {},
   capabilitySettings: savedConfig?.capabilitySettings || {},
+  endpointProfiles: Array.isArray(savedConfig?.endpointProfiles)
+    ? savedConfig.endpointProfiles
+    : [],
+  selectedEndpointProfile: savedConfig?.selectedEndpointProfile || '',
 })
+
+const endpointProfileDraftName = ref(globalConfig.selectedEndpointProfile || '')
+const endpointProfiles = computed(() => {
+  if (!Array.isArray(globalConfig.endpointProfiles)) globalConfig.endpointProfiles = []
+  return globalConfig.endpointProfiles
+})
+const selectedEndpointProfileName = computed({
+  get: () => globalConfig.selectedEndpointProfile || '',
+  set: (value) => {
+    globalConfig.selectedEndpointProfile = value || ''
+    if (value) endpointProfileDraftName.value = value
+  },
+})
+
+function trimmedProfileName(value) {
+  return String(value || '').trim()
+}
+
+function currentEndpointProfile(name) {
+  return {
+    name,
+    modelName: globalConfig.modelName || '',
+    temperature: globalConfig.temperature,
+    apiBase: globalConfig.apiBase || '',
+    apiKey: globalConfig.apiKey || '',
+    maxToolCalls: globalConfig.maxToolCalls,
+    maxTokens: globalConfig.maxTokens,
+  }
+}
+
+function applyEndpointProfile(profile) {
+  if (!profile) return
+  globalConfig.modelName = profile.modelName || profile.model || ''
+  globalConfig.temperature = profile.temperature
+  globalConfig.apiBase = profile.apiBase || profile.api_base || ''
+  globalConfig.apiKey = profile.apiKey || profile.api_key || ''
+  globalConfig.maxToolCalls = profile.maxToolCalls ?? profile.max_tool_calls
+  globalConfig.maxTokens = profile.maxTokens ?? profile.max_tokens
+  endpointProfileDraftName.value = profile.name || ''
+}
+
+function applySelectedEndpointProfile() {
+  const profile = endpointProfiles.value.find(p => p.name === selectedEndpointProfileName.value)
+  if (profile) applyEndpointProfile(profile)
+}
+
+function saveEndpointProfile() {
+  const name = trimmedProfileName(endpointProfileDraftName.value || selectedEndpointProfileName.value)
+  if (!name) return
+  const profile = currentEndpointProfile(name)
+  const profiles = endpointProfiles.value.filter(p => p.name !== name)
+  globalConfig.endpointProfiles = [...profiles, profile].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  )
+  selectedEndpointProfileName.value = name
+}
+
+function deleteSelectedEndpointProfile() {
+  const name = selectedEndpointProfileName.value
+  if (!name) return
+  globalConfig.endpointProfiles = endpointProfiles.value.filter(p => p.name !== name)
+  selectedEndpointProfileName.value = ''
+}
 
 function applyServerDefaults(d) {
   // Only fill fields the user hasn't already set.
-  if (!globalConfig.modelName)            globalConfig.modelName     = d.model || ''
+  if (!globalConfig.modelName || LEGACY_CHAT_MODEL_DEFAULTS.has(globalConfig.modelName)) {
+    globalConfig.modelName = d.model || ''
+  }
+  if (!globalConfig.apiBase)              globalConfig.apiBase       = d.api_base || ''
   if (globalConfig.temperature   == null) globalConfig.temperature   = d.temperature
   if (!globalConfig.maxToolCalls)         globalConfig.maxToolCalls  = d.max_tool_calls
   if (!globalConfig.maxTokens)            globalConfig.maxTokens     = d.max_tokens
@@ -541,6 +713,10 @@ onMounted(async () => {
     availableCapabilities.value = capData.capabilities || []
     availableServers.value = srvData.servers || []
 
+    if (!selectedPathExists(selectedPath.value)) {
+      setSelectedPath(null)
+    }
+
     // Seed each workflow's default server toggles when no saved state exists.
     for (const wf of availableWorkflows.value) {
       if (globalConfig.serversByWorkflow[wf.id] === undefined) {
@@ -583,6 +759,15 @@ onMounted(async () => {
 watch(globalConfig, (newConfig) => {
   saveConfig(newConfig)
 }, { deep: true })
+
+watch(selectedPath, (path) => {
+  try {
+    if (path) localStorage.setItem(SELECTED_PATH_STORAGE_KEY, path)
+    else localStorage.removeItem(SELECTED_PATH_STORAGE_KEY)
+  } catch (e) {
+    console.warn('[MCP] Failed to save selected path:', e)
+  }
+})
 
 // Provide the shared config + registries to child workflow components.
 provide('mcpGlobalConfig', globalConfig)

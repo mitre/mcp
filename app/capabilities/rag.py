@@ -179,9 +179,26 @@ def search_cti_data_by_title(name: str) -> str:
 # mcp_svc still wires RAG into runs directly.
 
 import os
+import asyncio
 from pathlib import Path
 
 from plugins.mcp.app.capabilities.base import Capability
+
+
+def _resolve_rag_file(base_dir: Path, name: str) -> Path:
+    """Resolve either uploaded RAG paths or generated STIX filenames."""
+    raw = Path(str(name))
+    if raw.is_absolute():
+        return raw
+
+    candidates = [base_dir / raw]
+    if len(raw.parts) == 1:
+        candidates.append(base_dir / "outputs_stix" / raw)
+
+    for path in candidates:
+        if path.exists():
+            return path
+    return candidates[0]
 
 
 def _format_rag_context(rag_context: dict) -> str:
@@ -207,6 +224,22 @@ def _format_rag_context(rag_context: dict) -> str:
     return "\n".join(parts)
 
 
+def _build_rag_context_sync(
+    prompt: str,
+    bundles: list[dict],
+    *,
+    api_key: str,
+    api_base: str | None,
+    embed_model: str,
+    topk: int,
+) -> str:
+    rag = RAGService(api_key=api_key, api_base=api_base)
+    rag.topk_objects_to_retrieve = topk
+    rag.initialize_from_bundles(bundles, embed_model=embed_model)
+    raw_context = rag.get_context_for_task(prompt)
+    return _format_rag_context(raw_context)
+
+
 async def _enrich(prompt: str, settings: dict) -> dict:
     """Build a RAGService from selected files and return cti_context string.
 
@@ -229,24 +262,29 @@ async def _enrich(prompt: str, settings: dict) -> dict:
         return {}
 
     embed_api_key = settings.get("embed_api_key") or settings.get("api_key") or ""
-    embed_api_base = settings.get("embed_api_base") or None
+    embed_api_base = settings.get("embed_api_base") or settings.get("api_base") or None
     embed_model = settings.get("embed_model") or "openai/text-embedding-3-small"
     topk = int(settings.get("topk") or 5)
 
     base_dir = Path(__file__).resolve().parent.parent.parent / "data"
     bundles = []
     for name in rag_files:
-        path = base_dir / name
+        path = _resolve_rag_file(base_dir, name)
         if not path.exists():
             raise FileNotFoundError(f"RAG file not found: {path}")
         with open(path, "r", encoding="utf-8") as f:
             bundles.append(json.load(f))
 
-    rag = RAGService(api_key=embed_api_key, api_base=embed_api_base)
-    rag.topk_objects_to_retrieve = topk
-    rag.initialize_from_bundles(bundles, embed_model=embed_model)
-    raw_context = rag.get_context_for_task(prompt)
-    return {"cti_context": _format_rag_context(raw_context)}
+    cti_context = await asyncio.to_thread(
+        _build_rag_context_sync,
+        prompt,
+        bundles,
+        api_key=embed_api_key,
+        api_base=embed_api_base,
+        embed_model=embed_model,
+        topk=topk,
+    )
+    return {"cti_context": cti_context}
 
 
 CAPABILITIES = [

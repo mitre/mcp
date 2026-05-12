@@ -8,7 +8,7 @@
   <div class="chat-message" :class="`role-${role}`">
     <div class="message-bubble">
       <div class="message-meta">
-        <span class="role-tag">{{ role === 'user' ? 'You' : 'Assistant' }}</span>
+        <span class="role-tag">{{ role === 'user' ? 'You' : 'CALDERA Copilot' }}</span>
         <span v-if="message.timestamp" class="timestamp">{{ formattedTime }}</span>
       </div>
 

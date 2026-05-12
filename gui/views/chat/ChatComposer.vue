@@ -36,7 +36,7 @@
         type="button"
         :title="disabled ? 'Run in progress' : 'Send (Ctrl+Enter)'"
       >
-        <font-awesome-icon :icon="['fas', 'paper-plane']" />
+        <font-awesome-icon :icon="sendIcon" />
       </button>
     </div>
     <div class="composer-hint">
@@ -48,6 +48,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import { faPaperPlane } from '@fortawesome/free-solid-svg-icons'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
@@ -58,6 +59,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'submit'])
 
 const textarea = ref(null)
+const sendIcon = faPaperPlane
 
 function onInput(e) {
   emit('update:modelValue', e.target.value)
@@ -91,8 +93,8 @@ function truncate(s, n) {
   flex-direction: column;
   gap: 0.5rem;
   padding: 0.9rem 1.1rem 1rem 1.1rem;
-  background-color: #1f1f1f;
-  border-top: 1px solid #3a3a3a;
+  background-color: #1c1a22;
+  border-top: 1px solid rgba(158, 98, 255, 0.24);
 }
 .example-row {
   display: flex;
@@ -105,20 +107,24 @@ function truncate(s, n) {
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #888888;
+  color: #a99dbe;
   margin-right: 0.2rem;
 }
 .example-chip {
-  background-color: #2a2a2a;
-  color: #a8a8a8;
-  border: 1px solid #3a3a3a;
+  background-color: rgba(139, 92, 246, 0.08);
+  color: #cfc3ff;
+  border: 1px solid rgba(169, 112, 255, 0.22);
   border-radius: 999px;
   padding: 0.3rem 0.75rem;
   font-size: 0.78rem;
   cursor: pointer;
   font-style: italic;
 }
-.example-chip:hover { background-color: #2c2c2c; color: #d0d0d0; }
+.example-chip:hover {
+  background-color: rgba(139, 92, 246, 0.15);
+  border-color: rgba(169, 112, 255, 0.5);
+  color: #f3efff;
+}
 .composer-row {
   display: flex;
   align-items: stretch;
@@ -128,9 +134,9 @@ function truncate(s, n) {
   flex: 1;
   height: 140px;
   resize: none;
-  background-color: #2a2a2a;
+  background-color: #24202e;
   color: #f5f5f5;
-  border: 1px solid #3a3a3a;
+  border: 1px solid rgba(169, 112, 255, 0.22);
   border-radius: 8px;
   padding: 0.85rem 1rem;
   font-size: 0.97rem;
@@ -140,8 +146,8 @@ function truncate(s, n) {
   transition: border-color 0.15s ease;
 }
 .composer-textarea:focus {
-  border-color: #555555;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08);
+  border-color: #a970ff;
+  box-shadow: 0 0 0 2px rgba(169, 112, 255, 0.16);
 }
 .composer-textarea:disabled {
   opacity: 0.55;
@@ -152,23 +158,37 @@ function truncate(s, n) {
   width: 44px;
   height: 44px;
   border-radius: 8px;
-  border: 1px solid #3a3a3a;
-  background-color: #2c2c2c;
-  color: #d0d0d0;
+  border: 1px solid rgba(169, 112, 255, 0.46);
+  background-color: rgba(139, 92, 246, 0.16);
+  color: #f5f1ff;
   font-size: 1.05rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: background-color 0.15s ease, transform 0.05s ease, border-color 0.15s ease;
+  transition: background-color 0.15s ease, transform 0.05s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.send-button:hover:not(:disabled) { background-color: #3a3a3a; border-color: #555555; color: #f0f0f0; }
+.send-button:hover:not(:disabled) {
+  background-color: rgba(169, 112, 255, 0.28);
+  border-color: #b98cff;
+  box-shadow: 0 0 0 2px rgba(169, 112, 255, 0.12);
+  color: #ffffff;
+}
 .send-button:active:not(:disabled) { transform: scale(0.96); }
-.send-button:disabled { background-color: #2a2a2a; color: #555555; cursor: not-allowed; }
+.send-button:not(:disabled) {
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  border-color: #c084fc;
+}
+.send-button:disabled {
+  background-color: #25212d;
+  border-color: rgba(169, 112, 255, 0.2);
+  color: #7d718f;
+  cursor: not-allowed;
+}
 .composer-hint {
   font-size: 0.72rem;
-  color: #666666;
+  color: #857894;
   text-align: right;
   padding-right: 0.2rem;
 }

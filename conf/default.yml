@@ -7,7 +7,7 @@
 # fields_locked declares which fields the deployment fixes; locked fields
 # ignore UI overrides and the UI greys out the corresponding inputs.
 llm:
-  model: openai/nemotron-3-super
+  model: openai/gpt-oss-120b
   api_base: https://models.k8s.aip.mitre.org/v1
   api_key_env: MCP_LLM_API_KEY
   offline: true
@@ -15,6 +15,20 @@ llm:
   fields_locked:
     model: false
     api_base: false
+
+# Dedicated profile for raw CTI -> IR/STIX extraction. It can intentionally
+# use a different model than the general MCP planner/chat profile.
+cti:
+  provider: openai_compatible
+  model: openai/gpt-oss-120b
+  api_base: https://models.k8s.aip.mitre.org/v1
+  api_key_env: MCP_LLM_API_KEY
+  temperature: 0.0
+  top_p: 1.0
+  max_tokens: 4000
+  timeout: 120
+  offline: true
+  use_mock: false
 
 # Caldera REST API used by the caldera_core MCP subprocess to call /api/v2/*
 # on the running Caldera server. Credentials live in plugins/mcp/.env;

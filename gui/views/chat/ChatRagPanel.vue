@@ -20,6 +20,31 @@
     <h4 class="section-title">RAG Data</h4>
 
     <div class="field-row">
+      <label class="field-label">RAG profile</label>
+      <select class="text-input" v-model="ragProfileName" @change="applyRagProfile">
+        <option value="">Manual / chat fallback</option>
+        <option
+          v-for="profile in endpointProfiles"
+          :key="profile.name"
+          :value="profile.name"
+        >
+          {{ profile.name }}
+        </option>
+      </select>
+      <div class="profile-actions">
+        <input
+          class="text-input"
+          type="text"
+          v-model="ragProfileDraftName"
+          placeholder="Profile name"
+        />
+        <button class="btn primary small" type="button" @click="saveRagProfile">
+          Save
+        </button>
+      </div>
+    </div>
+
+    <div class="field-row">
       <label class="field-label">TopK</label>
       <input
         class="num-input"
@@ -38,6 +63,26 @@
         type="text"
         v-model="ragSettings.embed_model"
         placeholder="openai/text-embedding-3-small"
+      />
+    </div>
+
+    <div class="field-row">
+      <label class="field-label">API base</label>
+      <input
+        class="text-input"
+        type="text"
+        v-model="ragSettings.embed_api_base"
+        placeholder="Blank = chat endpoint"
+      />
+    </div>
+
+    <div class="field-row">
+      <label class="field-label">API key</label>
+      <input
+        class="text-input"
+        type="password"
+        v-model="ragSettings.embed_api_key"
+        placeholder="Use chat key"
       />
     </div>
 
@@ -127,6 +172,59 @@ const ragSettings = computed(() => {
   if (!cfg.capabilitySettings.rag) cfg.capabilitySettings.rag = {}
   return cfg.capabilitySettings.rag
 })
+const ragProfileDraftName = ref('')
+const endpointProfiles = computed(() => {
+  if (!Array.isArray(props.globalConfig.endpointProfiles)) props.globalConfig.endpointProfiles = []
+  return props.globalConfig.endpointProfiles
+})
+const ragProfileName = computed({
+  get: () => ragSettings.value.profile || '',
+  set: (value) => {
+    ragSettings.value.profile = value || ''
+    if (value) ragProfileDraftName.value = value
+  },
+})
+
+function profileName(value) {
+  return String(value || '').trim()
+}
+
+function applyProfileToRag(profile) {
+  if (!profile) return
+  ragSettings.value.embed_model = profile.modelName || profile.model || ''
+  ragSettings.value.embed_api_base = profile.apiBase || profile.api_base || ''
+  ragSettings.value.embed_api_key = profile.apiKey || profile.api_key || ''
+  ragSettings.value.temperature = profile.temperature
+  ragSettings.value.max_tool_calls = profile.maxToolCalls ?? profile.max_tool_calls
+  ragSettings.value.max_tokens = profile.maxTokens ?? profile.max_tokens
+  if (profile.topk != null) ragSettings.value.topk = Number(profile.topk)
+  ragProfileDraftName.value = profile.name || ''
+}
+
+function applyRagProfile() {
+  const profile = endpointProfiles.value.find(p => p.name === ragProfileName.value)
+  if (profile) applyProfileToRag(profile)
+}
+
+function saveRagProfile() {
+  const name = profileName(ragProfileDraftName.value || ragProfileName.value)
+  if (!name) return
+  const profile = {
+    name,
+    modelName: ragSettings.value.embed_model || props.globalConfig.modelName || '',
+    temperature: ragSettings.value.temperature ?? props.globalConfig.temperature,
+    apiBase: ragSettings.value.embed_api_base || props.globalConfig.apiBase || '',
+    apiKey: ragSettings.value.embed_api_key || props.globalConfig.apiKey || '',
+    maxToolCalls: ragSettings.value.max_tool_calls ?? props.globalConfig.maxToolCalls,
+    maxTokens: ragSettings.value.max_tokens ?? props.globalConfig.maxTokens,
+    topk: ragSettings.value.topk,
+  }
+  props.globalConfig.endpointProfiles = [
+    ...endpointProfiles.value.filter(existing => existing.name !== name),
+    profile,
+  ].sort((a, b) => a.name.localeCompare(b.name))
+  ragProfileName.value = name
+}
 
 const {
   ragFiles,
@@ -206,6 +304,14 @@ onMounted(fetchRagFiles)
   border-radius: 4px;
   padding: 0.4rem 0.55rem;
   font-size: 0.85rem;
+  width: 100%;
+  min-width: 0;
+}
+.profile-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.35rem;
+  align-items: stretch;
 }
 .file-picker { margin-top: 0.6rem; }
 .file-label { display: block; margin-bottom: 0.5rem; }

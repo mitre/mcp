@@ -5,6 +5,13 @@
 # Environment
 .env
 .env.local
+conf/local.yml
+
+# Python/test caches
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Local planning
 **/z_plans
@@ -18,3 +25,25 @@ CLAUDE.md
 
 # Per-deployment runtime state
 data/sessions.json
+
+# CTI pipeline runtime/generated data
+data/clean/
+data/raw/
+data/outputs_ir/
+data/outputs_stix/
+data/outputs_topology/
+data/mcp-data-pre-merge/
+data/stix_bundle.json
+
+# Runtime databases
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+
+# Vendored external CTI / AE-library data — pull on demand, not tracked
+app/utilities/data/external/
+
+# Runtime cache for software-extraction OSV/NVD lookups (offline-safe)
+app/utilities/data/cache/

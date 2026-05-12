@@ -47,6 +47,30 @@ def discover_mcp_servers(plugins_root: Path) -> dict:
         },
     }
 
+    # The MCP plugin itself also ships a CTI-pipeline server at the
+    # plugin root (plugins/mcp/mcp_server.py). The generic scan below
+    # skips plugin_dir == "mcp" because caldera_core already covers the
+    # mcp plugin's other server entrypoint, so we register the CTI
+    # pipeline server explicitly here. MCP_METADATA on disk wins over
+    # the defaults baked in below.
+    cti_pipeline_path = plugins_root / "mcp" / "mcp_server.py"
+    if cti_pipeline_path.exists():
+        cti_metadata = _safe_load_metadata(cti_pipeline_path) or {
+            "display_name": "CTI Pipeline",
+            "default_enabled": True,
+            "description": (
+                "CTI ingest -> STIX -> topology -> deploy spec -> deploy "
+                "-> operation -> detection-validation tools."
+            ),
+        }
+        registry["cti_pipeline"] = {
+            "path": cti_pipeline_path,
+            "metadata": cti_metadata,
+        }
+        log.info(
+            f"[MCP] Discovered MCP server: cti_pipeline -> {cti_pipeline_path}"
+        )
+
     for plugin_dir in sorted(plugins_root.iterdir()):
         if not plugin_dir.is_dir() or plugin_dir.name == "mcp":
             continue

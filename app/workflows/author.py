@@ -10,7 +10,7 @@ from mlflow.tracking import MlflowClient
 import asyncio
 from contextlib import AsyncExitStack
 
-from plugins.mcp.app.config import llm_defaults
+from plugins.mcp.app.config import caldera_connection, llm_defaults
 from plugins.mcp.app.dspy_env import (
     ENV_API_BASE,
     ENV_API_KEY,
@@ -36,8 +36,9 @@ def get_env(lm_settings=None):
         env[ENV_TEMPERATURE] = str(lm_settings.get('temperature') or 0.5)
         env[ENV_MAX_TOKENS] = str(lm_settings.get('max_tokens') or 24000)
 
-    env['CALDERA_URL'] = os.environ.get('CALDERA_URL', 'http://localhost:8888/api/v2/')
-    env['CORE_CALDERA_API_KEY'] = os.environ.get('CORE_CALDERA_API_KEY', 'ADMIN123')
+    caldera = caldera_connection()
+    env['CALDERA_URL'] = os.environ.get('CALDERA_URL') or caldera['url']
+    env['CORE_CALDERA_API_KEY'] = os.environ.get('CORE_CALDERA_API_KEY') or caldera['api_key']
 
     return env
 
@@ -206,7 +207,7 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
                     raise ValueError(f"Unknown MCP server: {server_name}")
                 info = server_registry[server_name]
                 params = StdioServerParameters(
-                    command="python",
+                    command=sys.executable,
                     args=[str(info["path"])],
                     env=get_env(lm_settings),
                 )

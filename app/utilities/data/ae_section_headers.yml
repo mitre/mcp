@@ -1,0 +1,189 @@
+# ae_section_headers.yml
+#
+# Markdown-header  -> canonical IR-key mapping for AE-plan parsing.
+#
+# Used by:  app/utilities/cti_ae_library_loader.py
+#
+# Source / convention citations:
+#
+#   * MITRE CTID Adversary Emulation Library README
+#     <https://github.com/center-for-threat-informed-defense/adversary_emulation_library/blob/master/README.md>
+#     Each adversary plan lives under <adversary>/Emulation_Plan/ and a
+#     parallel CTI_Emulation_Resources/ directory. Plans use a small set
+#     of Markdown headers ("Infrastructure", "Resources", "Phase",
+#     "Scenario", "Operations Flow", "Intelligence Summary") to organise
+#     the prose. The keys below are the canonical AE headings; values are
+#     the IR field they feed into.
+#
+#   * ATT&CK Evaluations attackevals-ael (MITRE Engenuity)
+#     <https://github.com/mitre-attackevals/attackevals-ael>
+#     The MS Defender / Enterprise / Managed-Services tracks reuse the
+#     same heading pattern under each adversary's Emulation_Plan/<NAME>_Scenario.md
+#     and CTI_Emulation_Resources/<NAME>_Scenario_Overview.md.
+#
+#   * STIX 2.1 OASIS spec section §6 (SDO type list)
+#     <https://docs.oasis-open.org/cti/stix/v2.1/os/stix-v2.1-os.html>
+#     The IR keys below correspond 1:1 to STIX SDO/SCO types so the IR
+#     can be lowered to STIX without name translation in the builder.
+#
+# Heading text matching is case-insensitive and tolerates trailing
+# punctuation ("Domain Controllers & Servers" vs. "Domain Controllers and
+# Servers"). The matcher strips Markdown header markers (#) and emoji
+# decorations (e.g. ":computer:") before comparing against these keys.
+#
+# Do NOT inline these in code -- the loader is required to read them
+# from this file. Adding a new heading means appending to one of the
+# `aliases` lists below.
+
+# Each entry: ir_key -> list of header text aliases (case-insensitive,
+# punctuation tolerant). Aliases come from the prose conventions in
+# the CTID and attackevals-ael libraries.
+
+infrastructure:
+  aliases:
+    - "infrastructure"
+    - "target infrastructure"
+    - "emulation team infrastructure"
+    - "host inventory"
+    - "domain controllers"
+    - "domain controllers and servers"
+    - "domain controllers & servers"
+    - "servers"
+    - "workstations"
+    - "target hosts"
+    - "hosts"
+    - "victim hosts"
+    - "victim infrastructure"
+
+user_accounts:
+  aliases:
+    - "user accounts"
+    - "users"
+    - "accounts"
+    - "credentials"
+    - "user account list"
+    - "account list"
+
+software:
+  aliases:
+    - "software and tools required"
+    - "software & tools required"
+    - "software and tools"
+    - "software & tools"
+    - "tools required"
+    - "required tools"
+    - "tools and software"
+    - "malware and tools"
+    - "malware & tools"
+    - "payloads"
+    - "payload list"
+
+network_subnets:
+  aliases:
+    - "network subnets"
+    - "networks"
+    - "subnets"
+    - "network layout"
+    - "network topology"
+    - "ip ranges"
+
+file_paths:
+  aliases:
+    - "file paths and artifacts"
+    - "file paths & artifacts"
+    - "file paths"
+    - "artifact paths"
+    - "paths and artifacts"
+    - "drop locations"
+    - "file artifacts"
+
+registry_keys:
+  aliases:
+    - "registry modifications"
+    - "registry keys"
+    - "registry changes"
+    - "registry"
+
+file_extensions:
+  aliases:
+    - "file extensions and markers"
+    - "file extensions & markers"
+    - "file extensions"
+    - "encryption markers"
+    - "extensions"
+
+domains:
+  aliases:
+    - "active directory domain"
+    - "active directory domains"
+    - "ad domains"
+    - "domains"
+    - "domain names"
+
+threat_actor:
+  aliases:
+    - "threat actor"
+    - "threat actors"
+    - "intrusion set"
+    - "adversary"
+    - "actor"
+
+# Inline-pattern matchers. These are key-value fact patterns that AE
+# plans use in prose (e.g. "**Primary Domain:** DIGIREVENGE"). Pattern
+# text is matched as a case-insensitive substring; the value captured
+# after the colon (stripped of asterisks / backticks) goes to the IR
+# key shown.
+inline_facts:
+  - pattern: "primary domain"
+    ir_key: domains
+  - pattern: "ad domain"
+    ir_key: domains
+  - pattern: "active directory domain"
+    ir_key: domains
+  - pattern: "domain name"
+    ir_key: domains
+
+# Markdown table-column header -> IR-row-key mapping. The loader
+# generic table parser uses these to assign cells to IR fields. Each
+# entry: ir_field -> list of column-header aliases (case-insensitive).
+table_columns:
+  hostname:
+    - "hostname"
+    - "host"
+    - "computer"
+    - "device"
+    - "machine"
+    - "system"
+    - "red team system"
+    - "target host"
+    - "target system"
+  ip:
+    - "ip"
+    - "ipv4"
+    - "ip address"
+    - "address"
+    - "addr"
+  role:
+    - "role"
+    - "function"
+    - "purpose"
+    - "description"
+    - "type"
+    - "service"
+  os:
+    - "os"
+    - "platform"
+    - "operating system"
+  username:
+    - "username"
+    - "user"
+    - "account"
+    - "user name"
+    - "login"
+  password:
+    - "password"
+    - "credential"
+    - "passphrase"
+  domain:
+    - "domain"
+    - "realm"

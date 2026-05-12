@@ -6,8 +6,16 @@ from datetime import datetime
 import time
 import collections
 import uuid
+import sys
+from pathlib import Path
 
 from dspy_env import CreateCommand
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from plugins.mcp.app.config import caldera_connection
 
 MCP_METADATA = {
     "display_name": "CALDERA Core",
@@ -21,7 +29,7 @@ class CalderaRequest:
     def __init__(self, url, api_key):
         # Defensive normalization: callers historically passed CALDERA_URL via
         # env var, and a dropped trailing slash produces malformed endpoints
-        # like "http://localhost:8888health" once you f-string in the path.
+        # once you f-string in the path.
         # Always store with exactly one trailing slash so concat is safe.
         self.caldera_url = url.rstrip('/') + '/' if url else url
         self.api_key = api_key
@@ -59,9 +67,10 @@ class CalderaRequest:
         return response.json()
 
 
+_caldera = caldera_connection()
 caldera_request = CalderaRequest(
-    url=os.environ.get("CALDERA_URL", "http://localhost:8888/api/v2/"),
-    api_key=os.environ.get("CORE_CALDERA_API_KEY", "ADMIN123"),
+    url=os.environ.get("CALDERA_URL") or _caldera["url"],
+    api_key=os.environ.get("CORE_CALDERA_API_KEY") or _caldera["api_key"],
 )
 
 

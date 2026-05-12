@@ -1,0 +1,75 @@
+# stix_open_vocabs.yml
+#
+# Subset of STIX 2.1 OASIS open-vocabularies needed by Stage-2 STIX
+# builders. Values are NORMATIVE and pulled verbatim from the published
+# specification — they are recorded here (not in Python source) so that
+# the builders can derive every classification/vocab value from a runtime
+# data file, in keeping with the "no static lookups in code" rule.
+#
+# When the OASIS committee publishes additional values for any of these
+# open vocabularies (they ARE open vocabs — new values are permitted as
+# `x-` extensions), append them below WITH the citation in a comment.
+#
+# Source citations:
+#   * account-type-ov ------ STIX 2.1 OS §10.2 user-account SCO,
+#       Table 11.1, "account-type-ov" open vocabulary.
+#       https://docs.oasis-open.org/cti/stix/v2.1/os/stix-v2.1-os.html#_8c8wsq6tikgo
+#   * identity-class-ov ---- STIX 2.1 OS §6.6 identity SDO,
+#       Table 6.20, "identity-class-ov" open vocabulary.
+#       https://docs.oasis-open.org/cti/stix/v2.1/os/stix-v2.1-os.html#_8gpyz5ckkvb6
+#   * relationship-type-ov - STIX 2.1 OS §5.5 relationship object,
+#       Table 5.6 enumerates the spec-defined relationship types.
+#       https://docs.oasis-open.org/cti/stix/v2.1/os/stix-v2.1-os.html#_e8slinrhxcc9
+
+# STIX 2.1 §10.2 user-account SCO — `account_type-ov` (open vocab).
+account_type_ov:
+  - facebook
+  - ldap
+  - nis
+  - openid
+  - radius
+  - skype
+  - tacacs
+  - twitter
+  - unix
+  - windows-local
+  - windows-domain
+  # The vocabulary is OPEN; consumers may emit additional values
+  # (commonly prefixed with `x-`) — Stage-2 honours that openness and
+  # passes through any incoming value rather than rewriting it.
+
+# STIX 2.1 §6.6 identity SDO — `identity-class-ov` (open vocab).
+identity_class_ov:
+  - individual
+  - group
+  - system
+  - organization
+  - class
+  - unknown
+
+# STIX 2.1 §5.5 relationship object — spec-defined relationship types
+# common across SDO/SCO pairings. This list is not exhaustive; new
+# spec values can be appended with a source citation in a comment.
+relationship_type_ov:
+  - attributed-to
+  - based-on
+  - communicates-with
+  - consists-of
+  - controls
+  - delivers
+  - downloads
+  - drops
+  - duplicate-of
+  - exfiltrates-to
+  - exploits
+  - has
+  - hosts
+  - indicates
+  - located-at
+  - mitigates
+  - originates-from
+  - owns
+  - related-to
+  - targets
+  - uses
+  - variant-of

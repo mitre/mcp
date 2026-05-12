@@ -29,6 +29,7 @@ Resolution order for an LLM request:
 import os
 
 from app.utility.base_world import BaseWorld
+from plugins.mcp.app.utilities.llm_client import load_config, normalize_openai_api_base
 
 
 _YAML_PATH = 'plugins/mcp/conf/default.yml'
@@ -51,9 +52,12 @@ _NUMERIC_FALLBACKS = {
 def _load_defaults() -> dict:
     """Returns the parsed yaml file as a dict. Empty dict on failure."""
     try:
-        return BaseWorld.strip_yml(_YAML_PATH)[0] or {}
+        return load_config()
     except Exception:
-        return {}
+        try:
+            return BaseWorld.strip_yml(_YAML_PATH)[0] or {}
+        except Exception:
+            return {}
 
 
 def llm_defaults() -> dict:
@@ -65,10 +69,42 @@ def llm_defaults() -> dict:
     cfg = dict(_load_defaults().get('llm') or {})
     env_var = cfg.pop('api_key_env', None)
     cfg['api_key'] = os.environ.get(env_var, '') if env_var else cfg.get('api_key', '') or ''
+    if cfg.get('provider', 'openai_compatible') == 'openai_compatible':
+        cfg['api_base'] = normalize_openai_api_base(cfg.get('api_base'))
     cfg.setdefault('fields_locked', {})
     for key, fallback in _NUMERIC_FALLBACKS.items():
         cfg.setdefault(key, fallback)
     return cfg
+
+
+def _normalise_api_url(url: str) -> str:
+    base = str(url or '').strip().rstrip('/')
+    if not base:
+        return ''
+    if base.startswith('http://0.0.0.0'):
+        base = base.replace('http://0.0.0.0', 'http://localhost', 1)
+    elif base.startswith('https://0.0.0.0'):
+        base = base.replace('https://0.0.0.0', 'https://localhost', 1)
+    if base.endswith('/api/v2'):
+        return base + '/'
+    return base + '/api/v2/'
+
+
+def _caldera_url_from_server_config() -> str:
+    try:
+        main = BaseWorld.get_config() or {}
+    except Exception:
+        main = {}
+
+    contact = main.get('app.contact.http')
+    if contact:
+        return _normalise_api_url(contact)
+
+    host = str(main.get('host') or 'localhost')
+    if host in ('0.0.0.0', '::', ''):
+        host = 'localhost'
+    port = main.get('port') or 8888
+    return _normalise_api_url(f'http://{host}:{port}')
 
 
 def caldera_connection() -> dict:
@@ -82,7 +118,7 @@ def caldera_connection() -> dict:
     url_var = cfg.get('url_env', 'CALDERA_URL')
     key_var = cfg.get('api_key_env', 'CORE_CALDERA_API_KEY')
     return {
-        'url': os.environ.get(url_var, 'http://localhost:8888/api/v2/'),
+        'url': os.environ.get(url_var) or _caldera_url_from_server_config(),
         'api_key': os.environ.get(key_var, 'ADMIN123'),
         'url_env': url_var,
         'api_key_env': key_var,
@@ -114,4 +150,6 @@ def resolve_llm_config(ui_overrides: dict | None) -> dict:
             "No LLM API key. Set MCP_LLM_API_KEY in plugins/mcp/.env or "
             "enter one in the UI's Global Model Configuration."
         )
+    if merged.get('provider', 'openai_compatible') == 'openai_compatible':
+        merged['api_base'] = normalize_openai_api_base(merged.get('api_base'))
     return merged

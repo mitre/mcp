@@ -1,0 +1,210 @@
+{
+  "type": "bundle",
+  "id": "bundle--measuring-stick-blackcat-01",
+  "objects": [
+
+    {
+      "_comment": "STIX 2.1 spec defines an extension-definition for custom object types. The pipeline should emit one of these whenever it produces an x-cti-range-topology object so downstream consumers (range plugin) can validate.",
+      "type": "extension-definition",
+      "spec_version": "2.1",
+      "id": "extension-definition--cti-range-topology-v1",
+      "created_by_ref": "identity--mcp-cti-pipeline",
+      "created": "2026-05-10T00:00:00.000Z",
+      "modified": "2026-05-10T00:00:00.000Z",
+      "name": "CTI Range Topology",
+      "description": "Caldera-specific deployable range shape inferred from CTI ingestion. Lists host roles, services, group memberships sufficient for plugins/range/conf/onprem_images.yml to pick images and plugins/range/automation/playbooks to wire identities.",
+      "schema": "https://example.invalid/schemas/cti-range-topology-v1.json",
+      "version": "1.0",
+      "extension_types": ["new-sdo"]
+    },
+
+    {
+      "type": "identity",
+      "spec_version": "2.1",
+      "id": "identity--mcp-cti-pipeline",
+      "created": "2026-05-10T00:00:00.000Z",
+      "modified": "2026-05-10T00:00:00.000Z",
+      "name": "MCP CTI Pipeline",
+      "identity_class": "system"
+    },
+
+    {
+      "_comment": "Malware object enriched from MITRE ATT&CK taxonomy. x_mitre_platforms comes directly from the loaded ATT&CK STIX (look up by name in load_mitre_taxonomy()['malware']). NO hardcoded mapping.",
+      "type": "malware",
+      "spec_version": "2.1",
+      "id": "malware--blackcat-alphv",
+      "created": "2026-05-10T00:00:00.000Z",
+      "modified": "2026-05-10T00:00:00.000Z",
+      "name": "BlackCat",
+      "aliases": ["ALPHV", "Noberus"],
+      "is_family": true,
+      "malware_types": ["ransomware"],
+      "description": "Rust-based ransomware operated by an affiliate group; cross-platform (Windows and Linux) with ESXi-targeting variants. Performs lateral movement via PsExec and harvested credentials; encrypts files with AES + ChaCha20.",
+      "x_mitre_platforms": ["Windows", "Linux"],
+      "external_references": [
+        {"source_name": "mitre-attack", "external_id": "S1068", "url": "https://attack.mitre.org/software/S1068/"}
+      ]
+    },
+
+    {
+      "_comment": "Identity for the targeted victim organization class. identity_class from STIX open vocab 'identity-class-ov'.",
+      "type": "identity",
+      "spec_version": "2.1",
+      "id": "identity--blackcat-target-org",
+      "created": "2026-05-10T00:00:00.000Z",
+      "modified": "2026-05-10T00:00:00.000Z",
+      "name": "Targeted enterprise organization",
+      "identity_class": "organization",
+      "sectors": ["technology", "energy", "financial-services", "healthcare-services"],
+      "description": "BlackCat campaigns observed against multiple sectors. Sectors derived from STIX open vocab 'industry-sector-ov' by looking up sector keywords in the source text against the vocab."
+    },
+
+    {
+      "_comment": "Infrastructure object 1: the Windows domain controller. infrastructure_types from STIX 2.1 'infrastructure-type-ov'. Derived from IR observation that the malware uses PsExec + harvested AD credentials + lateral movement (T1003.006 DCSync), implying an AD environment.",
+      "type": "infrastructure",
+      "spec_version": "2.1",
+      "id": "infrastructure--blackcat-target-dc",
+      "created": "2026-05-10T00:00:00.000Z",
+      "modified": "2026-05-10T00:00:00.000Z",
+      "name": "Windows Domain Controller",
+      "description": "Domain controller for the targeted enterprise AD forest. Presence inferred from IR techniques T1003.006 (DCSync), T1558 (Kerberoasting), T1078.002 (Domain Accounts).",
+      "infrastructure_types": ["unknown"],
+      "aliases": ["DC", "Domain Controller"],
+      "kill_chain_phases": [
+        {"kill_chain_name": "mitre-attack", "phase_name": "credential-access"},
+        {"kill_chain_name": "mitre-attack", "phase_name": "lateral-movement"}
+      ]
+    },
+
+    {
+      "_comment": "Infrastructure 2: domain-joined workstation. infrastructure_types: 'workstation' is in STIX open vocab.",
+      "type": "infrastructure",
+      "spec_version": "2.1",
+      "id": "infrastructure--blackcat-target-workstation",
+      "created": "2026-05-10T00:00:00.000Z",
+      "modified": "2026-05-10T00:00:00.000Z",
+      "name": "Domain-joined Windows workstation",
+      "description": "End-user host on the AD domain. Primary encryption target. Derived from IR techniques T1486 (Data Encrypted for Impact), T1490 (Inhibit System Recovery).",
+      "infrastructure_types": ["workstation"],
+      "kill_chain_phases": [
+        {"kill_chain_name": "mitre-attack", "phase_name": "impact"}
+      ]
+    },
+
+    {
+      "_comment": "Infrastructure 3: the Exchange server is a literal mention in the IR ('Unpatched Exchange server'). Mapped to STIX vocab 'hosting-malware' because BlackCat uses it as an initial-access foothold + sometimes as a staging host. Could also be 'unknown'.",
+      "type": "infrastructure",
+      "spec_version": "2.1",
+      "id": "infrastructure--blackcat-target-exchange",
+      "created": "2026-05-10T00:00:00.000Z",
+      "modified": "2026-05-10T00:00:00.000Z",
+      "name": "Internet-facing Microsoft Exchange server",
+      "description": "Unpatched Exchange server exploited for initial access (CVE-2021-26855 ProxyLogon chain or similar).",
+      "infrastructure_types": ["hosting-malware", "unknown"],
+      "kill_chain_phases": [
+        {"kill_chain_name": "mitre-attack", "phase_name": "initial-access"}
+      ]
+    },
+
+    {
+      "_comment": "Relationship edges. Every relationship_type is from STIX 2.1 'relationship-type-ov' (e.g., 'targets', 'uses', 'compromises', 'communicates-with'). NO custom verbs.",
+      "type": "relationship",
+      "spec_version": "2.1",
+      "id": "relationship--blackcat-targets-org",
+      "created": "2026-05-10T00:00:00.000Z",
+      "modified": "2026-05-10T00:00:00.000Z",
+      "relationship_type": "targets",
+      "source_ref": "malware--blackcat-alphv",
+      "target_ref": "identity--blackcat-target-org"
+    },
+
+    {
+      "type": "relationship",
+      "spec_version": "2.1",
+      "id": "relationship--blackcat-compromises-exchange",
+      "created": "2026-05-10T00:00:00.000Z",
+      "modified": "2026-05-10T00:00:00.000Z",
+      "relationship_type": "compromises",
+      "source_ref": "malware--blackcat-alphv",
+      "target_ref": "infrastructure--blackcat-target-exchange"
+    },
+
+    {
+      "type": "relationship",
+      "spec_version": "2.1",
+      "id": "relationship--workstation-located-at-org",
+      "created": "2026-05-10T00:00:00.000Z",
+      "modified": "2026-05-10T00:00:00.000Z",
+      "relationship_type": "located-at",
+      "source_ref": "infrastructure--blackcat-target-workstation",
+      "target_ref": "identity--blackcat-target-org"
+    },
+
+    {
+      "type": "relationship",
+      "spec_version": "2.1",
+      "id": "relationship--workstation-member-of-dc",
+      "created": "2026-05-10T00:00:00.000Z",
+      "modified": "2026-05-10T00:00:00.000Z",
+      "relationship_type": "related-to",
+      "source_ref": "infrastructure--blackcat-target-workstation",
+      "target_ref": "infrastructure--blackcat-target-dc",
+      "description": "Workstation is domain-joined to the DC."
+    },
+
+    {
+      "_comment": "Custom x-cti-range-topology object. THIS is the bridge between STIX-as-CTI and Caldera-range-as-deployable. The range plugin reads this to pick images and wire roles. Hosts are scoped by 'platform' (matches onprem_images.yml's 'os' field) and 'role' (drives ansible group membership e.g., tag_role_dc, tag_role_workstation).",
+      "type": "x-cti-range-topology",
+      "spec_version": "2.1",
+      "id": "x-cti-range-topology--blackcat-v1",
+      "created": "2026-05-10T00:00:00.000Z",
+      "modified": "2026-05-10T00:00:00.000Z",
+      "extensions": {
+        "extension-definition--cti-range-topology-v1": {
+          "extension_type": "new-sdo"
+        }
+      },
+      "derived_from": ["malware--blackcat-alphv"],
+      "primary_platform": "windows",
+      "primary_platform_confidence": 0.95,
+      "primary_platform_source": "malware.x_mitre_platforms[0] + technique-platform aggregate (167:38 windows vs linux)",
+      "hosts": [
+        {
+          "name": "range-dc-01",
+          "role": "dc",
+          "platform": "windows",
+          "image_candidates": ["timestone-windows-victim"],
+          "services": ["active-directory-domain-services", "kerberos", "dns"],
+          "member_of": [],
+          "inferred_from": ["technique T1003.006 (DCSync)", "technique T1558 (Kerberoasting)"]
+        },
+        {
+          "name": "range-workstation-01",
+          "role": "workstation",
+          "platform": "windows",
+          "image_candidates": ["timestone-windows-victim"],
+          "services": [],
+          "member_of": ["range-dc-01"],
+          "inferred_from": ["malware.x_mitre_platforms includes Windows", "technique T1486 (Data Encrypted for Impact)"]
+        },
+        {
+          "name": "range-exchange-01",
+          "role": "exchange",
+          "platform": "windows",
+          "image_candidates": ["timestone-windows-victim"],
+          "services": ["microsoft-exchange"],
+          "member_of": ["range-dc-01"],
+          "inferred_from": ["IR.infrastructure mentions 'Unpatched Exchange server'"]
+        }
+      ],
+      "networks": [
+        {
+          "name": "internal-corp",
+          "members": ["range-dc-01", "range-workstation-01", "range-exchange-01"]
+        }
+      ],
+      "notes": "Every field above derives from an ontology/dictionary lookup against MITRE ATT&CK (taxonomy already loaded by cti_taxonomy_loader.py), MITRE D3fend (cloned to utilities/D3fend_CAD), or STIX 2.1 open vocabs. No malware-name-to-OS hardcoded mapping is required: x_mitre_platforms on the malware object answers the OS question directly."
+    }
+
+  ]
+}
