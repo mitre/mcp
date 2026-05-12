@@ -2,6 +2,28 @@
 
 An AI-powered plugin for Caldera that orchestrates long-running LLM workflows to automatically create adversary emulation abilities and plan operations. Optionally enriches workflows with Retrieval-Augmented Generation (RAG) using Cyber Threat Intelligence (CTI) from STIX JSON files. All executions are tracked via MLflow for full observability into LLM reasoning and tool usage.
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/images/mcp-main-screen.png" alt="Caldera MCP main screen" width="900">
+</p>
+<p align="center"><em>Main MCP workspace with workflow cards and global model configuration.</em></p>
+
+<p align="center">
+  <img src="docs/images/mcp-cti-ingest-pipeline.png" alt="MCP CTI ingest pipeline screen" width="900">
+</p>
+<p align="center"><em>CTI ingest pipeline for raw reports and generated STIX bundles.</em></p>
+
+<p align="center">
+  <img src="docs/images/mcp-plan-execute-workspace.png" alt="MCP Plan and Execute workspace" width="900">
+</p>
+<p align="center"><em>Plan and Execute workspace with LLM endpoint, CTI/RAG, and Range controls.</em></p>
+
+<p align="center">
+  <img src="docs/images/mcp-plan-execute-stix-selector.png" alt="MCP Plan and Execute STIX selector" width="900">
+</p>
+<p align="center"><em>Graphical STIX selection modal used by Plan and Execute.</em></p>
+
 ## Recent changes
 
 - **`cti_pipeline` MCP server**: `mcp_server.py` now registers a dedicated `cti_pipeline` server exposing six tools the LLM can call in sequence — `cti_pipeline_ingest_cti`, `cti_pipeline_build_topology`, `cti_pipeline_synthesize_deploy_spec`, `cti_pipeline_deploy_range`, `cti_pipeline_run_operation`, `cti_pipeline_validate_detections`.
