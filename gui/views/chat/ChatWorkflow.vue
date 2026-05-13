@@ -74,7 +74,6 @@
       <ChatTranscript
         :messages="messages"
         :workflow-name="workflow?.display_name"
-        :workflow-description="workflow?.description"
         :split-sentences="splitSentences"
         :is-injected-sentence="isInjectedSentence"
       />

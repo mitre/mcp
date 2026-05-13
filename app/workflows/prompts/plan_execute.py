@@ -5,7 +5,13 @@ from __future__ import annotations
 from typing import Any
 
 
-PLAN_EXECUTE_DESCRIPTION = ""
+PLAN_EXECUTE_DESCRIPTION = (
+    "Turn CTI into a live adversary-emulation run. Select or upload CTI/STIX, "
+    "extract STIX 2.1 entities, infer the victim topology, choose one or more "
+    "Range providers, synthesize a deploy spec, provision real infrastructure, "
+    "install required services and features, place the starting agent, run "
+    "the CALDERA operation, and summarize detection coverage."
+)
 
 
 PLAN_EXECUTE_EXAMPLES = [
