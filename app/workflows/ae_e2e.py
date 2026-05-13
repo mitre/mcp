@@ -964,17 +964,6 @@ def _inventory_for(hosts: list[dict]) -> str:
 import dspy  # noqa: E402
 
 
-class _AeE2EStubSignature(dspy.Signature):
-    """Stub signature for the ae-e2e workflow.
-
-    Not exercised at request time — the API endpoint bypasses the
-    DSPy/LM machinery and calls AEEndToEndWorkflow.run() directly. The
-    signature is here only because Workflow.signature is non-optional.
-    """
-    adversary_emulation_task: str = dspy.InputField(default="")
-    process_result: str = dspy.OutputField()
-
-
 async def _workflow_runner(prompt: str = "", lm_obj=None, *, run_id=None,
                             enabled_servers=None, server_registry=None,
                             services=None, **kwargs) -> dict:
@@ -1002,30 +991,10 @@ async def _workflow_runner(prompt: str = "", lm_obj=None, *, run_id=None,
     }
 
 
-# Registered so the POST /plugin/mcp/workflows/run-ae-end-to-end endpoint's
-# `wf_registry.get("ae-e2e")` presence check passes. The Workflow object's
-# `run` adapter is _workflow_runner above; it requires a `services` kwarg
-# that the API endpoint supplies before re-instantiating AEEndToEndWorkflow
-# directly. Without this registration the endpoint 500s with
-# "ae-e2e workflow not registered". The workflow does not appear as a
-# selectable card in the MCP workspace UI (plan_execute remains the chat
-# entry point) — it is invoked programmatically.
-WORKFLOWS = [
-    Workflow(
-        id="ae-e2e",
-        display_name="AE End-to-End",
-        description=(
-            "Run the 12-stage CTI -> AE plan -> range deploy -> sandcat -> "
-            "operation -> detections pipeline in one shot. Invoked via "
-            "POST /plugin/mcp/workflows/run-ae-end-to-end."
-        ),
-        signature=_AeE2EStubSignature,
-        required_servers=[],
-        optional_servers=["caldera_core", "range", "cti_pipeline"],
-        accepted_capabilities=[],
-        ui_component="",  # not user-selectable
-        example_prompts=[],
-        run=_workflow_runner,
-        supports_chat_history=False,
-    ),
-]
+# Intentionally no top-level Workflow registration: ae-e2e is invoked
+# programmatically via POST /plugin/mcp/workflows/run-ae-end-to-end, which
+# instantiates AEEndToEndWorkflow directly. Registering it here surfaces
+# a duplicate workflow card in the MCP workspace UI that overlaps with
+# plan_execute and confuses the UX. The API endpoint no longer relies on
+# the registry presence check (see mcp_api.run_ae_end_to_end).
+WORKFLOWS = []

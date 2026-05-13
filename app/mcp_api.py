@@ -1006,18 +1006,10 @@ class McpAPI:
                 {"error": "request body must be a JSON object"}, status=400,
             )
 
-        wf_registry = getattr(self.mcp_svc, "workflow_registry", None) or {}
-        wf = wf_registry.get("ae-e2e")
-        if wf is None:
-            return web.json_response(
-                {"error": "ae-e2e workflow not registered; check discovery logs"},
-                status=500,
-            )
-
-        # Re-instantiate AEEndToEndWorkflow directly with our services dict;
-        # the workflow.run adapter requires it and we don't want to thread
-        # services through MCPService.execute (which is geared for LLM
-        # runs).
+        # ae-e2e is intentionally not registered in the workflow registry —
+        # it duplicates plan_execute's card in the UI. The endpoint bypasses
+        # the registry and instantiates AEEndToEndWorkflow directly with our
+        # services dict (workflow.run requires it).
         try:
             from plugins.mcp.app.workflows.ae_e2e import AEEndToEndWorkflow
             workflow = AEEndToEndWorkflow(self.services)

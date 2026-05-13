@@ -23,15 +23,7 @@
           >
             <div style="flex-grow: 1;">
               <h3 class="title is-5">{{ wf.display_name }}</h3>
-              <p>{{ wf.description }}</p>
-              <p
-                v-if="wf.required_servers.length || wf.optional_servers.length || wf.accepted_capabilities.length"
-                class="is-size-7 has-text-grey-light mt-2"
-              >
-                <span v-if="wf.required_servers.length">Requires: {{ wf.required_servers.join(', ') }}</span>
-                <span v-if="wf.optional_servers.length"> &middot; Can use: {{ wf.optional_servers.join(', ') }}</span>
-                <span v-if="wf.accepted_capabilities.length"> &middot; Capabilities: {{ wf.accepted_capabilities.join(', ') }}</span>
-              </p>
+              <p v-if="wf.description">{{ wf.description }}</p>
             </div>
             <div class="is-flex is-justify-content-flex-end mt-4">
               <button class="button is-primary" @click="setSelectedPath(wf.id)">
@@ -70,6 +62,32 @@
                 View History
               </button>
             </div>
+          </div>
+
+          <!-- Discovered MCP Servers (dynamic, from hook.discover_mcp_servers) -->
+          <div
+            v-if="availableServers.length"
+            class="box"
+            style="display: flex; flex-direction: column;"
+          >
+            <h3 class="title is-5">MCP Servers</h3>
+            <p class="is-size-7 has-text-grey-light mb-3">
+              Discovered at boot by walking each plugin's <code>mcp_server.py</code> for an
+              <code>MCP_METADATA</code> literal. These are the tool surfaces every workflow can call.
+            </p>
+            <table class="table is-narrow is-fullwidth is-size-7">
+              <tbody>
+                <tr v-for="srv in availableServers" :key="srv.name">
+                  <td style="white-space: nowrap;"><strong>{{ srv.display_name }}</strong></td>
+                  <td style="white-space: nowrap;"><code>{{ srv.name }}</code></td>
+                  <td>{{ srv.description }}</td>
+                  <td style="white-space: nowrap;">
+                    <span v-if="srv.default_enabled" class="tag is-success is-light">default-enabled</span>
+                    <span v-else class="tag is-light">opt-in</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
           <!-- Extension Guide (always on) -->
