@@ -64,32 +64,6 @@
             </div>
           </div>
 
-          <!-- Discovered MCP Servers (dynamic, from hook.discover_mcp_servers) -->
-          <div
-            v-if="availableServers.length"
-            class="box"
-            style="display: flex; flex-direction: column;"
-          >
-            <h3 class="title is-5">MCP Servers</h3>
-            <p class="is-size-7 has-text-grey-light mb-3">
-              Discovered at boot by walking each plugin's <code>mcp_server.py</code> for an
-              <code>MCP_METADATA</code> literal. These are the tool surfaces every workflow can call.
-            </p>
-            <table class="table is-narrow is-fullwidth is-size-7">
-              <tbody>
-                <tr v-for="srv in availableServers" :key="srv.name">
-                  <td style="white-space: nowrap;"><strong>{{ srv.display_name }}</strong></td>
-                  <td style="white-space: nowrap;"><code>{{ srv.name }}</code></td>
-                  <td>{{ srv.description }}</td>
-                  <td style="white-space: nowrap;">
-                    <span v-if="srv.default_enabled" class="tag is-success is-light">default-enabled</span>
-                    <span v-else class="tag is-light">opt-in</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
           <!-- Extension Guide (always on) -->
           <div class="box" style="display: flex; flex-direction: column; justify-content: space-between;">
             <div style="flex-grow: 1;">
