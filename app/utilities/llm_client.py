@@ -9,6 +9,7 @@ Responsibilities:
 """
 
 import logging
+import os
 import aiohttp
 import yaml
 import dspy
@@ -251,9 +252,20 @@ class LLMClient:
         temperature: float,
         llm_cfg: dict,
     ) -> str | None:
+        # Resolve api_key with env-var fallback: load_config() returns the
+        # raw YAML which only carries `api_key_env`; the env-var resolution
+        # happens in plugins.mcp.app.config.llm_defaults but the LLMClient
+        # path bypasses that. Without this fallback the Authorization header
+        # comes back as "Bearer " (empty) and the upstream gateway returns
+        # 401 "Malformed API Key".
+        api_key = llm_cfg.get("api_key") or ""
+        if not api_key:
+            env_var = llm_cfg.get("api_key_env") or ""
+            if env_var:
+                api_key = os.environ.get(env_var, "") or ""
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {llm_cfg.get('api_key') or ''}",
+            "Authorization": f"Bearer {api_key}",
         }
 
         payload = {

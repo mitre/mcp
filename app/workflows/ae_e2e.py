@@ -1002,11 +1002,30 @@ async def _workflow_runner(prompt: str = "", lm_obj=None, *, run_id=None,
     }
 
 
-# Intentionally no top-level Workflow registration: ae-e2e is invoked
-# either by the `cti_pipeline` MCP tools (which plan_execute's LLM
-# selects when the user asks for the end-to-end run) or by the
-# scripts/e2e_full_vision.sh CLI client. Exposing it as a separate
-# workflow card duplicated plan_execute's role and confused the UX.
-# The AEEndToEndWorkflow class + POST /plugin/mcp/workflows/run-ae-end-to-end
-# endpoint remain available for those programmatic callers.
-WORKFLOWS = []
+# Registered so the POST /plugin/mcp/workflows/run-ae-end-to-end endpoint's
+# `wf_registry.get("ae-e2e")` presence check passes. The Workflow object's
+# `run` adapter is _workflow_runner above; it requires a `services` kwarg
+# that the API endpoint supplies before re-instantiating AEEndToEndWorkflow
+# directly. Without this registration the endpoint 500s with
+# "ae-e2e workflow not registered". The workflow does not appear as a
+# selectable card in the MCP workspace UI (plan_execute remains the chat
+# entry point) — it is invoked programmatically.
+WORKFLOWS = [
+    Workflow(
+        id="ae-e2e",
+        display_name="AE End-to-End",
+        description=(
+            "Run the 12-stage CTI -> AE plan -> range deploy -> sandcat -> "
+            "operation -> detections pipeline in one shot. Invoked via "
+            "POST /plugin/mcp/workflows/run-ae-end-to-end."
+        ),
+        signature=_AeE2EStubSignature,
+        required_servers=[],
+        optional_servers=["caldera_core", "range", "cti_pipeline"],
+        accepted_capabilities=[],
+        ui_component="",  # not user-selectable
+        example_prompts=[],
+        run=_workflow_runner,
+        supports_chat_history=False,
+    ),
+]
