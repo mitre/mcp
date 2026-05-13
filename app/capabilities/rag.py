@@ -204,8 +204,9 @@ def _resolve_rag_file(base_dir: Path, name: str) -> Path:
 def _format_rag_context(rag_context: dict) -> str:
     """Format a RAGService.get_context_for_task() result into a prompt string.
 
-    Mirrors the formatter that lives inline in workflows/plan_execute.py so
-    the capability can stand on its own once the orchestrator switches over.
+    Mirrors the formatter that lives inline in workflows/author.py and
+    workflows/plan_execute.py so the capability can stand on its own once the
+    orchestrator switches over.
     """
     if not rag_context:
         return "No CTI context available."
@@ -293,7 +294,7 @@ CAPABILITIES = [
         description=(
             "Embed uploaded CTI bundles and inject the most relevant chunks "
             "as context for the workflow. Useful for grounding both ability "
-            "infrastructure provisioning in real threat reports."
+            "authoring and infrastructure provisioning in real threat reports."
         ),
         enrich=_enrich,
         ui_settings_component="components/RAGSettings.vue",

@@ -16,7 +16,8 @@ The plugin is designed to keep the LLM grounded in MCP tools and server-side con
 
 ## Features
 
-- **Plan and Execute workflow**: Chat-driven adversary-emulation runs. Pick STIX, plan, deploy, run, and review detection coverage through one prompt-and-respond surface.
+- **Author workflow**: Create CALDERA abilities and adversaries from an operator prompt while using available MCP server tools.
+- **Plan and Execute workflow**: Select or upload CTI/STIX, infer victim topology, choose one or more Range providers, synthesize a deploy spec, provision real infrastructure, place the starting agent, run the CALDERA operation, and summarize detection coverage.
 - **CTI ingest pipeline**: Upload raw CTI in HTML, PDF, plaintext, or Markdown and produce STIX 2.1 bundles for retrieval and planning.
 - **STIX selection for planning**: Pick generated STIX bundles from the Plan and Execute workspace. Selecting STIX automatically enables CTI retrieval for that run.
 - **Range-aware planning**: Discover loaded Range providers, images, profiles, and features so deploy specs use available infrastructure instead of invented hosts or services.
@@ -143,6 +144,10 @@ python server.py --insecure --log=DEBUG --build
 
 ## Workflow Guide
 
+### Author
+
+Use Author when you want CALDERA content from a natural-language request. The workflow can call available MCP tools to create or update abilities and adversaries.
+
 ### Upload CTI
 
 Use Upload CTI to stage raw reports, run CTI extraction, and produce STIX 2.1 bundles. Generated bundles are stored by the plugin and can be selected later from Plan and Execute.
@@ -223,6 +228,7 @@ plugins/mcp/
 |   +-- capabilities/
 |   |   +-- rag.py                 # STIX retrieval support
 |   +-- workflows/
+|   |   +-- author.py              # Author workflow
 |   |   +-- plan_execute.py        # Plan and Execute workflow
 |   |   +-- prompts/               # centralized prompt context
 |   +-- utilities/

@@ -540,7 +540,7 @@ function loadSelectedPath() {
   return null
 }
 
-// selectedPath holds either a workflow id (e.g. "plan_execute") or
+// selectedPath holds either a workflow id (e.g. "author", "plan_execute") or
 // one of the always-on cards: "history", "guide", "cti".
 const selectedPath = ref(loadSelectedPath())
 
@@ -696,6 +696,7 @@ function applyServerDefaults(d) {
 // workflow.ui_component, which the magma bundler resolves relative to
 // the plugin's gui/views/ directory.
 const _BUILTIN_COMPONENTS = {
+  'author.vue': McpChatWorkflow,
   'plan_execute.vue': McpChatWorkflow,
 }
 

@@ -112,7 +112,7 @@ workflow. The parent forwards a known set of environment variables; you
 can rely on them and should not reach for anything else.
 
 Forwarded by the parent (see
-[app/workflows/plan_execute.py](app/workflows/plan_execute.py) `get_env()`):
+[app/workflows/author.py](app/workflows/author.py) `get_env()`):
 
 | Env var | Meaning |
 |---|---|
@@ -187,7 +187,7 @@ if __name__ == "__main__":
 | One tool, one purpose | Don't conflate "get and create" in one tool |
 
 Collisions across servers fail fast at run start with a clear error
-([app/workflows/plan_execute.py](app/workflows/plan_execute.py) tool-merge loop) —
+([app/workflows/author.py](app/workflows/author.py) tool-merge loop) —
 you'll see it immediately during your first integration test.
 
 ---
@@ -443,8 +443,8 @@ Vue components live in `plugins/<your_plugin>/gui/views/*.vue`. Magma's
 
 A workflow's `ui_component: "my_workflow.vue"` resolves to
 `plugins/<your_plugin>/gui/views/my_workflow.vue`. Built-in workflows
-omit `ui_component` (or point at `plan_execute.vue`), which routes
-them through the shared chat module at
+omit `ui_component` (or point at `author.vue` / `plan_execute.vue`),
+which routes them through the shared chat module at
 [gui/views/chat/ChatWorkflow.vue](gui/views/chat/ChatWorkflow.vue).
 
 Most third-party workflows do not need a custom session page: the
