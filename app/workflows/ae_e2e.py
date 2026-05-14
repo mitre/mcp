@@ -808,9 +808,12 @@ class AEEndToEndWorkflow:
             "state": "running",
             "autonomous": 1,
         }
+        # _get_allowed_from_access expects a dict like {"access": (..,)}.
+        # Pass the dict directly — using the bare Access enum here causes
+        # `'Access' object is not subscriptable` deep in setup_operation.
         access = {"access": (BaseWorld.Access.RED,)}
         operation = await mgr.create_object_from_schema(
-            OperationSchema, op_data, BaseWorld.Access.RED,
+            OperationSchema, op_data, access,
         )
 
         op_id = getattr(operation, "id", None)
