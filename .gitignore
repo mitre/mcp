@@ -32,8 +32,13 @@ data/raw/
 data/outputs_ir/
 data/outputs_stix/
 data/outputs_topology/
+data/outputs_cad/
 data/mcp-data-pre-merge/
 data/stix_bundle.json
+
+# Operator-side backup files left by interactive edits
+*.bak
+*.bak_*
 
 # Runtime databases
 *.sqlite

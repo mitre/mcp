@@ -3,6 +3,8 @@ import json
 from typing import List, Dict, Optional
 import logging
 
+from plugins.mcp.app.dspy_env import apply_litellm_ssl_verify
+
 class RAGService:
     """RAG service for CTI (Cyber Threat Intelligence) data retrieval using STIX bundles."""
     
@@ -11,6 +13,7 @@ class RAGService:
         stix_bundle_path: Optional[str] = None,
         api_key: Optional[str] = None,
         api_base: Optional[str] = None,
+        ssl_verify: Optional[bool] = None,
         log: Optional[logging.Logger] = None,
     ):
         self.max_characters = 6000
@@ -22,6 +25,7 @@ class RAGService:
         # the orchestrator does not supply a separate embedding provider.
         self.api_key = api_key
         self.api_base = api_base
+        self.ssl_verify = ssl_verify
         self.log = log or logging.getLogger("plugins.mcp")
 
         self.log.info(f"Loading STIX bundle from: {stix_bundle_path}")
@@ -57,6 +61,8 @@ class RAGService:
         embedder_kwargs = {"api_key": self.api_key}
         if self.api_base:
             embedder_kwargs["api_base"] = self.api_base
+            embedder_kwargs["custom_llm_provider"] = "custom_openai"
+        apply_litellm_ssl_verify(self.ssl_verify)
         embedder = dspy.Embedder(embed_model, **embedder_kwargs)
         self.search = dspy.retrievers.Embeddings(
             corpus=self.corpus,
@@ -230,10 +236,11 @@ def _build_rag_context_sync(
     *,
     api_key: str,
     api_base: str | None,
+    ssl_verify: bool | None,
     embed_model: str,
     topk: int,
 ) -> str:
-    rag = RAGService(api_key=api_key, api_base=api_base)
+    rag = RAGService(api_key=api_key, api_base=api_base, ssl_verify=ssl_verify)
     rag.topk_objects_to_retrieve = topk
     rag.initialize_from_bundles(bundles, embed_model=embed_model)
     raw_context = rag.get_context_for_task(prompt)
@@ -263,6 +270,7 @@ async def _enrich(prompt: str, settings: dict) -> dict:
 
     embed_api_key = settings.get("embed_api_key") or settings.get("api_key") or ""
     embed_api_base = settings.get("embed_api_base") or settings.get("api_base") or None
+    ssl_verify = settings.get("ssl_verify")
     embed_model = settings.get("embed_model") or "openai/text-embedding-3-small"
     topk = int(settings.get("topk") or 5)
 
@@ -281,6 +289,7 @@ async def _enrich(prompt: str, settings: dict) -> dict:
         bundles,
         api_key=embed_api_key,
         api_base=embed_api_base,
+        ssl_verify=ssl_verify,
         embed_model=embed_model,
         topk=topk,
     )

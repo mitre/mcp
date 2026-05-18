@@ -10,6 +10,7 @@ llm:
   model: openai/gpt-oss-120b
   api_base: https://models.k8s.aip.mitre.org/v1
   api_key_env: MCP_LLM_API_KEY
+  ssl_verify: true
   offline: true
   use_mock: false
   fields_locked:
@@ -23,6 +24,7 @@ cti:
   model: openai/gpt-oss-120b
   api_base: https://models.k8s.aip.mitre.org/v1
   api_key_env: MCP_LLM_API_KEY
+  ssl_verify: true
   temperature: 0.0
   top_p: 1.0
   max_tokens: 4000
@@ -36,3 +38,12 @@ cti:
 caldera:
   url_env: CALDERA_URL
   api_key_env: CORE_CALDERA_API_KEY
+
+# MLflow tracking server. Defaults to localhost:5000 (MLflow's own default).
+# Override in conf/local.yml when this Caldera tree shares a host with
+# another Caldera tree whose MCP plugin is already bound to 5000 — set
+# `port: 5050` (or any free port) so the two trees keep separate
+# tracking stores instead of cross-contaminating runs.
+mlflow:
+  host: 127.0.0.1
+  port: 5000

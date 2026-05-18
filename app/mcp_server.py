@@ -15,7 +15,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from plugins.mcp.app.config import caldera_connection
+from plugins.mcp.app.config import caldera_connection, _normalise_api_url
 
 MCP_METADATA = {
     "display_name": "CALDERA Core",
@@ -27,11 +27,14 @@ mcp = FastMCP("Caldera Core MCP Server")
 
 class CalderaRequest:
     def __init__(self, url, api_key):
-        # Defensive normalization: callers historically passed CALDERA_URL via
-        # env var, and a dropped trailing slash produces malformed endpoints
-        # once you f-string in the path.
-        # Always store with exactly one trailing slash so concat is safe.
-        self.caldera_url = url.rstrip('/') + '/' if url else url
+        # Route the incoming URL through the same _normalise_api_url
+        # config.py uses, so an underspecified value (e.g. operator typed
+        # "http://localhost:8788" without the "/api/v2/" suffix in a
+        # CALDERA_URL env override or a cross-host setup) still produces
+        # a valid v2 base. Without this, _join("health") would emit
+        # "/health" → HTTP 404 → HTML body → JSON parse explodes with
+        # "Expecting value: line 1 column 1 (char 0)".
+        self.caldera_url = _normalise_api_url(url) if url else url
         self.api_key = api_key
         self.headers = {"KEY": f"{self.api_key}", "Content-Type": "application/json"}
         self.total_get_requests = collections.defaultdict(list)

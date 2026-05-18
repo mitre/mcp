@@ -57,14 +57,24 @@ def kill_existing_mlflow(port=5000):
 
 
 
-def is_port_open(port):
+def is_port_open(port, host='127.0.0.1'):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        return sock.connect_ex(('127.0.0.1', port)) == 0
+        return sock.connect_ex((host, port)) == 0
+
+# Resolve MLflow host+port from the plugin's yaml so two Caldera trees
+# on the same host (e.g. CalderaVENV on :5000, CalderaDetectionsVENV on
+# :5050) don't share an MLflow tracking server and cross-contaminate runs.
+from plugins.mcp.app.config import mlflow_settings as _mlflow_settings
+_mlflow = _mlflow_settings()
+_MLFLOW_HOST = _mlflow['host']
+_MLFLOW_PORT = _mlflow['port']
+_MLFLOW_URI = _mlflow['tracking_uri']
+os.environ.setdefault('MLFLOW_TRACKING_URI', _MLFLOW_URI)
 
 # 🔁 Start MLflow server if it's not already running
-if not is_port_open(5000):
+if not is_port_open(_MLFLOW_PORT, _MLFLOW_HOST):
     # 🧼 Kill old MLflow server if it exists
-    kill_existing_mlflow(5000)
+    kill_existing_mlflow(_MLFLOW_PORT)
     try:
         plugin_dir = os.path.dirname(os.path.abspath(__file__))
         mlruns_path = os.path.join(plugin_dir, 'mlruns')
@@ -73,24 +83,24 @@ if not is_port_open(5000):
             "mlflow", "server",
             "--backend-store-uri", f"sqlite:///{db_path}",
             "--default-artifact-root", mlruns_path,
-            "--host", "127.0.0.1",
-            "--port", "5000"
+            "--host", _MLFLOW_HOST,
+            "--port", str(_MLFLOW_PORT),
         ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        log.debug("[MCP] Starting MLflow server at http://localhost:5000")
+        log.debug(f"[MCP] Starting MLflow server at {_MLFLOW_URI}")
     except Exception as e:
         log.error(f"[MCP] Failed to start MLflow server: {e}")
         traceback.print_exc()
 else:
-    log.info("[MCP] MLflow server already running on port 5000")
+    log.info(f"[MCP] MLflow server already running on {_MLFLOW_HOST}:{_MLFLOW_PORT}")
 
 # 💤 Optional: Wait until server is reachable
 for i in range(10):
-    if is_port_open(5000):
+    if is_port_open(_MLFLOW_PORT, _MLFLOW_HOST):
         log.debug("[MCP] MLflow is ready.")
         break
     time.sleep(1)
 else:
-    log.error("[MCP] MLflow failed to start within 10 seconds.")
+    log.error(f"[MCP] MLflow failed to start within 10 seconds on {_MLFLOW_HOST}:{_MLFLOW_PORT}.")
 
 # ✅ Now import modules that depend on MLflow
 try:

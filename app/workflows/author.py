@@ -10,13 +10,17 @@ from mlflow.tracking import MlflowClient
 import asyncio
 from contextlib import AsyncExitStack
 
-from plugins.mcp.app.config import caldera_connection, llm_defaults
+from plugins.mcp.app.config import caldera_connection, llm_defaults, mlflow_settings
 from plugins.mcp.app.dspy_env import (
     ENV_API_BASE,
     ENV_API_KEY,
     ENV_MAX_TOKENS,
     ENV_MODEL,
+    ENV_PROVIDER,
+    ENV_SSL_VERIFY,
     ENV_TEMPERATURE,
+    ENV_TIMEOUT,
+    dspy_lm_kwargs_from_settings,
 )
 from plugins.mcp.app.dspy_runner import safe_react_acall
 
@@ -33,8 +37,13 @@ def get_env(lm_settings=None):
         env[ENV_MODEL] = str(lm_settings.get('model') or 'gpt-4o')
         env[ENV_API_KEY] = str(lm_settings.get('api_key') or '')
         env[ENV_API_BASE] = str(lm_settings.get('api_base') or '')
+        env[ENV_PROVIDER] = str(lm_settings.get('provider') or 'openai_compatible')
         env[ENV_TEMPERATURE] = str(lm_settings.get('temperature') or 0.5)
         env[ENV_MAX_TOKENS] = str(lm_settings.get('max_tokens') or 24000)
+        if lm_settings.get('timeout') is not None:
+            env[ENV_TIMEOUT] = str(lm_settings.get('timeout'))
+        if lm_settings.get('ssl_verify') is not None:
+            env[ENV_SSL_VERIFY] = str(lm_settings.get('ssl_verify')).lower()
 
     caldera = caldera_connection()
     env['CALDERA_URL'] = os.environ.get('CALDERA_URL') or caldera['url']
@@ -42,7 +51,7 @@ def get_env(lm_settings=None):
 
     return env
 
-mlflow.set_tracking_uri("http://localhost:5000")
+mlflow.set_tracking_uri(mlflow_settings()['tracking_uri'])
 mlflow.set_experiment("caldera-mcp-FACTORY-client-1")
 mlflow.dspy.autolog()
 
@@ -235,14 +244,8 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
             mlflow.log_param("tool_count", len(dspy_tools))
 
             # Use context to set LM for this task/run
-            lm_kwargs = {
-                "api_key": lm_settings['api_key'],
-                "temperature": lm_settings['temperature'],
-                "max_tokens": lm_settings['max_tokens'],
-            }
-            if lm_settings.get('api_base'):
-                lm_kwargs['api_base'] = lm_settings['api_base']
-            with dspy.context(lm=dspy.LM(lm_settings['model'], **lm_kwargs)):
+            lm_kwargs = dspy_lm_kwargs_from_settings(lm_settings)
+            with dspy.context(lm=dspy.LM(**lm_kwargs)):
                 mlflow.set_tag("stage", "creating DSPy ReAct instance")
 
                 # Resolve CTI context: prefer the orchestrator-supplied string,
