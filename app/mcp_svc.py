@@ -278,11 +278,14 @@ class MCPService(BaseService):
     def _create_dspy_client(self, model_config: dict):
         return {
             "model": model_config.get("model"),
+            "provider": model_config.get("provider", "openai_compatible"),
             "api_key": model_config.get("api_key"),
             "api_base": model_config.get("api_base"),
             "temperature": model_config.get("temperature"),
             "max_tokens": model_config.get("max_tokens"),
             "max_tool_calls": model_config.get("max_tool_calls"),
+            "timeout": model_config.get("timeout"),
+            "ssl_verify": model_config.get("ssl_verify"),
         }
 
     async def execute(self, focus: str = None, prompt: str = "", model_config: dict = None,
@@ -358,6 +361,8 @@ class MCPService(BaseService):
                 rag_cfg["embed_model"] = (
                     resolved_lm.get("embed_model") or resolved_lm.get("rag_embed_model")
                 )
+            if rag_cfg.get("ssl_verify") is None:
+                rag_cfg["ssl_verify"] = resolved_lm.get("ssl_verify")
             cap_settings["rag"] = rag_cfg
 
         # mlflow keeps a single "active run" per Python process; firing

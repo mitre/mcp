@@ -326,6 +326,8 @@ class McpAPI:
                 "temperature": cfg.get("temperature"),
                 "max_tokens": cfg.get("max_tokens"),
                 "max_tool_calls": cfg.get("max_tool_calls"),
+                "timeout": cfg.get("timeout"),
+                "ssl_verify": cfg.get("ssl_verify", True),
                 "fields_locked": cfg.get("fields_locked") or {},
             }
             for key, fallback in _RAG_DEFAULTS.items():

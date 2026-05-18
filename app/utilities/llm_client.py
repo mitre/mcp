@@ -10,6 +10,7 @@ Responsibilities:
 
 import logging
 import os
+import ssl
 import aiohttp
 import yaml
 import dspy
@@ -17,6 +18,11 @@ from pathlib import Path
 from functools import lru_cache
 from urllib.parse import urlsplit, urlunsplit
 
+from plugins.mcp.app.dspy_env import (
+    apply_litellm_ssl_verify,
+    coerce_optional_bool,
+    dspy_lm_kwargs_from_settings,
+)
 from plugins.mcp.app.utilities.paths import get_mcp_root
 
 def init_mlflow(profile: str):
@@ -94,6 +100,18 @@ def normalize_openai_api_base(api_base: str | None) -> str | None:
     path = f"{parts.path.rstrip('/')}/v1"
     return urlunsplit((parts.scheme, parts.netloc, path, parts.query, parts.fragment))
 
+
+def _aiohttp_ssl_arg(ssl_verify):
+    """Return aiohttp's per-request SSL argument for MCP LLM config."""
+    verify = coerce_optional_bool(ssl_verify)
+    if verify is False:
+        return False
+    if verify is True or ssl_verify in (None, ""):
+        return None
+    # Non-boolean strings are treated as a CA bundle path.
+    cafile = str(ssl_verify).strip()
+    return ssl.create_default_context(cafile=cafile)
+
 # ------------------------------------------------------
 # Provenance (Stage 2 / STIX support)
 # ------------------------------------------------------
@@ -117,6 +135,7 @@ def get_llm_provenance(profile: str = "llm", *, runtime: bool = False) -> dict:
         "top_p": llm.get("top_p"),
         "max_tokens": llm.get("max_tokens"),
         "timeout": llm.get("timeout", 60),
+        "ssl_verify": llm.get("ssl_verify", True),
         # Optional: allow config to specify embedding model explicitly
         "embed_model": llm.get("embed_model") or llm.get("model"),
     }
@@ -148,21 +167,7 @@ def build_dspy_lm(profile: str = "llm") -> dspy.LM:
     if llm_rt.get("offline") or llm_rt.get("use_mock"):
         raise RuntimeError(f"LLM profile '{profile}' is offline/mock; cannot build DSPy LM")
 
-    kwargs = {
-        "model": llm_rt["model"],
-        "api_key": llm_rt["api_key"],
-        "provider": llm_rt["provider"],
-    }
-
-    # If your provider uses a gateway/base URL, pass it through
-    if llm_rt.get("api_base"):
-        kwargs["api_base"] = llm_rt["api_base"]
-
-    # Only include if explicitly set (DSPy/LiteLLM can behave oddly with None)
-    if llm_rt.get("temperature") is not None:
-        kwargs["temperature"] = llm_rt["temperature"]
-    if llm_rt.get("max_tokens") is not None:
-        kwargs["max_tokens"] = llm_rt["max_tokens"]
+    kwargs = dspy_lm_kwargs_from_settings(llm_rt)
 
     return dspy.LM(**kwargs)
 
@@ -202,6 +207,7 @@ class LLMClient:
         provider = llm_cfg.get("provider", "openai_compatible")
         if provider == "openai_compatible":
             api_base = normalize_openai_api_base(api_base)
+            apply_litellm_ssl_verify(llm_cfg.get("ssl_verify"))
 
         if provider == "ollama":
             if not model.startswith("ollama/"):
@@ -276,12 +282,14 @@ class LLMClient:
         }
 
         timeout = aiohttp.ClientTimeout(total=llm_cfg.get("timeout", 60))
+        ssl_arg = _aiohttp_ssl_arg(llm_cfg.get("ssl_verify", True))
 
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post(
                 f"{api_base}/chat/completions",
                 headers=headers,
                 json=payload,
+                ssl=ssl_arg,
             ) as resp:
                 if resp.status != 200:
                     text = await resp.text()

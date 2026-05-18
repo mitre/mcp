@@ -320,6 +320,9 @@ async function _startRun(text) {
   const ragTopk = inferredCtiRag
     ? (context.cti_rag_topk || ragSettings.topk)
     : ragSettings.topk
+  const ragSslVerify = inferredCtiRag
+    ? (context.cti_rag_ssl_verify ?? globalConfig.sslVerify)
+    : (ragSettings.ssl_verify ?? globalConfig.sslVerify)
 
   const payload = {
     text,
@@ -334,6 +337,7 @@ async function _startRun(text) {
         embed_api_key: ragApiKey,
         api_base: ragApiBase,
         api_key: ragApiKey,
+        ssl_verify: ragSslVerify,
         temperature: inferredCtiRag ? context.cti_rag_temperature : ragSettings.temperature,
         max_tool_calls: inferredCtiRag ? context.cti_rag_max_tool_calls : ragSettings.max_tool_calls,
         max_tokens: inferredCtiRag ? context.cti_rag_max_tokens : ragSettings.max_tokens,
@@ -345,6 +349,7 @@ async function _startRun(text) {
       temperature: globalConfig.temperature,
       api_base: globalConfig.apiBase,
       api_key: globalConfig.apiKey,
+      ssl_verify: globalConfig.sslVerify,
       max_tool_calls: globalConfig.maxToolCalls,
       max_tokens: globalConfig.maxTokens,
     },

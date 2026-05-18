@@ -181,6 +181,13 @@
           </div>
 
           <div class="field">
+            <label class="checkbox">
+              <input type="checkbox" v-model="globalConfig.sslVerify" />
+              Verify TLS certificates
+            </label>
+          </div>
+
+          <div class="field">
             <label class="label">Max Tool Calls</label>
             <div class="control">
               <input
@@ -574,6 +581,7 @@ const globalConfig = reactive({
   temperature: savedConfig?.temperature,
   apiBase: savedConfig?.apiBase || '',
   apiKey: savedConfig?.apiKey || '',
+  sslVerify: savedConfig?.sslVerify,
   maxToolCalls: savedConfig?.maxToolCalls,
   maxTokens: savedConfig?.maxTokens,
   serversByWorkflow: savedConfig?.serversByWorkflow || {},
@@ -609,6 +617,7 @@ function currentEndpointProfile(name) {
     temperature: globalConfig.temperature,
     apiBase: globalConfig.apiBase || '',
     apiKey: globalConfig.apiKey || '',
+    sslVerify: globalConfig.sslVerify ?? true,
     maxToolCalls: globalConfig.maxToolCalls,
     maxTokens: globalConfig.maxTokens,
   }
@@ -620,6 +629,7 @@ function applyEndpointProfile(profile) {
   globalConfig.temperature = profile.temperature
   globalConfig.apiBase = profile.apiBase || profile.api_base || ''
   globalConfig.apiKey = profile.apiKey || profile.api_key || ''
+  globalConfig.sslVerify = profile.sslVerify ?? profile.ssl_verify ?? true
   globalConfig.maxToolCalls = profile.maxToolCalls ?? profile.max_tool_calls
   globalConfig.maxTokens = profile.maxTokens ?? profile.max_tokens
   endpointProfileDraftName.value = profile.name || ''
@@ -654,6 +664,7 @@ function applyServerDefaults(d) {
     globalConfig.modelName = d.model || ''
   }
   if (!globalConfig.apiBase)              globalConfig.apiBase       = d.api_base || ''
+  if (globalConfig.sslVerify == null)     globalConfig.sslVerify     = d.ssl_verify ?? true
   if (globalConfig.temperature   == null) globalConfig.temperature   = d.temperature
   if (!globalConfig.maxToolCalls)         globalConfig.maxToolCalls  = d.max_tool_calls
   if (!globalConfig.maxTokens)            globalConfig.maxTokens     = d.max_tokens

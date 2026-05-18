@@ -10,13 +10,17 @@ from mlflow.tracking import MlflowClient
 import asyncio
 from contextlib import AsyncExitStack
 
-from plugins.mcp.app.config import caldera_connection, llm_defaults
+from plugins.mcp.app.config import caldera_connection, llm_defaults, mlflow_settings
 from plugins.mcp.app.dspy_env import (
     ENV_API_BASE,
     ENV_API_KEY,
     ENV_MAX_TOKENS,
     ENV_MODEL,
+    ENV_PROVIDER,
+    ENV_SSL_VERIFY,
     ENV_TEMPERATURE,
+    ENV_TIMEOUT,
+    dspy_lm_kwargs_from_settings,
 )
 from plugins.mcp.app.dspy_runner import safe_react_acall
 from plugins.mcp.app.workflows.prompts.common import (
@@ -52,15 +56,7 @@ def _build_lm_from_settings(settings: dict) -> dspy.LM:
             "plugins/mcp/.env or enter one in the UI's Global Model Configuration."
         )
 
-    lm_kwargs = {
-        "model": settings.get("model") or "gpt-4o",
-        "api_key": api_key,
-        "api_base": settings.get("api_base"),
-    }
-    if settings.get("temperature") is not None:
-        lm_kwargs["temperature"] = settings.get("temperature")
-    if settings.get("max_tokens") is not None:
-        lm_kwargs["max_tokens"] = settings.get("max_tokens")
+    lm_kwargs = dspy_lm_kwargs_from_settings(settings)
     return dspy.LM(**lm_kwargs)
 
 
@@ -76,8 +72,13 @@ def get_env(lm_settings=None):
         env[ENV_MODEL] = str(lm_settings.get('model') or 'gpt-4o')
         env[ENV_API_KEY] = str(lm_settings.get('api_key') or '')
         env[ENV_API_BASE] = str(lm_settings.get('api_base') or '')
+        env[ENV_PROVIDER] = str(lm_settings.get('provider') or 'openai_compatible')
         env[ENV_TEMPERATURE] = str(lm_settings.get('temperature') or 0.5)
         env[ENV_MAX_TOKENS] = str(lm_settings.get('max_tokens') or 24000)
+        if lm_settings.get('timeout') is not None:
+            env[ENV_TIMEOUT] = str(lm_settings.get('timeout'))
+        if lm_settings.get('ssl_verify') is not None:
+            env[ENV_SSL_VERIFY] = str(lm_settings.get('ssl_verify')).lower()
 
     caldera = caldera_connection()
     env['CALDERA_URL'] = os.environ.get('CALDERA_URL') or caldera['url']
@@ -85,7 +86,7 @@ def get_env(lm_settings=None):
 
     return env
 
-mlflow.set_tracking_uri("http://localhost:5000")
+mlflow.set_tracking_uri(mlflow_settings()['tracking_uri'])
 mlflow.set_experiment("caldera-mcp-client-1")
 mlflow.dspy.autolog()
 current_dir = os.path.dirname(os.path.abspath(__file__))

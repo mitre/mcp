@@ -86,6 +86,13 @@
       />
     </div>
 
+    <div class="field-row">
+      <label class="checkbox">
+        <input type="checkbox" v-model="ragSslVerify" />
+        Verify TLS certificates
+      </label>
+    </div>
+
     <div class="file-picker">
       <label class="file-label">
         <input
@@ -184,6 +191,12 @@ const ragProfileName = computed({
     if (value) ragProfileDraftName.value = value
   },
 })
+const ragSslVerify = computed({
+  get: () => ragSettings.value.ssl_verify ?? props.globalConfig.sslVerify ?? true,
+  set: (value) => {
+    ragSettings.value.ssl_verify = value
+  },
+})
 
 function profileName(value) {
   return String(value || '').trim()
@@ -194,6 +207,7 @@ function applyProfileToRag(profile) {
   ragSettings.value.embed_model = profile.modelName || profile.model || ''
   ragSettings.value.embed_api_base = profile.apiBase || profile.api_base || ''
   ragSettings.value.embed_api_key = profile.apiKey || profile.api_key || ''
+  ragSettings.value.ssl_verify = profile.sslVerify ?? profile.ssl_verify ?? props.globalConfig.sslVerify ?? true
   ragSettings.value.temperature = profile.temperature
   ragSettings.value.max_tool_calls = profile.maxToolCalls ?? profile.max_tool_calls
   ragSettings.value.max_tokens = profile.maxTokens ?? profile.max_tokens
@@ -215,6 +229,7 @@ function saveRagProfile() {
     temperature: ragSettings.value.temperature ?? props.globalConfig.temperature,
     apiBase: ragSettings.value.embed_api_base || props.globalConfig.apiBase || '',
     apiKey: ragSettings.value.embed_api_key || props.globalConfig.apiKey || '',
+    sslVerify: ragSslVerify.value,
     maxToolCalls: ragSettings.value.max_tool_calls ?? props.globalConfig.maxToolCalls,
     maxTokens: ragSettings.value.max_tokens ?? props.globalConfig.maxTokens,
     topk: ragSettings.value.topk,

@@ -26,6 +26,9 @@ ENV_API_KEY = "DSPY_API_KEY"
 ENV_API_BASE = "DSPY_API_BASE"
 ENV_TEMPERATURE = "DSPY_TEMPERATURE"
 ENV_MAX_TOKENS = "DSPY_MAX_TOKENS"
+ENV_PROVIDER = "DSPY_PROVIDER"
+ENV_TIMEOUT = "DSPY_TIMEOUT"
+ENV_SSL_VERIFY = "DSPY_SSL_VERIFY"
 
 _DEFAULTS = {
     "model": "gpt-4o",
@@ -34,6 +37,60 @@ _DEFAULTS = {
 }
 
 _LM_CONFIGURED = False
+
+
+def coerce_optional_bool(value):
+    """Return bool for config/env truthy strings, or None when unset."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    text = str(value).strip().lower()
+    if text in ("1", "true", "yes", "on"):
+        return True
+    if text in ("0", "false", "no", "off"):
+        return False
+    return None
+
+
+def apply_litellm_ssl_verify(value):
+    """Apply SSL verification before LiteLLM/OpenAI clients are created."""
+    ssl_verify = coerce_optional_bool(value)
+    if ssl_verify is None:
+        return None
+    os.environ["SSL_VERIFY"] = "true" if ssl_verify else "false"
+    try:
+        import litellm
+        litellm.ssl_verify = ssl_verify
+    except Exception:
+        pass
+    return ssl_verify
+
+
+def dspy_lm_kwargs_from_settings(settings: dict) -> dict:
+    """Translate resolved MCP LLM settings into DSPy/LiteLLM kwargs."""
+    settings = settings or {}
+    lm_kwargs = {
+        "model": settings.get("model") or _DEFAULTS["model"],
+        "api_key": settings.get("api_key") or "",
+    }
+    if settings.get("api_base"):
+        lm_kwargs["api_base"] = settings.get("api_base")
+    if settings.get("temperature") is not None:
+        lm_kwargs["temperature"] = settings.get("temperature")
+    if settings.get("max_tokens") is not None:
+        lm_kwargs["max_tokens"] = settings.get("max_tokens")
+    if settings.get("timeout") is not None:
+        lm_kwargs["timeout"] = settings.get("timeout")
+
+    provider = settings.get("provider") or "openai_compatible"
+    if provider == "openai_compatible" and settings.get("api_base"):
+        lm_kwargs["custom_llm_provider"] = "custom_openai"
+
+    apply_litellm_ssl_verify(settings.get("ssl_verify"))
+    return lm_kwargs
 
 
 def ensure_lm_configured() -> None:
@@ -57,19 +114,20 @@ def ensure_lm_configured() -> None:
             "See plugins/mcp/app/config.py for the parent-side resolver."
         )
 
-    lm_kwargs = {
+    lm_kwargs = dspy_lm_kwargs_from_settings({
         "model": os.environ.get(ENV_MODEL) or _DEFAULTS["model"],
         "api_key": api_key,
+        "api_base": os.environ.get(ENV_API_BASE),
+        "provider": os.environ.get(ENV_PROVIDER) or "openai_compatible",
         "temperature": float(
             os.environ.get(ENV_TEMPERATURE) or _DEFAULTS["temperature"]
         ),
         "max_tokens": int(
             os.environ.get(ENV_MAX_TOKENS) or _DEFAULTS["max_tokens"]
         ),
-    }
-    api_base = os.environ.get(ENV_API_BASE)
-    if api_base:
-        lm_kwargs["api_base"] = api_base
+        "timeout": int(os.environ[ENV_TIMEOUT]) if os.environ.get(ENV_TIMEOUT) else None,
+        "ssl_verify": os.environ.get(ENV_SSL_VERIFY),
+    })
 
     dspy.configure(lm=dspy.LM(**lm_kwargs))
     _LM_CONFIGURED = True

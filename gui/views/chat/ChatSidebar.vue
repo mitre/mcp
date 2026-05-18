@@ -90,6 +90,11 @@
             placeholder="Use server default or enter a key"
           />
 
+          <label class="check-row tls-check">
+            <input type="checkbox" v-model="globalConfig.sslVerify" />
+            <span class="check-name">Verify TLS certificates</span>
+          </label>
+
           <div class="model-grid">
             <label>
               <span class="field-label">Temperature</span>
@@ -242,6 +247,11 @@
               v-model="ctiRagApiKey"
               placeholder="Use chat key"
             />
+
+            <label class="check-row tls-check">
+              <input type="checkbox" v-model="ctiRagSslVerify" />
+              <span class="check-name">Verify CTI RAG TLS certificates</span>
+            </label>
 
             <div class="model-grid">
               <label>
@@ -586,6 +596,12 @@ const ctiRagApiKey = computed({
     planRagSettings.value.plan_api_key = value
   },
 })
+const ctiRagSslVerify = computed({
+  get: () => planRagSettings.value.plan_ssl_verify ?? props.globalConfig.sslVerify ?? true,
+  set: (value) => {
+    planRagSettings.value.plan_ssl_verify = value
+  },
+})
 const ctiRagTopk = computed({
   get: () => planRagSettings.value.plan_topk ?? planRagSettings.value.topk ?? 5,
   set: (value) => {
@@ -698,6 +714,7 @@ function currentGlobalEndpointProfile(name) {
     temperature: props.globalConfig.temperature,
     apiBase: props.globalConfig.apiBase || '',
     apiKey: props.globalConfig.apiKey || '',
+    sslVerify: props.globalConfig.sslVerify ?? true,
     maxToolCalls: props.globalConfig.maxToolCalls,
     maxTokens: props.globalConfig.maxTokens,
   }
@@ -712,6 +729,7 @@ function currentCtiRagProfile(name) {
       : props.globalConfig.temperature,
     apiBase: ctiRagApiBase.value || props.globalConfig.apiBase || '',
     apiKey: ctiRagApiKey.value || props.globalConfig.apiKey || '',
+    sslVerify: ctiRagSslVerify.value,
     maxToolCalls: ctiRagMaxToolCalls.value !== ''
       ? ctiRagMaxToolCalls.value
       : props.globalConfig.maxToolCalls,
@@ -728,6 +746,7 @@ function applyProfileToGlobal(profile) {
   props.globalConfig.temperature = profile.temperature
   props.globalConfig.apiBase = profile.apiBase || profile.api_base || ''
   props.globalConfig.apiKey = profile.apiKey || profile.api_key || ''
+  props.globalConfig.sslVerify = profile.sslVerify ?? profile.ssl_verify ?? true
   props.globalConfig.maxToolCalls = profile.maxToolCalls ?? profile.max_tool_calls
   props.globalConfig.maxTokens = profile.maxTokens ?? profile.max_tokens
   endpointProfileDraftName.value = profile.name || ''
@@ -738,6 +757,7 @@ function applyProfileToCtiRag(profile) {
   ctiRagModel.value = profile.modelName || profile.model || ''
   ctiRagApiBase.value = profile.apiBase || profile.api_base || ''
   ctiRagApiKey.value = profile.apiKey || profile.api_key || ''
+  ctiRagSslVerify.value = profile.sslVerify ?? profile.ssl_verify ?? props.globalConfig.sslVerify ?? true
   ctiRagTemperature.value = profile.temperature ?? ''
   ctiRagMaxToolCalls.value = profile.maxToolCalls ?? profile.max_tool_calls ?? ''
   ctiRagMaxTokens.value = profile.maxTokens ?? profile.max_tokens ?? ''
@@ -912,6 +932,7 @@ function emitPlanContext() {
     cti_rag_model: selectedPlanStix.value.length ? ctiRagModel.value.trim() : '',
     cti_rag_api_base: selectedPlanStix.value.length ? ctiRagApiBase.value.trim() : '',
     cti_rag_api_key: selectedPlanStix.value.length ? ctiRagApiKey.value : '',
+    cti_rag_ssl_verify: selectedPlanStix.value.length ? ctiRagSslVerify.value : null,
     cti_rag_topk: selectedPlanStix.value.length ? ctiRagTopk.value : null,
     cti_rag_temperature: selectedPlanStix.value.length ? ctiRagTemperature.value : null,
     cti_rag_max_tool_calls: selectedPlanStix.value.length ? ctiRagMaxToolCalls.value : null,
