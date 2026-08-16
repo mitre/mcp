@@ -516,9 +516,7 @@ reload.
 
 ### 9.1 Spawn smoke
 
-The single most useful test verifies your server boots and lists tools.
-Mirror
-[plugins/mcp/tests/test_range_integration.py:test_range_server_spawns_and_lists_tools](tests/test_range_integration.py):
+The single most useful test verifies your server boots and lists tools:
 
 ```python
 import os
@@ -665,13 +663,3 @@ Restart Caldera. The MCP plugin's splash page will list `hello` under
 discovered servers; any workflow with `optional_servers` including
 `hello` will let the user toggle it on, and the agent will be able to
 call `hello_echo` and `hello_greet` on demand.
-
----
-
-## 12. Reference: the canonical extension
-
-[plugins/range/mcp_server.py](../range/mcp_server.py) and the
-`plugins/range/mcp/` directory are the reference implementation of this
-contract end-to-end — server, tools, and (eventually) workflows /
-translator. When the contract above is ambiguous, RANGE is the
-ground truth.
