@@ -55,6 +55,21 @@ _BOOLEAN_FALLBACKS = {
 }
 
 
+def _resolve_api_base(cfg: dict) -> str:
+    """Yaml api_base, falling back to the env var named by api_base_env.
+
+    Consumes the api_base_env key so it never leaks into the settings dict
+    handed to DSPy. Whitespace is stripped here because
+    normalize_openai_api_base treats a blank-but-truthy string as a real
+    URL and would turn it into the relative path "/v1".
+    """
+    configured = str(cfg.pop('api_base', '') or '').strip()
+    env_var = cfg.pop('api_base_env', None)
+    if configured:
+        return configured
+    return os.environ.get(env_var, '').strip() if env_var else ''
+
+
 def _load_defaults() -> dict:
     """Returns the parsed yaml file as a dict. Empty dict on failure."""
     try:
@@ -90,14 +105,15 @@ def mlflow_settings() -> dict:
 
 
 def llm_defaults() -> dict:
-    """Resolve the LLM block: yaml shape plus api_key from its env var.
+    """Resolve the LLM block: yaml shape plus api_key/api_base from env vars.
 
-    api_key is empty string when the env var is unset; the caller decides
-    whether that is fatal.
+    api_key and api_base are empty strings when their env vars are unset;
+    the caller decides whether that is fatal.
     """
     cfg = dict(_load_defaults().get('llm') or {})
     env_var = cfg.pop('api_key_env', None)
     cfg['api_key'] = os.environ.get(env_var, '') if env_var else cfg.get('api_key', '') or ''
+    cfg['api_base'] = _resolve_api_base(cfg)
     if cfg.get('provider', 'openai_compatible') == 'openai_compatible':
         cfg['api_base'] = normalize_openai_api_base(cfg.get('api_base'))
     cfg.setdefault('provider', 'openai_compatible')
@@ -205,8 +221,9 @@ def resolve_llm_config(ui_overrides: dict | None) -> dict:
     entirely; the UI also disables those inputs client-side via the
     /defaults endpoint.
 
-    Raises ValueError when no api_key can be resolved from any tier so
-    callers fail loudly instead of attempting an unauthenticated LLM call.
+    Raises ValueError when no api_key or api_base can be resolved from any
+    tier so callers fail loudly instead of attempting an unauthenticated
+    LLM call or silently reaching a provider the deployment never chose.
     """
     base = llm_defaults()
     locked = base.get('fields_locked') or {}
@@ -228,4 +245,13 @@ def resolve_llm_config(ui_overrides: dict | None) -> dict:
         )
     if merged.get('provider', 'openai_compatible') == 'openai_compatible':
         merged['api_base'] = normalize_openai_api_base(merged.get('api_base'))
+        # dspy_lm_kwargs_from_settings drops a falsy api_base entirely, which
+        # makes LiteLLM route openai/* models to https://api.openai.com/v1.
+        # Refuse rather than silently egress to an unintended provider.
+        if not merged.get('api_base'):
+            raise ValueError(
+                "No LLM api_base. Set MCP_LLM_API_BASE in plugins/mcp/.env, "
+                "pin llm.api_base in conf/local.yml, or enter one in the "
+                "UI's Global Model Configuration."
+            )
     return merged

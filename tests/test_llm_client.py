@@ -25,14 +25,14 @@ class TestGetLlmProvenance:
 class TestNormalizeOpenAiApiBase:
     def test_appends_v1(self):
         from plugins.mcp.app.utilities.llm_client import normalize_openai_api_base
-        assert normalize_openai_api_base("https://models.k8s.aip.mitre.org") == (
-            "https://models.k8s.aip.mitre.org/v1"
+        assert normalize_openai_api_base("https://llm.example.com") == (
+            "https://llm.example.com/v1"
         )
 
     def test_preserves_existing_v1(self):
         from plugins.mcp.app.utilities.llm_client import normalize_openai_api_base
-        assert normalize_openai_api_base("https://models.k8s.aip.mitre.org/v1") == (
-            "https://models.k8s.aip.mitre.org/v1"
+        assert normalize_openai_api_base("https://llm.example.com/v1") == (
+            "https://llm.example.com/v1"
         )
 
 

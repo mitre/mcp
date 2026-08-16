@@ -4,11 +4,19 @@
 # runtime via the env var named in api_key_env (set in plugins/mcp/.env)
 # or per-session through the UI's Global Model Configuration.
 #
+# api_base ships empty so no deployment's gateway hostname is baked into
+# the repo. Point it at your OpenAI-compatible endpoint via the env var
+# named in api_base_env, or pin it here in conf/local.yml. Leaving it
+# unresolved is fatal by design: LiteLLM would otherwise fall back to
+# its built-in https://api.openai.com/v1 and quietly send prompts to a
+# provider the deployment never chose.
+#
 # fields_locked declares which fields the deployment fixes; locked fields
 # ignore UI overrides and the UI greys out the corresponding inputs.
 llm:
   model: openai/gpt-oss-120b
-  api_base: https://models.k8s.aip.mitre.org/v1
+  api_base: ""
+  api_base_env: MCP_LLM_API_BASE
   api_key_env: MCP_LLM_API_KEY
   ssl_verify: true
   offline: true
@@ -22,7 +30,8 @@ llm:
 cti:
   provider: openai_compatible
   model: openai/gpt-oss-120b
-  api_base: https://models.k8s.aip.mitre.org/v1
+  api_base: ""
+  api_base_env: MCP_LLM_API_BASE
   api_key_env: MCP_LLM_API_KEY
   ssl_verify: true
   temperature: 0.0

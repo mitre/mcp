@@ -3,7 +3,7 @@ Tests for LLM model configuration — modelSelector.vue backend.
 
 Tests different LLM backend configurations:
 - Ollama (local)
-- OpenAI-compatible (MITRE AIP, OpenAI, etc.)
+- OpenAI-compatible (any OpenAI-compatible gateway)
 - Offline mode (no LLM)
 - Config validation (required fields)
 - Config persistence
@@ -99,7 +99,7 @@ class TestOllamaConfig:
 
 @skip
 class TestOpenAICompatibleConfig:
-    """Test OpenAI-compatible backend (MITRE AIP, OpenAI, etc.)."""
+    """Test OpenAI-compatible backend (any OpenAI-compatible gateway)."""
 
     def test_set_openai_compatible_config(self):
         """Set config to use OpenAI-compatible backend."""
@@ -118,7 +118,7 @@ class TestOpenAICompatibleConfig:
                     "offline": False,
                     "use_mock": False,
                     "ssl_verify": False,
-                    "extra_headers": {"Host": "models.k8s.aip.mitre.org"},
+                    "extra_headers": {"Host": "llm.example.com"},
                 }
             }
         }
@@ -243,7 +243,7 @@ class TestRestoreConfig:
                     "offline": False,
                     "use_mock": False,
                     "ssl_verify": False,
-                    "extra_headers": {"Host": "models.k8s.aip.mitre.org"},
+                    "extra_headers": {"Host": "llm.example.com"},
                 }
             }
         }
