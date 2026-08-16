@@ -101,6 +101,21 @@ def normalize_openai_api_base(api_base: str | None) -> str | None:
     return urlunsplit((parts.scheme, parts.netloc, path, parts.query, parts.fragment))
 
 
+def resolve_api_base(llm_cfg: dict) -> str:
+    """Yaml api_base for a profile, else the env var named by api_base_env.
+
+    Keeps the shipped yaml free of any deployment's gateway hostname while
+    letting both the `llm` and `cti` profiles read one env var. Whitespace
+    is stripped because normalize_openai_api_base treats a blank-but-truthy
+    string as a real URL and would turn it into the relative path "/v1".
+    """
+    configured = str((llm_cfg or {}).get("api_base") or "").strip()
+    if configured:
+        return configured
+    env_var = (llm_cfg or {}).get("api_base_env")
+    return os.environ.get(env_var, "").strip() if env_var else ""
+
+
 def _aiohttp_ssl_arg(ssl_verify):
     """Return aiohttp's per-request SSL argument for MCP LLM config."""
     verify = coerce_optional_bool(ssl_verify)
@@ -145,7 +160,7 @@ def get_llm_provenance(profile: str = "llm", *, runtime: bool = False) -> dict:
 
     # Runtime-only fields (do NOT log these)
     base["api_key"] = llm.get("api_key")
-    base["api_base"] = llm.get("api_base")
+    base["api_base"] = resolve_api_base(llm)
     if base["provider"] == "openai_compatible":
         base["api_base"] = normalize_openai_api_base(base["api_base"])
 
@@ -198,7 +213,7 @@ class LLMClient:
             return None
 
         model = llm_cfg.get("model")
-        api_base = llm_cfg.get("api_base")
+        api_base = resolve_api_base(llm_cfg)
         temperature = llm_cfg.get("temperature", 0.0)
 
         if not model or not api_base:

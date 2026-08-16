@@ -191,7 +191,7 @@ def step_parse_to_ir(base_dir: Path, stop_after: str | None = None):
     _preload_thread_shared_nlp_resources()
 
     # Stage1 work is LLM/IO-bound, not CPU-bound: each file makes
-    # remote calls to the AIP gateway, downloads embeddings, reads
+    # remote calls to the LLM gateway, downloads embeddings, reads
     # taxonomy data, etc. Use ThreadPoolExecutor instead of
     # ProcessPoolExecutor so we don't fork-from-a-multithreaded
     # FastMCP process (which deadlocks the workers — they inherit
