@@ -1,7 +1,5 @@
 # Artifacts and Metadata
 **/__pycache__/
-# MLflow's artifact root, created next to hook.py when it starts the server.
-# The paired mlruns.db is covered by the *.db rule below.
 mlruns/
 
 # Environment
