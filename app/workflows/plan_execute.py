@@ -92,6 +92,7 @@ def get_env(lm_settings=None):
 mlflow.set_tracking_uri(mlflow_settings()['tracking_uri'])
 mlflow.dspy.autolog()
 
+_MLFLOW_EXPERIMENT = "caldera-mcp-client-1"
 _MLFLOW_EXPERIMENT_SET = False
 
 
@@ -104,7 +105,7 @@ def _ensure_mlflow():
     global _MLFLOW_EXPERIMENT_SET
     if _MLFLOW_EXPERIMENT_SET:
         return
-    mlflow.set_experiment("caldera-mcp-client-1")
+    mlflow.set_experiment(_MLFLOW_EXPERIMENT)
     _MLFLOW_EXPERIMENT_SET = True
 
 
@@ -380,6 +381,7 @@ WORKFLOWS = [
         required_servers=["caldera_core"],
         optional_servers=["cti_pipeline", "range"],
         accepted_capabilities=["rag"],
+        mlflow_experiment=_MLFLOW_EXPERIMENT,
         ui_component="plan_execute.vue",
         example_prompts=PLAN_EXECUTE_EXAMPLES,
         run=run,
