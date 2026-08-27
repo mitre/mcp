@@ -56,6 +56,30 @@ class TestResolveEnvIndirection:
         )
         assert resolved["api_base"] == "https://pinned.example.com/v1"
 
+    def test_api_key_resolves_env_first(self, monkeypatch):
+        # Secrets invert the api_base rule: a yaml literal must not shadow the
+        # env var, or rotating .env silently does nothing.
+        from plugins.mcp.app.utilities.llm_client import resolve_env_indirection
+        monkeypatch.setenv("MCP_LLM_API_KEY", "sk-env")
+        resolved = resolve_env_indirection(
+            {"api_key": "sk-yaml", "api_key_env": "MCP_LLM_API_KEY"}
+        )
+        assert resolved["api_key"] == "sk-env"
+
+    def test_api_key_falls_back_to_yaml_when_no_env_var_named(self):
+        from plugins.mcp.app.utilities.llm_client import resolve_env_indirection
+        assert resolve_env_indirection({"api_key": "sk-yaml"})["api_key"] == "sk-yaml"
+
+    def test_strips_whitespace_from_yaml(self, monkeypatch):
+        # Only the env side was covered; an unstripped yaml "   " normalizes
+        # to the truthy relative path "/v1" and satisfies every guard.
+        from plugins.mcp.app.utilities.llm_client import resolve_env_indirection
+        monkeypatch.delenv("MCP_LLM_API_BASE", raising=False)
+        resolved = resolve_env_indirection(
+            {"api_base": "   ", "api_base_env": "MCP_LLM_API_BASE"}
+        )
+        assert resolved["api_base"] == ""
+
     def test_strips_whitespace_from_env(self, monkeypatch):
         # An unstripped blank is truthy and normalizes to the relative "/v1".
         from plugins.mcp.app.utilities.llm_client import resolve_env_indirection
