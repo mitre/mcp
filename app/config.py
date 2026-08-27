@@ -208,8 +208,9 @@ def caldera_connection() -> dict:
 def resolve_llm_config(ui_overrides: dict | None) -> dict:
     """Merge yaml defaults, .env credential, and UI overrides.
 
-    Empty / None UI fields do not override defaults (clearing the UI field
-    is the natural way for a user to fall back to the server default).
+    Empty, whitespace-only and None UI fields do not override defaults
+    (clearing the UI field is the natural way for a user to fall back to
+    the server default).
     Fields declared fields_locked: true in yaml ignore UI overrides
     entirely; the UI also disables those inputs client-side via the
     /defaults endpoint.
@@ -222,11 +223,17 @@ def resolve_llm_config(ui_overrides: dict | None) -> dict:
     """
     base = llm_defaults()
     locked = base.get('fields_locked') or {}
-    overrides = {
-        key: value
-        for key, value in (ui_overrides or {}).items()
-        if value not in ("", None) and not locked.get(key, False)
-    }
+    # Strings are stripped before the emptiness test so a field the user
+    # only put spaces in falls back to the server default like a cleared
+    # one. Without this an api_base of "   " is truthy, normalizes to the
+    # relative path "/v1", and satisfies the guard below.
+    overrides = {}
+    for key, value in (ui_overrides or {}).items():
+        if isinstance(value, str):
+            value = value.strip()
+        if value in ("", None) or locked.get(key, False):
+            continue
+        overrides[key] = value
     merged = {**base, **overrides}
     for key in _BOOLEAN_FALLBACKS:
         if key in merged:
