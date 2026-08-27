@@ -15,11 +15,13 @@
                     {% if llm_configured %}
                         <span class="tag is-success is-light">configured</span>
                         &nbsp;model <code>{{ llm_model }}</code>
-                        {% if llm_api_base %}&middot; base <code>{{ llm_api_base }}</code>{% endif %}
+                        &middot; base <code>{{ llm_api_base }}</code>
                     {% else %}
-                        <span class="tag is-warning is-light">no key</span>
-                        &nbsp;set <code>{{ llm_api_key_env }}</code> in <code>plugins/mcp/.env</code>
-                        or enter one per-session in the workspace's Global Model Configuration.
+                        <span class="tag is-warning is-light">incomplete</span>
+                        &nbsp;set
+                        {% for env_var in llm_missing_env %}<code>{{ env_var }}</code>{% if not loop.last %} and {% endif %}{% endfor %}
+                        in <code>plugins/mcp/.env</code>, or supply the missing
+                        values per-session in the workspace's Global Model Configuration.
                     {% endif %}
                 </li>
                 <li class="mt-2">
@@ -59,10 +61,12 @@
             {% if not llm_configured %}
             <article class="message is-warning mt-4">
                 <div class="message-body">
-                    The plugin will still load, but every workflow run will fail with
-                    "No LLM API key" until either <code>MCP_LLM_API_KEY</code> is
-                    set in the .env or a key is supplied via the workspace's
-                    Global Model Configuration panel.
+                    The plugin will still load, but every workflow run will fail
+                    until
+                    {% for env_var in llm_missing_env %}<code>{{ env_var }}</code>{% if not loop.last %} and {% endif %}{% endfor %}
+                    {% if llm_missing_env | length > 1 %}are{% else %}is{% endif %}
+                    set in the .env, or the missing values are supplied via the
+                    workspace's Global Model Configuration panel.
                 </div>
             </article>
             {% endif %}
