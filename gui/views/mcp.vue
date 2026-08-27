@@ -540,6 +540,11 @@ const availableCapabilities = ref([])
 const availableServers = ref([])
 
 const LOCAL_STORAGE_KEY = 'mcp_global_config'
+// Bumped when a stored field stops being safe to reuse. v2 drops a cached
+// apiBase: the endpoint moved out of the repo into MCP_LLM_API_BASE, and a
+// value saved before that outranks it on every request, silently routing to
+// an endpoint the deployment no longer configures.
+const CONFIG_SCHEMA_VERSION = 2
 
 // localStorage is readable by anything on this origin, so the key lives in
 // memory for the session only. Stripping at the storage boundary covers the
@@ -552,14 +557,23 @@ function stripSecrets(config) {
   return rest
 }
 
+// Named endpoint profiles keep their apiBase: those are explicit user
+// artifacts, applied deliberately. Only the ambient default is dropped.
+function migrate(config) {
+  if (config.schemaVersion === CONFIG_SCHEMA_VERSION) return config
+  const { apiBase, ...rest } = config
+  return { ...rest, schemaVersion: CONFIG_SCHEMA_VERSION }
+}
+
 function loadConfig() {
   try {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY)
     if (!saved) return null
-    const cleaned = JSON.stringify(stripSecrets(JSON.parse(saved)))
-    // Purge a key an earlier build persisted instead of waiting for a write.
+    const parsed = migrate(stripSecrets(JSON.parse(saved)))
+    const cleaned = JSON.stringify(parsed)
+    // Rewrite now rather than waiting for the next save.
     if (cleaned !== saved) localStorage.setItem(LOCAL_STORAGE_KEY, cleaned)
-    return JSON.parse(cleaned)
+    return parsed
   } catch (e) {
     console.warn('[MCP] Failed to load saved config:', e)
   }
@@ -568,7 +582,10 @@ function loadConfig() {
 
 function saveConfig(config) {
   try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stripSecrets(config)))
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
+      ...stripSecrets(config),
+      schemaVersion: CONFIG_SCHEMA_VERSION,
+    }))
   } catch (e) {
     console.warn('[MCP] Failed to save config:', e)
   }
