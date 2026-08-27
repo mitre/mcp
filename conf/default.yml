@@ -6,10 +6,15 @@
 #
 # api_base ships empty so no deployment's gateway hostname is baked into
 # the repo. Point it at your OpenAI-compatible endpoint via the env var
-# named in api_base_env, or pin it here in conf/local.yml. Leaving it
-# unresolved is fatal by design: LiteLLM would otherwise fall back to
-# its built-in https://api.openai.com/v1 and quietly send prompts to a
-# provider the deployment never chose.
+# named in api_base_env. Leaving it unresolved is fatal by design:
+# LiteLLM would otherwise fall back to its built-in
+# https://api.openai.com/v1 and quietly send prompts to a provider the
+# deployment never chose.
+#
+# To pin values on disk instead, copy this whole file to conf/local.yml
+# and edit that. local.yml REPLACES this file rather than merging with
+# it, so a partial local.yml silently drops the keys it omits, including
+# the api_key_env and api_base_env indirection above.
 #
 # fields_locked declares which fields the deployment fixes; locked fields
 # ignore UI overrides and the UI greys out the corresponding inputs.
