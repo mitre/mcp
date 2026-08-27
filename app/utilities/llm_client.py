@@ -60,28 +60,42 @@ def init_mlflow(profile: str):
 # Config loader (local, explicit, deterministic)
 # ------------------------------------------------------
 
+def _deep_merge(base: dict, override: dict) -> dict:
+    """Overlay override onto base, recursing into nested dicts."""
+    merged = dict(base)
+    for key, value in (override or {}).items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _deep_merge(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
 @lru_cache(maxsize=1)
 def load_config() -> dict:
-    """
-    Load effective config with precedence:
-    1. conf/local.yml (if present)
-    2. conf/default.yml
+    """conf/default.yml overlaid with conf/local.yml, key by key.
 
-    This function is deterministic and cached.
+    local.yml used to replace default.yml wholesale, so a partial file, which
+    is what the UI's Save writes, dropped the api_key_env / api_base_env keys
+    and silently disabled .env resolution for the whole deployment.
+
+    Deterministic and cached; call reload_config() after writing local.yml.
     """
     root_dir = get_mcp_root()
     default_path = root_dir / "conf" / "default.yml"
     local_path = root_dir / "conf" / "local.yml"
 
-    if local_path.exists():
-        with local_path.open("r", encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
-
+    config = {}
     if default_path.exists():
         with default_path.open("r", encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
+            config = yaml.safe_load(f) or {}
+    if local_path.exists():
+        with local_path.open("r", encoding="utf-8") as f:
+            config = _deep_merge(config, yaml.safe_load(f) or {})
 
-    raise FileNotFoundError("No config found (default.yml or local.yml)")
+    if not config:
+        raise FileNotFoundError("No config found (default.yml or local.yml)")
+    return config
 
 def reload_config():
     """Force reload MCP config from disk."""

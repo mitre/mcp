@@ -11,10 +11,8 @@
 # https://api.openai.com/v1 and quietly send prompts to a provider the
 # deployment never chose.
 #
-# To pin values on disk instead, copy this whole file to conf/local.yml
-# and edit that. local.yml REPLACES this file rather than merging with
-# it, so a partial local.yml silently drops the keys it omits, including
-# the api_key_env and api_base_env indirection above.
+# To pin values on disk instead, set them in conf/local.yml. That file is
+# overlaid onto this one key by key, so it only needs the keys it changes.
 #
 # fields_locked declares which fields the deployment fixes; locked fields
 # ignore UI overrides and the UI greys out the corresponding inputs.

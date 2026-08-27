@@ -197,7 +197,7 @@ CTI/RAG model settings can use the chat endpoint by default or a separate saved 
 
 Prefer environment variables for local values, and keep `conf/default.yml` limited to safe defaults.
 
-To pin values on disk instead, copy `conf/default.yml` to `conf/local.yml` and edit that. **`local.yml` replaces `default.yml` rather than merging with it**, so a partial file silently drops every key it omits, including the `api_key_env` and `api_base_env` indirection that makes the environment variables work.
+To pin values on disk instead, set them in `conf/local.yml`. That file is overlaid onto `conf/default.yml` key by key, so it only needs the keys it changes.
 
 The `llm` block sits at the top level of the file:
 
