@@ -32,14 +32,14 @@
             </div>
           </div>
 
-          <!-- CTI Ingest (raw → STIX → topology → deploy_spec) -->
+          <!-- CTI Ingest (raw → STIX → topology) -->
           <div class="box" style="display: flex; flex-direction: column; justify-content: space-between;">
             <div style="flex-grow: 1;">
               <h3 class="title is-5">Upload CTI</h3>
               <p>
                 Ingest raw Cyber Threat Intelligence (HTML, PDF, plaintext) and run the
-                MCP CTI pipeline: STIX 2.1 extraction → topology inference → range deploy
-                spec. The structured output is what the model uses to plan operations.
+                MCP CTI pipeline: STIX 2.1 extraction → topology inference. The
+                structured output is what the model uses to plan operations.
               </p>
             </div>
             <div class="is-flex is-justify-content-flex-end mt-4">
