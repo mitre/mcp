@@ -217,6 +217,8 @@ def resolve_llm_config(ui_overrides: dict | None) -> dict:
     Raises ValueError when no api_key or api_base can be resolved from any
     tier so callers fail loudly instead of attempting an unauthenticated
     LLM call or silently reaching a provider the deployment never chose.
+    Both checks apply to every provider, including ones this plugin does
+    not recognize.
     """
     base = llm_defaults()
     locked = base.get('fields_locked') or {}
@@ -236,15 +238,20 @@ def resolve_llm_config(ui_overrides: dict | None) -> dict:
             "No LLM API key. Set MCP_LLM_API_KEY in plugins/mcp/.env or "
             "enter one in the UI's Global Model Configuration."
         )
-    if merged.get('provider', 'openai_compatible') == 'openai_compatible':
-        merged['api_base'] = normalize_openai_api_base(merged.get('api_base'))
-        # dspy_lm_kwargs_from_settings drops a falsy api_base entirely, which
-        # makes LiteLLM route openai/* models to https://api.openai.com/v1.
-        # Refuse rather than silently egress to an unintended provider.
-        if not merged.get('api_base'):
-            raise ValueError(
-                "No LLM api_base. Set MCP_LLM_API_BASE in plugins/mcp/.env, "
-                "pin llm.api_base in conf/local.yml, or enter one in the "
-                "UI's Global Model Configuration."
-            )
+    # provider arrives from the request body unvalidated, so normalize it
+    # before branching. Only the normalization is provider-specific; the
+    # api_base requirement is not. dspy_lm_kwargs_from_settings drops a
+    # falsy api_base entirely, which leaves LiteLLM routing openai/* models
+    # to https://api.openai.com/v1 no matter what provider the caller named,
+    # and the ollama path needs a base to post to just as much.
+    provider = merged.get('provider') or 'openai_compatible'
+    merged['provider'] = provider
+    if provider == 'openai_compatible':
+        merged['api_base'] = normalize_openai_api_base(merged.get('api_base')) or ''
+    if not merged.get('api_base'):
+        raise ValueError(
+            "No LLM api_base. Set MCP_LLM_API_BASE in plugins/mcp/.env, "
+            "copy conf/default.yml to conf/local.yml and pin llm.api_base "
+            "there, or enter one in the UI's Global Model Configuration."
+        )
     return merged
