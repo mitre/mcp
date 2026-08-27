@@ -163,9 +163,13 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
     lm_settings = dict(lm_obj) if lm_obj else llm_defaults()
     max_tool_calls = lm_settings.get("max_tool_calls") or 5
 
-    # Validate API key is provided
-    if not lm_settings.get("api_key"):
-        error_msg = "API key is required but not provided. Please set your API key in the Global Model Configuration."
+    # Both credentials are checked here rather than at dspy.LM() so the
+    # failure lands before the AsyncExitStack spawns MCP subprocesses.
+    missing = next(
+        (f for f in ("api_key", "api_base") if not lm_settings.get(f)), None
+    )
+    if missing:
+        error_msg = f"{missing} is required but not provided. Please set it in the Global Model Configuration."
         print(f"[MCP] ERROR: {error_msg}")
         if not run_id:
             run = mlflow.start_run(run_name="MCP Ability Factory")

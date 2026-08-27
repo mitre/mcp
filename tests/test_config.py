@@ -220,3 +220,64 @@ class TestDspyLmKwargs:
             dspy_lm_kwargs_from_settings(
                 {"model": "openai/x", "api_key": "k", "provider": "ollama"}
             )
+
+
+class TestProvenanceGuards:
+    """get_llm_provenance is the third resolver; same invariant applies."""
+
+    @pytest.fixture
+    def stub_yaml(self, monkeypatch):
+        from plugins.mcp.app.utilities import llm_client
+        cfg = {"cti": {"model": "openai/x", "api_key": "sk-test", "api_base": ""}}
+        monkeypatch.setattr(llm_client, "load_config", lambda: cfg)
+        return cfg
+
+    def test_safe_payload_never_carries_credentials(self, stub_yaml):
+        from plugins.mcp.app.utilities.llm_client import get_llm_provenance
+        base = get_llm_provenance("cti")
+        assert "api_key" not in base and "api_base" not in base
+
+    def test_runtime_requires_api_base(self, stub_yaml):
+        from plugins.mcp.app.utilities.llm_client import get_llm_provenance
+        with pytest.raises(ValueError, match="api_base missing"):
+            get_llm_provenance("cti", runtime=True)
+
+    @pytest.mark.parametrize("provider", ["ollama", "azure"])
+    def test_runtime_requires_api_base_for_every_provider(self, stub_yaml, provider):
+        # This guard used to be gated on openai_compatible, unlike the other two.
+        from plugins.mcp.app.utilities.llm_client import get_llm_provenance
+        stub_yaml["cti"]["provider"] = provider
+        with pytest.raises(ValueError, match="api_base missing"):
+            get_llm_provenance("cti", runtime=True)
+
+
+class TestReadinessPayload:
+    """The splash page must not report configured while a run would fail."""
+
+    def _context(self, monkeypatch, api_key, api_base):
+        from plugins.mcp.app import mcp_gui
+        monkeypatch.setattr(
+            mcp_gui, "llm_defaults",
+            lambda: {"api_key": api_key, "api_base": api_base, "model": "openai/x"},
+        )
+        monkeypatch.setattr(mcp_gui, "caldera_connection", dict)
+        gui = mcp_gui.McpGUI({}, "mcp", "desc")
+        return gui._bootstrap_context()
+
+    def test_configured_needs_both(self, monkeypatch):
+        ctx = self._context(monkeypatch, "sk-test", "https://gw/v1")
+        assert ctx["llm_configured"] is True
+        assert ctx["llm_missing_env"] == []
+
+    def test_api_key_alone_is_not_configured(self, monkeypatch):
+        ctx = self._context(monkeypatch, "sk-test", "")
+        assert ctx["llm_configured"] is False
+        assert ctx["llm_missing_env"] == ["MCP_LLM_API_BASE"]
+
+    def test_names_every_missing_variable(self, monkeypatch):
+        ctx = self._context(monkeypatch, "", "")
+        assert ctx["llm_missing_env"] == ["MCP_LLM_API_KEY", "MCP_LLM_API_BASE"]
+
+    def test_payload_never_carries_the_key(self, monkeypatch):
+        ctx = self._context(monkeypatch, "sk-secret", "https://gw/v1")
+        assert "sk-secret" not in str(ctx)
