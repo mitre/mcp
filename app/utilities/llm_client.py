@@ -101,12 +101,12 @@ def normalize_openai_api_base(api_base: str | None) -> str | None:
     return urlunsplit((parts.scheme, parts.netloc, path, parts.query, parts.fragment))
 
 
-# Fields whose value the yaml may name indirectly, through a sibling
-# *_env key holding the name of the environment variable to read. Adding
-# an entry here is how a new credential joins the pattern.
+# field -> (sibling yaml key naming an env var, env_wins). Secrets resolve
+# env-first so rotating .env takes effect without editing tracked yaml;
+# endpoints resolve yaml-first so a deployment can pin one on disk.
 ENV_INDIRECT_FIELDS = {
-    "api_key": "api_key_env",
-    "api_base": "api_base_env",
+    "api_key": ("api_key_env", True),
+    "api_base": ("api_base_env", False),
 }
 
 
@@ -127,12 +127,11 @@ def resolve_env_indirection(cfg: dict) -> dict:
     one; the caller decides whether that is fatal.
     """
     resolved = dict(cfg or {})
-    for field, env_key in ENV_INDIRECT_FIELDS.items():
+    for field, (env_key, env_wins) in ENV_INDIRECT_FIELDS.items():
         env_var = resolved.pop(env_key, None)
-        value = str(resolved.get(field) or "").strip()
-        if not value and env_var:
-            value = os.environ.get(env_var, "").strip()
-        resolved[field] = value
+        yaml_value = str(resolved.get(field) or "").strip()
+        env_value = os.environ.get(env_var, "").strip() if env_var else ""
+        resolved[field] = env_value if (env_wins and env_var) else (yaml_value or env_value)
     # `or` rather than setdefault: yaml may carry an explicit null, which
     # setdefault would leave in place. dspy_env.py coerces the same way, and
     # a None here would skip every `provider == "openai_compatible"` branch.
