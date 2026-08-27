@@ -303,7 +303,7 @@ CAPABILITIES = [
         description=(
             "Embed uploaded CTI bundles and inject the most relevant chunks "
             "as context for the workflow. Useful for grounding both ability "
-            "authoring and infrastructure provisioning in real threat reports."
+            "authoring grounded in real threat reports."
         ),
         enrich=_enrich,
         ui_settings_component="components/RAGSettings.vue",

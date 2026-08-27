@@ -88,6 +88,6 @@ class Workflow:
     # turn runs single-shot: the chat UI still renders past turns visually,
     # but the LLM sees a fresh context each time. Author-style workflows where
     # each request is fully self-described should leave this False; workflows
-    # that produce entities (instances, profiles, deployments) referenced by
+    # that produce entities (abilities, adversaries, operations) referenced by
     # later turns should opt in.
     supports_chat_history: bool = False

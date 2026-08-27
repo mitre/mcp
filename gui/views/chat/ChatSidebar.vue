@@ -315,25 +315,6 @@
           </div>
         </div>
 
-        <div class="identity-grid">
-          <label><input type="checkbox" v-model="identityDomain" /> Domain</label>
-          <label><input type="checkbox" v-model="identityDomainUsers" /> Domain users</label>
-          <label><input type="checkbox" v-model="identityLocalUsers" /> Local users</label>
-        </div>
-
-        <div class="field-stack tight">
-          <label class="field-label" for="plan-agent-mode">Agent</label>
-          <select id="plan-agent-mode" class="compact-select" v-model="agentMode">
-            <option value="sandcat">Sandcat</option>
-            <option value="custom">Custom</option>
-            <option value="cti">CTI decides</option>
-          </select>
-          <label class="check-row compact">
-            <input type="checkbox" v-model="agentUseCtiEntry" />
-            <span class="check-name">CTI entry host</span>
-          </label>
-        </div>
-
       </Section>
 
     </div>
@@ -502,11 +483,6 @@ const modelConfigOpen = ref(false)
 const showStixModal = ref(false)
 const stixFiles = ref([])
 const selectedPlanStix = ref([])
-const identityDomain = ref(true)
-const identityDomainUsers = ref(true)
-const identityLocalUsers = ref(true)
-const agentMode = ref('sandcat')
-const agentUseCtiEntry = ref(true)
 
 function ensureRagSettings() {
   if (!props.globalConfig.capabilitySettings) props.globalConfig.capabilitySettings = {}
@@ -795,15 +771,6 @@ function emitPlanContext() {
     cti_rag_temperature: selectedPlanStix.value.length ? ctiRagTemperature.value : null,
     cti_rag_max_tool_calls: selectedPlanStix.value.length ? ctiRagMaxToolCalls.value : null,
     cti_rag_max_tokens: selectedPlanStix.value.length ? ctiRagMaxTokens.value : null,
-    identity_options: {
-      domain: identityDomain.value,
-      domain_users: identityDomainUsers.value,
-      local_users: identityLocalUsers.value,
-    },
-    agent_start: {
-      mode: agentMode.value,
-      use_cti_entry_host: agentUseCtiEntry.value,
-    },
   })
 }
 
@@ -811,8 +778,7 @@ onMounted(loadPlanExecuteContextSources)
 watch(isPlanExecute, loadPlanExecuteContextSources)
 watch(
   [
-    selectedPlanStix, identityDomain, identityDomainUsers,
-    identityLocalUsers, agentMode, agentUseCtiEntry, ctiRagModel,
+    selectedPlanStix, ctiRagModel,
   ],
   emitPlanContext,
   { deep: true },
@@ -1054,14 +1020,6 @@ watch(
   color: #d8d1e8;
   padding: 0.12rem 0.35rem;
 }
-.identity-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.25rem;
-  color: #d8d8d8;
-  font-size: 0.78rem;
-}
-.identity-grid input { accent-color: #a970ff; }
 .selected-list {
   display: flex;
   flex-direction: column;

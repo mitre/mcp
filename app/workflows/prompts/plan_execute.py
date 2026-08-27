@@ -22,9 +22,8 @@ PLAN_EXECUTE_EXAMPLES = [
 
 
 PLAN_EXECUTE_OPERATION_CONTEXT_DESC = (
-    "Operator-selected workflow context from the MCP UI: selected STIX "
-    "bundle filenames and any UI options such as domain/users/agent start "
-    "preferences. Treat this as operator intent, not CTI evidence."
+    "Operator-selected workflow context from the MCP UI: the selected STIX "
+    "bundle filenames. Treat this as operator intent, not CTI evidence."
 )
 
 
@@ -153,17 +152,5 @@ def format_plan_execute_context(context: dict[str, Any] | None) -> str:
 
     if context.get("cti_uses_rag"):
         parts.append("CTI selection mode: selected STIX bundles are also enabled as RAG context.")
-
-    start = context.get("agent_start")
-    if isinstance(start, dict) and start:
-        fields = [f"{k}={v}" for k, v in start.items() if v not in (None, "", [])]
-        if fields:
-            parts.append("Agent start preference: " + ", ".join(fields))
-
-    identity = context.get("identity_options")
-    if isinstance(identity, dict) and identity:
-        fields = [f"{k}={v}" for k, v in identity.items() if v not in (None, "", [])]
-        if fields:
-            parts.append("Identity/domain options: " + ", ".join(fields))
 
     return "\n\n".join(parts)
