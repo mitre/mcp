@@ -189,7 +189,7 @@ def get_llm_provenance(profile: str = "llm", *, runtime: bool = False) -> dict:
 
     if not base["api_key"]:
         raise ValueError(f"{profile}.api_key missing from MCP config")
-    if base["provider"] == "openai_compatible" and not base["api_base"]:
+    if not base["api_base"]:
         raise ValueError(f"{profile}.api_base missing from MCP config")
 
     return base
