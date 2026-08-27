@@ -65,3 +65,24 @@ async def test_save_scrubs_a_key_an_earlier_build_wrote(api, tmp_path):
     assert "sk-legacy" not in text
     assert "api_key" not in text
     assert _saved(tmp_path)["cti"]["model"] == "old"
+
+
+@pytest.mark.asyncio
+async def test_strips_nested_secrets(api, tmp_path):
+    # set_config accepts arbitrary top-level keys, so callers have produced
+    # nested shapes like {"config": {"cti": {...}}}. A one-level scrub
+    # walked straight past those.
+    await api.set_config(_FakeRequest({
+        "config": {"cti": {"model": "m", "api_key": "sk-nested"}},
+    }))
+    text = (tmp_path / "conf" / "local.yml").read_text()
+    assert "sk-nested" not in text
+    assert _saved(tmp_path)["config"]["cti"] == {"model": "m"}
+
+
+@pytest.mark.asyncio
+async def test_strips_secrets_inside_lists(api, tmp_path):
+    await api.set_config(_FakeRequest({
+        "llm": {"profiles": [{"name": "a", "api_key": "sk-in-list"}]},
+    }))
+    assert "sk-in-list" not in (tmp_path / "conf" / "local.yml").read_text()
