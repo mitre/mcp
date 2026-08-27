@@ -13,8 +13,8 @@ Three env-resolved values, three tiers, one resolver:
 Storage tiers:
 
   conf/default.yml carries non-secret defaults and the names of env vars
-  to consult. It never holds credential values, and neither does the
-  conf/local.yml the UI writes: set_config strips secrets on save.
+  to consult. conf/local.yml is overlaid onto it key by key. Neither holds
+  credential values: set_config strips secrets before writing local.yml.
 
   .env carries credential values. It is gitignored. The plugin's hook.py
   loads it once in the parent process; subprocesses inherit.
@@ -251,7 +251,7 @@ def resolve_llm_config(ui_overrides: dict | None) -> dict:
     if not merged.get('api_base'):
         raise ValueError(
             "No LLM api_base. Set MCP_LLM_API_BASE in plugins/mcp/.env, "
-            "copy conf/default.yml to conf/local.yml and pin llm.api_base "
-            "there, or enter one in the UI's Global Model Configuration."
+            "pin llm.api_base in conf/local.yml, or enter one in the UI's "
+            "Global Model Configuration."
         )
     return merged

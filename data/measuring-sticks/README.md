@@ -38,4 +38,4 @@ Recommended (the measuring stick fills these):
 - `description`, `aliases`, `kill_chain_phases`, `first_seen`, `last_seen`
 
 For per-host topology (custom — not in STIX core):
-- `x-cti-topology` custom object (extension definition included in the bundle) listing `hosts: [{name, role, os, services[], member_of[]}]` — the **deployable** shape the range plugin needs.
+- `x-cti-topology` custom object (extension definition included in the bundle) listing `hosts: [{name, role, os, services[], member_of[]}]` — the inferred victim topology.

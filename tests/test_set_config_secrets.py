@@ -86,3 +86,29 @@ async def test_strips_secrets_inside_lists(api, tmp_path):
         "llm": {"profiles": [{"name": "a", "api_key": "sk-in-list"}]},
     }))
     assert "sk-in-list" not in (tmp_path / "conf" / "local.yml").read_text()
+
+
+@pytest.mark.asyncio
+async def test_strips_every_key_field_the_ui_uses(api, tmp_path):
+    # A fixed list kept missing new ones as the RAG panels grew.
+    await api.set_config(_FakeRequest({
+        "llm": {"api_key": "sk-a", "embed_api_key": "sk-b", "plan_api_key": "sk-c",
+                "rag_api_key": "sk-d", "cti_rag_api_key": "sk-e", "apiKey": "sk-f",
+                "model": "keep-me"},
+    }))
+    text = (tmp_path / "conf" / "local.yml").read_text()
+    for leaked in ("sk-a", "sk-b", "sk-c", "sk-d", "sk-e", "sk-f"):
+        assert leaked not in text
+    assert _saved(tmp_path)["llm"] == {"model": "keep-me"}
+
+
+@pytest.mark.asyncio
+async def test_keeps_the_env_var_indirection(api, tmp_path):
+    # api_key_env names a variable, not a value. Dropping it would silently
+    # disable .env resolution for the whole deployment.
+    await api.set_config(_FakeRequest({
+        "llm": {"api_key_env": "MCP_LLM_API_KEY", "api_base_env": "MCP_LLM_API_BASE"},
+    }))
+    assert _saved(tmp_path)["llm"] == {
+        "api_key_env": "MCP_LLM_API_KEY", "api_base_env": "MCP_LLM_API_BASE",
+    }

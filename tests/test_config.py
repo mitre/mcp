@@ -281,3 +281,48 @@ class TestReadinessPayload:
     def test_payload_never_carries_the_key(self, monkeypatch):
         ctx = self._context(monkeypatch, "sk-secret", "https://gw/v1")
         assert "sk-secret" not in str(ctx)
+
+
+class TestLocalYmlMerge:
+    """A partial local.yml must not drop the env wiring from default.yml."""
+
+    def _write(self, tmp_path, name, data):
+        import yaml
+        conf = tmp_path / "conf"
+        conf.mkdir(exist_ok=True)
+        (conf / name).write_text(yaml.safe_dump(data))
+
+    @pytest.fixture
+    def loader(self, tmp_path, monkeypatch):
+        from plugins.mcp.app.utilities import llm_client
+        monkeypatch.setattr(llm_client, "get_mcp_root", lambda: tmp_path)
+        llm_client.load_config.cache_clear()
+        yield llm_client.load_config
+        llm_client.load_config.cache_clear()
+
+    def test_local_overlays_rather_than_replaces(self, tmp_path, loader):
+        # What the UI's Save writes: no api_key_env, no api_base_env.
+        self._write(tmp_path, "default.yml", {
+            "llm": {"model": "openai/gpt-oss-120b", "api_key_env": "MCP_LLM_API_KEY"},
+            "caldera": {"url_env": "CALDERA_URL"},
+        })
+        self._write(tmp_path, "local.yml", {"llm": {"model": "devstral"}})
+        cfg = loader()
+        assert cfg["llm"]["model"] == "devstral"
+        assert cfg["llm"]["api_key_env"] == "MCP_LLM_API_KEY"
+        assert cfg["caldera"]["url_env"] == "CALDERA_URL"
+
+    def test_unknown_local_sections_do_not_hide_defaults(self, tmp_path, loader):
+        # A caller once posted {"config": {...}}, which replaced the whole file.
+        self._write(tmp_path, "default.yml", {"llm": {"model": "m"}})
+        self._write(tmp_path, "local.yml", {"config": {"cti": {"model": "junk"}}})
+        cfg = loader()
+        assert cfg["llm"]["model"] == "m"
+
+    def test_default_only_still_loads(self, tmp_path, loader):
+        self._write(tmp_path, "default.yml", {"llm": {"model": "m"}})
+        assert loader()["llm"]["model"] == "m"
+
+    def test_missing_both_raises(self, tmp_path, loader):
+        with pytest.raises(FileNotFoundError):
+            loader()

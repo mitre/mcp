@@ -546,15 +546,21 @@ const LOCAL_STORAGE_KEY = 'mcp_global_config'
 // an endpoint the deployment no longer configures.
 const CONFIG_SCHEMA_VERSION = 2
 
-// localStorage is readable by anything on this origin, so the key lives in
-// memory for the session only. Stripping at the storage boundary covers the
-// global config and every saved endpoint profile in one place.
-function stripSecrets(config) {
-  const { apiKey, ...rest } = config || {}
-  if (Array.isArray(rest.endpointProfiles)) {
-    rest.endpointProfiles = rest.endpointProfiles.map(({ apiKey: _drop, ...p }) => p)
+// localStorage is readable by anything on this origin, so keys live in memory
+// for the session only. Matched by name at any depth: a fixed list missed
+// embed_api_key and plan_api_key nested under capabilitySettings.
+const SECRET_KEY_NAME = /api_?key/i
+
+function stripSecrets(value) {
+  if (Array.isArray(value)) return value.map(stripSecrets)
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([k]) => !SECRET_KEY_NAME.test(k))
+        .map(([k, v]) => [k, stripSecrets(v)]),
+    )
   }
-  return rest
+  return value
 }
 
 // Named endpoint profiles keep their apiBase: those are explicit user

@@ -36,3 +36,24 @@ async def test_rejects_incomplete_credentials(offline_mlflow, missing, lm_obj, m
 
     with pytest.raises(ValueError, match=missing):
         await author.run("test", lm_obj=lm_obj, server_registry={}, enabled_servers=[])
+
+
+@pytest.mark.asyncio
+async def test_both_workflows_configure_from_separate_tasks(tmp_path):
+    """mcp_svc runs each /execute in its own task.
+
+    mlflow.dspy.autolog calls dspy.settings.configure, which pins ownership to
+    the first asyncio task to reach it. Deferring it into run() therefore broke
+    whichever workflow ran second, permanently, for the life of the process.
+    """
+    import asyncio
+    import mlflow
+    from plugins.mcp.app.workflows import author, plan_execute
+
+    mlflow.set_tracking_uri(f"sqlite:///{tmp_path}/mlflow.db")
+    for module in (author, plan_execute):
+        await asyncio.create_task(_configure(module))
+
+
+async def _configure(module):
+    module._ensure_mlflow()
