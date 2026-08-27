@@ -35,7 +35,6 @@ Output object (custom STIX SDO):
           "platform": "windows" | "linux" | ...,
           "os": "<x_cti_os if present>",
           "ip": "<x_cti_ip if present>",
-          "image_candidates": [...],
           "services": [...],
           "domain_membership": "<dns_name | NetBIOS>",
           "software_required": [...],
@@ -1263,19 +1262,6 @@ def _domain_from_located_at(src_id: str, bundle_objects: list,
 # Host shape from infrastructure SDOs
 # ----------------------------------------------------------------------
 
-def _image_candidates_for_platform(platform: str, images_catalog: list) -> list:
-    """Pure dictionary intersection — no static name lookup."""
-    if not (platform and images_catalog):
-        return []
-    p = platform.strip().lower()
-    out = []
-    for img in images_catalog:
-        img_os = (img.get("os") or "").strip().lower()
-        if img_os == p:
-            out.append(img.get("name"))
-    return out
-
-
 def _tools_for_platform(bundle_objects: list, platform: str) -> list:
     """
     Return [{name, id}] for every STIX tool SDO whose
@@ -1346,7 +1332,7 @@ def _looks_like_hostname_token(name: str) -> bool:
 
 
 def derive_hosts(bundle_objects: list, primary_platform: str,
-                 images_catalog: list, taxonomy: dict,
+                 taxonomy: dict,
                  ad_identities: list,
                  graph_ctx: Optional[dict] = None,
                  network_services: Optional[dict] = None,
@@ -1407,8 +1393,6 @@ def derive_hosts(bundle_objects: list, primary_platform: str,
         # the bundle's primary aggregate.
         host_os = (o.get("x_cti_os") or "").strip().lower() or None
         platform = host_os or (primary_platform or "unknown")
-
-        image_candidates = _image_candidates_for_platform(platform, images_catalog)
 
         # services: concrete host-local services only. ATT&CK
         # data-source/data-component names are telemetry signals at the
@@ -1501,7 +1485,6 @@ def derive_hosts(bundle_objects: list, primary_platform: str,
             "platform": platform,
             "infrastructure_types": list(types),
             "kill_chain_phases": list(o.get("kill_chain_phases") or []),
-            "image_candidates": image_candidates,
             "services": sorted(services),
             "network_services": network_service_records,
             "software_required": software_required,
@@ -1825,8 +1808,7 @@ def derive_observable_surfaces(bundle_objects: list) -> dict:
 # Entry point
 # ----------------------------------------------------------------------
 
-def build_range_topology(bundle: dict, taxonomy: dict,
-                         images_catalog: list = None) -> dict:
+def build_range_topology(bundle: dict, taxonomy: dict) -> dict:
     """
     Construct the x-cti-range-topology SDO from a stage-2 STIX bundle.
 
@@ -1837,9 +1819,6 @@ def build_range_topology(bundle: dict, taxonomy: dict,
             required to walk the detection-strategy / data-component graph
             for service inference. Falls back to lazy-loading the full
             ATT&CK bundle if absent.
-        images_catalog: parsed list from plugins/range/conf/onprem_images.yml
-            (the value of the top-level 'images' key). If None,
-            image_candidates comes back empty.
 
     Returns:
         A single SDO dict ready to be appended to a STIX bundle.
@@ -1857,7 +1836,7 @@ def build_range_topology(bundle: dict, taxonomy: dict,
     targeted_idents = _targeted_identity_refs(objects, graph_ctx)
 
     hosts = derive_hosts(
-        objects, plat["primary"], images_catalog or [], taxonomy, ad_idents,
+        objects, plat["primary"], taxonomy, ad_idents,
         graph_ctx=graph_ctx,
         network_services=network_services,
         software_inventory=software_inventory,

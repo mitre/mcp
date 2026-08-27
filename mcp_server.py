@@ -162,121 +162,22 @@ def _caldera_root() -> str:
     return api
 
 
-def _image_catalog_key(img: dict) -> tuple[str, str, str]:
-    return (
-        str(img.get("name") or "").lower(),
-        str(img.get("provider") or "").lower(),
-        str(img.get("file") or "").lower(),
-    )
 
 
-def _caldera_root_candidates() -> list[str]:
-    roots = [_caldera_root().rstrip("/")]
-    try:
-        import yaml  # type: ignore
-        for candidate in (Path("conf/local.yml"), Path("conf/default.yml")):
-            if not candidate.is_file():
-                continue
-            doc = yaml.safe_load(candidate.read_text(encoding="utf-8")) or {}
-            http = str(doc.get("app.contact.http") or "").strip()
-            if http:
-                roots.append(http.rstrip("/").replace("0.0.0.0", "127.0.0.1"))
-                continue
-            port = doc.get("port")
-            if port:
-                roots.append(f"http://127.0.0.1:{port}")
-    except Exception as e:
-        log.debug(f"Caldera root candidate load failed: {e}")
-    out: list[str] = []
-    seen: set[str] = set()
-    for root in roots:
-        root = root.rstrip("/")
-        if root and root not in seen:
-            seen.add(root)
-            out.append(root)
-    return out
 
 
-def _merge_image_record(images: list, seen: dict, img: dict) -> None:
-    key = _image_catalog_key(img)
-    existing = seen.get(key)
-    if existing is None:
-        seen[key] = img
-        images.append(img)
-        return
-    for field, value in img.items():
-        if existing.get(field) in (None, "", [], {}):
-            existing[field] = value
 
 
-def _file_images_catalog() -> list:
-    images: list = []
-    seen: dict[tuple[str, str, str], dict] = {}
-    try:
-        import yaml  # type: ignore
-        for candidate in (
-            Path("plugins/range/conf/onprem_microvm_images.yml"),
-            Path("plugins/range/conf/onprem_images.yml"),
-        ):
-            if not candidate.is_file():
-                continue
-            doc = yaml.safe_load(candidate.read_text(encoding="utf-8")) or {}
-            for img in doc.get("images") or []:
-                if not isinstance(img, dict):
-                    continue
-                rec = dict(img)
-                rec.setdefault("_source_catalog", str(candidate))
-                _merge_image_record(images, seen, rec)
-    except Exception as e:
-        log.debug(f"file image catalog load failed: {e}")
-    return images
 
 
-async def _range_api_images_catalog(provider: str = "microvm") -> list:
-    body: dict = {}
-    try:
-        import aiohttp
-        async with aiohttp.ClientSession(headers=_caldera_headers()) as session:
-            for root in _caldera_root_candidates():
-                url = f"{root}/plugin/range/onprem/images"
-                try:
-                    async with session.get(
-                        url,
-                        params={"provider": provider},
-                        timeout=aiohttp.ClientTimeout(total=5),
-                    ) as resp:
-                        if resp.status != 200:
-                            continue
-                        body = await resp.json(content_type=None)
-                        break
-                except Exception as e:
-                    log.debug(f"Range image API attempt failed at {url}: {e}")
-    except Exception as e:
-        log.debug(f"Range image API catalog load failed: {e}")
-        return []
-    if not body:
-        return []
-
-    out: list = []
-    for img in body.get("images") or []:
-        if not isinstance(img, dict):
-            continue
-        rec = dict(img)
-        rec.setdefault("provider", provider)
-        rec.setdefault("bootstrapped", True)
-        rec.setdefault("_source_catalog", f"range-api:{provider}")
-        out.append(rec)
-    return out
 
 
-async def _load_images_catalog() -> list:
-    images: list = []
-    seen: dict[tuple[str, str, str], dict] = {}
-    for rec in await _range_api_images_catalog("microvm"):
-        _merge_image_record(images, seen, rec)
-    for rec in _file_images_catalog():
-        _merge_image_record(images, seen, rec)
-    return images
+
+
+
+
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -460,10 +361,8 @@ async def build_topology(stix_path: str) -> dict:
     except Exception as e:
         log.warning(f"taxonomy load failed: {e}; proceeding without it")
 
-    images_catalog = await _load_images_catalog()
-
     try:
-        topology = build_range_topology(bundle, taxonomy, images_catalog)
+        topology = build_range_topology(bundle, taxonomy)
     except Exception as e:
         log.exception("build_range_topology failed")
         return {"error": f"topology build failed: {e}"}
@@ -488,7 +387,6 @@ async def build_topology(stix_path: str) -> dict:
             ae_ir = parse_ae_plan(plan, taxonomy=taxonomy)
             topology = _enrich_topology_with_ae_plan(
                 topology, plan, ae_ir, _technique_ids_in_bundle(bundle),
-                images_catalog,
             )
             break
     except Exception as e:
@@ -636,9 +534,7 @@ async def fuse_cti_bundles(stix_paths: list[str],
         except Exception as e:
             log.warning(f"taxonomy load failed during fusion topology: {e}")
 
-        images_catalog = await _load_images_catalog()
-
-        topology = build_range_topology(fused, taxonomy, images_catalog)
+            topology = build_range_topology(fused, taxonomy)
         try:
             from plugins.mcp.app.cti_pipeline_stage4_topology import (
                 _adversary_candidates_from_bundle,
@@ -658,7 +554,6 @@ async def fuse_cti_bundles(stix_paths: list[str],
                 ae_ir = parse_ae_plan(plan, taxonomy=taxonomy)
                 topology = _enrich_topology_with_ae_plan(
                     topology, plan, ae_ir, _technique_ids_in_bundle(fused),
-                    images_catalog,
                 )
                 break
         except Exception as e:

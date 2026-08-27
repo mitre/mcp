@@ -46,7 +46,6 @@ from plugins.mcp.app.utilities.cti_taxonomy_loader import (
     load_mitre_taxonomy,
     load_mitre_bundle,
 )
-from plugins.mcp.app.utilities.paths import get_mcp_root
 
 
 # -----------------------------------------------------------
@@ -56,14 +55,6 @@ OUTPUTS_STIX_DIR = "outputs_stix"
 OUTPUTS_TOPOLOGY_DIR = "outputs_topology"
 
 
-# Path to the on-prem image catalog YAML. Optional — when missing,
-# image_candidates simply comes back empty (no hard failure).
-def _onprem_images_catalog_path() -> Path:
-    mcp_root = get_mcp_root()
-    # plugins/mcp -> plugins/range/conf/onprem_images.yml
-    range_conf = mcp_root.parent / "range" / "conf" / "onprem_images.yml"
-    return range_conf
-
 
 def _log(msg: str) -> None:
     print(f"[STAGE4][TOPOLOGY] {msg}")
@@ -72,46 +63,6 @@ def _log(msg: str) -> None:
 # -----------------------------------------------------------
 # Helpers
 # -----------------------------------------------------------
-
-def _load_images_catalog() -> list:
-    """Merge available on-prem image catalogs and return ``images``."""
-    mcp_root = get_mcp_root()
-    range_conf = mcp_root.parent / "range" / "conf"
-    paths = [
-        range_conf / "onprem_microvm_images.yml",
-        range_conf / "onprem_images.yml",
-    ]
-    images: list = []
-    seen: set[tuple[str, str, str]] = set()
-    try:
-        import yaml  # type: ignore
-    except Exception as e:
-        _log(f"cannot parse image catalogs without yaml: {e}")
-        return []
-    for path in paths:
-        if not path.exists():
-            continue
-        try:
-            doc = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-            for img in doc.get("images") or []:
-                if not isinstance(img, dict):
-                    continue
-                key = (
-                    str(img.get("name") or "").lower(),
-                    str(img.get("provider") or "").lower(),
-                    str(img.get("file") or "").lower(),
-                )
-                if key in seen:
-                    continue
-                seen.add(key)
-                rec = dict(img)
-                rec.setdefault("_source_catalog", str(path))
-                images.append(rec)
-        except Exception as e:
-            _log(f"failed to parse {path}: {e}")
-    if not images:
-        _log(f"image catalogs absent under {range_conf}; image_candidates will be empty")
-    return images
 
 
 def _adversary_candidates_from_bundle(bundle: dict,
@@ -220,18 +171,6 @@ def _host_key(value: str) -> str:
     return key
 
 
-def _image_candidates_for_os(os_name: str, images_catalog: list) -> list:
-    os_key = (os_name or "").strip().lower()
-    if not os_key:
-        return []
-    out = []
-    for img in images_catalog or []:
-        if (img.get("os") or "").strip().lower() == os_key:
-            name = img.get("name")
-            if name and name not in out:
-                out.append(name)
-    return out
-
 
 _AE_ROLE_PATTERNS = (
     (re.compile(r"\bdomain\s+controller\b", re.I), "dc"),
@@ -288,8 +227,7 @@ def _ae_os_from_evidence(evidence: str, role: Optional[str],
     return default
 
 
-def _ae_topology_host(ae_host: dict, images_catalog: list,
-                      default_domain: Optional[str]) -> dict:
+def _ae_topology_host(ae_host: dict, default_domain: Optional[str]) -> dict:
     hostname = (ae_host.get("hostname") or "").strip().lower()
     os_name = (ae_host.get("os") or "").strip().lower()
     evidence = ae_host.get("evidence") or ""
@@ -308,7 +246,6 @@ def _ae_topology_host(ae_host: dict, images_catalog: list,
         "network_services": [],
         "software_required": [],
         "vulnerabilities": [],
-        "image_candidates": _image_candidates_for_os(os_name, images_catalog),
         "domain_membership": default_domain,
         "inferred_from": [
             f"AE-plan infrastructure hostname={hostname!r} ip={ae_host.get('ip', '')!r}",
@@ -332,7 +269,6 @@ def _enrich_topology_with_ae_plan(
     ae_plan_meta: dict,
     ae_ir: dict,
     bundle_tids: set,
-    images_catalog: Optional[list] = None,
 ) -> dict:
     """
     Cross-reference the AE-plan IR against the topology SDO and append
@@ -487,10 +423,6 @@ def _enrich_topology_with_ae_plan(
                 if ae_os:
                     host["platform"] = ae_os
                     host["os"] = ae_os
-                    if images_catalog is not None:
-                        host["image_candidates"] = _image_candidates_for_os(
-                            ae_os, images_catalog,
-                        )
                 if ae_role and (
                     not host.get("role")
                     or host.get("role") in {"unknown", "workstation"}
@@ -524,7 +456,7 @@ def _enrich_topology_with_ae_plan(
         key = _host_key(ae_name)
         if key in hosts_by_key:
             continue
-        host = _ae_topology_host(ae_h, images_catalog or [], default_domain)
+        host = _ae_topology_host(ae_h, default_domain)
         host.setdefault("inferred_from", []).append(bundle_provenance)
         if shared_tids:
             host["inferred_from"].append(
@@ -661,8 +593,7 @@ def _enrich_topology_with_ae_plan(
 def _process_bundle(stix_path: Path,
                     topology_dir: Path,
                     taxonomy: dict,
-                    plans: list,
-                    images_catalog: list) -> Optional[Path]:
+                    plans: list) -> Optional[Path]:
     """
     Build + persist the topology SDO for a single bundle. Returns the
     path the topology file was written to (or None on skip / error).
@@ -706,9 +637,7 @@ def _process_bundle(stix_path: Path,
         )
 
     # Build the topology SDO.
-    topology = build_range_topology(
-        bundle, taxonomy, images_catalog=images_catalog,
-    )
+    topology = build_range_topology(bundle, taxonomy)
 
     # Cross-reference with AE library IR when a plan matched.
     if plan_match is not None:
@@ -716,7 +645,7 @@ def _process_bundle(stix_path: Path,
             ae_ir = parse_ae_plan(plan_match, taxonomy=taxonomy)
             bundle_tids = _technique_ids_in_bundle(bundle)
             topology = _enrich_topology_with_ae_plan(
-                topology, plan_match, ae_ir, bundle_tids, images_catalog,
+                topology, plan_match, ae_ir, bundle_tids,
             )
         except Exception as e:
             _log(f"AE-plan IR enrichment failed for {stix_path.name}: {e}")
@@ -795,14 +724,10 @@ def run_phase4_topology(base_dir: Path) -> list:
     plans = discover_ae_plans()
     _log(f"  discovered {len(plans)} AE plans")
 
-    _log("loading on-prem images catalog ...")
-    images_catalog = _load_images_catalog()
-    _log(f"  images_catalog entries: {len(images_catalog)}")
-
     produced: list = []
     for stix_path in stix_files:
         out = _process_bundle(
-            stix_path, topology_dir, taxonomy, plans, images_catalog,
+            stix_path, topology_dir, taxonomy, plans,
         )
         if out is not None:
             produced.append(out)

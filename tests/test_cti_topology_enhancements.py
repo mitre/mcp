@@ -90,11 +90,7 @@ def test_topology_uses_infra_graph_network_services_software_and_targeted_users(
         },
     }
 
-    topology = build_range_topology(
-        bundle,
-        taxonomy,
-        images_catalog=[{"name": "win2022", "os": "windows", "bootstrapped": True}],
-    )
+    topology = build_range_topology(bundle, taxonomy)
 
     assert topology["infrastructure_graph"]["reachable_infrastructure_refs"] == [infra["id"]]
     host = topology["hosts"][0]
@@ -112,8 +108,6 @@ def test_topology_uses_infra_graph_network_services_software_and_targeted_users(
 
 
 def test_alphv_real_ae_plan_enrichment_materializes_plan_facts():
-    import yaml
-    from pathlib import Path
     from plugins.mcp.app.cti_pipeline_stage4_topology import (
         _enrich_topology_with_ae_plan,
         _technique_ids_in_bundle,
@@ -133,23 +127,12 @@ def test_alphv_real_ae_plan_enrichment_materializes_plan_facts():
     ae_ir = parse_ae_plan(plan, taxonomy=None)
     bundle = ae_plan_to_stix(ae_ir, taxonomy=None)
 
-    images_catalog = []
-    for path in (
-        Path("plugins/range/conf/onprem_microvm_images.yml"),
-        Path("plugins/range/conf/onprem_images.yml"),
-    ):
-        if path.is_file():
-            images_catalog.extend(
-                (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("images") or []
-            )
-
-    topology = build_range_topology(bundle, {}, images_catalog=images_catalog)
+    topology = build_range_topology(bundle, {})
     enriched = _enrich_topology_with_ae_plan(
         topology,
         plan,
         ae_ir,
         _technique_ids_in_bundle(bundle),
-        images_catalog=images_catalog,
     )
 
     expected_hosts = {
