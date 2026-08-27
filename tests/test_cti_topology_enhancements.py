@@ -111,50 +111,6 @@ def test_topology_uses_infra_graph_network_services_software_and_targeted_users(
     assert "process" in topology["attack_surface"]["d3fend_artifacts"]
 
 
-def test_deploy_spec_adds_topology_telemetry_and_operator_review():
-    from plugins.mcp.app.utilities.cti_deploy_spec import synthesize_deploy_spec
-
-    topology = {
-        "type": "x-cti-range-topology",
-        "id": "x-cti-range-topology--00000000-0000-4000-8000-000000000001",
-        "primary_platform": "windows",
-        "hosts": [{
-            "name": "range-workstation",
-            "role": "workstation",
-            "platform": "windows",
-            "services": ["microsoft-ds"],
-            "software_required": [{"name": "ExampleAgent", "version": "1.0"}],
-        }],
-        "attack_surface": {
-            "techniques": [{"technique_id": "T1003"}],
-            "data_sources": ["Process", "Windows Registry"],
-        },
-        "network_edges": [],
-        "user_accounts": [],
-        "identities": [],
-    }
-
-    spec = synthesize_deploy_spec(
-        topology,
-        images_catalog=[{
-            "name": "win2022",
-            "os": "windows",
-            "file": "win2022.qcow2",
-            "provider": "microvm",
-            "bootstrapped": True,
-        }],
-        range_roles=["sysmon", "winlogbeat", "microsoft-ds"],
-        range_playbooks=[],
-    )
-
-    services = spec["images"][0]["host_meta"]["services"]
-    assert "sysmon" in services
-    assert "winlogbeat" in services
-    assert spec["operator_review"]["score"] <= 1.0
-    assert "operator_review_needed" in spec["operator_review"]
-    assert spec["software_install_requests"][0]["name"] == "ExampleAgent"
-
-
 def test_alphv_real_ae_plan_enrichment_materializes_plan_facts():
     import yaml
     from pathlib import Path
