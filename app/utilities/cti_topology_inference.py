@@ -3,7 +3,7 @@ cti_topology_inference.py — Stage 4: topology inference.
 
 Reads a finalized STIX 2.1 bundle (produced by stage 2 + stage 3) and the
 loaded MITRE ATT&CK taxonomy, then emits a custom SDO of type
-`x-cti-range-topology` describing the deployable range shape the bundle
+`x-cti-topology` describing the victim infrastructure shape the bundle
 implies.
 
 Hard rules (per project memory feedback_no_static_lists_dynamic_only.md):
@@ -19,9 +19,9 @@ Hard rules (per project memory feedback_no_static_lists_dynamic_only.md):
 Output object (custom STIX SDO):
 
     {
-      "type": "x-cti-range-topology",
+      "type": "x-cti-topology",
       "spec_version": "2.1",
-      "id": "x-cti-range-topology--<uuid>",
+      "id": "x-cti-topology--<uuid>",
       "created": "...",
       "modified": "...",
       "primary_platform": "windows" | "linux" | "macos",
@@ -30,7 +30,7 @@ Output object (custom STIX SDO):
       "derived_from": ["malware--...", "attack-pattern--...", ...],
       "hosts": [
         {
-          "name": "range-...",
+          "name": "host-...",
           "role": "dc" | "workstation" | "exchange" | ...,
           "platform": "windows" | "linux" | ...,
           "os": "<x_cti_os if present>",
@@ -119,7 +119,12 @@ def now() -> str:
 
 
 def new_id() -> str:
-    return f"x-cti-range-topology--{uuid.uuid4()}"
+    return f"x-cti-topology--{uuid.uuid4()}"
+
+
+# derive_hosts and derive_networks both build host names from this, and
+# derive_networks maps them back to infrastructure ids. They must agree.
+HOST_PREFIX = "host-"
 
 
 def _slug(text: str) -> str:
@@ -753,11 +758,11 @@ def _d3fend_technique_artifact_index() -> dict:
 
 
 # ----------------------------------------------------------------------
-# Dynamic STIX-vocab -> range-role mapping
+# Dynamic STIX-vocab -> host-role mapping
 # ----------------------------------------------------------------------
 #
 # Earlier revisions of this file kept a small static dictionary mapping
-# `infrastructure-type-ov` terms onto range-host roles. That violated the
+# `infrastructure-type-ov` terms onto host roles. That violated the
 # "no static vocabulary lists" rule. We now derive the mapping at runtime
 # from the STIX 2.1 `infrastructure-type-ov` itself: each vocab term is
 # its own role slug. Where the STIX term is a known synonym (e.g.,
@@ -1380,11 +1385,11 @@ def derive_hosts(bundle_objects: list, primary_platform: str,
 
         name_seed = (o.get("name") or "host")
         slug = _slug(name_seed)
-        candidate = f"range-{slug}"
+        candidate = f"{HOST_PREFIX}{slug}"
         n = 1
         while candidate in seen_names:
             n += 1
-            candidate = f"range-{slug}-{n}"
+            candidate = f"{HOST_PREFIX}{slug}-{n}"
         seen_names.add(candidate)
 
         # Per-host platform: prefer x_cti_os from stage 2; fall back to
@@ -1712,7 +1717,7 @@ def derive_networks(bundle_objects: list, hosts: list) -> list:
     for o in bundle_objects:
         if o.get("type") != "infrastructure":
             continue
-        slug = f"range-{_slug(o.get('name') or 'host')}"
+        slug = f"{HOST_PREFIX}{_slug(o.get('name') or 'host')}"
         # If duplicates exist they're disambiguated with -2/-3 — but we
         # only need the FIRST mapping; networks group by identity, not
         # by hostname, so the disambiguation suffix doesn't change the
@@ -1805,9 +1810,9 @@ def derive_observable_surfaces(bundle_objects: list) -> dict:
 # Entry point
 # ----------------------------------------------------------------------
 
-def build_range_topology(bundle: dict, taxonomy: dict) -> dict:
+def build_topology(bundle: dict, taxonomy: dict) -> dict:
     """
-    Construct the x-cti-range-topology SDO from a stage-2 STIX bundle.
+    Construct the x-cti-topology SDO from a stage-2 STIX bundle.
 
     Args:
         bundle: STIX 2.1 bundle dict with 'objects' list.
@@ -1886,7 +1891,7 @@ def build_range_topology(bundle: dict, taxonomy: dict) -> dict:
                 existing_cidrs.add(net.get("cidr"))
 
     return {
-        "type": "x-cti-range-topology",
+        "type": "x-cti-topology",
         "spec_version": "2.1",
         "id": new_id(),
         "created": now(),

@@ -14,7 +14,7 @@ def _rel(rid, rtype, source, target):
 
 
 def test_topology_uses_infra_graph_network_services_software_and_targeted_users():
-    from plugins.mcp.app.utilities.cti_topology_inference import build_range_topology
+    from plugins.mcp.app.utilities.cti_topology_inference import build_topology
 
     actor = {
         "type": "threat-actor",
@@ -90,7 +90,7 @@ def test_topology_uses_infra_graph_network_services_software_and_targeted_users(
         },
     }
 
-    topology = build_range_topology(bundle, taxonomy)
+    topology = build_topology(bundle, taxonomy)
 
     assert topology["infrastructure_graph"]["reachable_infrastructure_refs"] == [infra["id"]]
     host = topology["hosts"][0]
@@ -118,7 +118,7 @@ def test_alphv_real_ae_plan_enrichment_materializes_plan_facts():
         find_plan_by_adversary,
         parse_ae_plan,
     )
-    from plugins.mcp.app.utilities.cti_topology_inference import build_range_topology
+    from plugins.mcp.app.utilities.cti_topology_inference import build_topology
 
     plan = find_plan_by_adversary(discover_ae_plans(), "alphv_blackcat")
     if not plan:
@@ -127,7 +127,7 @@ def test_alphv_real_ae_plan_enrichment_materializes_plan_facts():
     ae_ir = parse_ae_plan(plan, taxonomy=None)
     bundle = ae_plan_to_stix(ae_ir, taxonomy=None)
 
-    topology = build_range_topology(bundle, {})
+    topology = build_topology(bundle, {})
     enriched = _enrich_topology_with_ae_plan(
         topology,
         plan,
@@ -141,7 +141,7 @@ def test_alphv_real_ae_plan_enrichment_materializes_plan_facts():
         if (h.get("hostname") or "").strip()
     }
     actual_hosts = {
-        (h.get("hostname") or h.get("name") or "").strip().lower().removeprefix("range-")
+        (h.get("hostname") or h.get("name") or "").strip().lower().removeprefix("host-")
         for h in enriched["hosts"]
     }
     assert expected_hosts <= actual_hosts
@@ -224,7 +224,7 @@ def test_knowledge_graph_persists_to_sqlite(tmp_path):
     bundle = {"type": "bundle", "id": "bundle--1", "objects": [infra]}
     topology = {
         "hosts": [{
-            "name": "range-host-a",
+            "name": "host-host-a",
             "stix_id": infra["id"],
             "role": "server",
             "platform": "linux",
@@ -235,3 +235,58 @@ def test_knowledge_graph_persists_to_sqlite(tmp_path):
     result = persist_bundle_topology(bundle, topology, db_path=tmp_path / "kg.sqlite")
     assert result["nodes_seen"] >= 2
     assert (tmp_path / "kg.sqlite").is_file()
+
+
+def test_host_names_stay_anchored_to_their_infrastructure_sdo():
+    """derive_hosts and derive_networks build host names independently.
+
+    derive_networks rebuilds the name to map it back to an infrastructure
+    id. When the two drift the host is not dropped, it is silently moved
+    into "unanchored-net" with anchor_identity None, so the topology still
+    looks well formed. Assert on the anchoring, not on membership.
+    """
+    from plugins.mcp.app.utilities.cti_topology_inference import build_topology
+
+    infra = {
+        "type": "infrastructure",
+        "id": "infrastructure--aaaaaaaa-0000-4000-8000-000000000001",
+        "name": "Mail Relay",
+        "infrastructure_types": ["workstation"],
+        "x_cti_os": "windows",
+    }
+    identity = {
+        "type": "identity",
+        "id": "identity--bbbbbbbb-0000-4000-8000-000000000002",
+        "name": "Contoso",
+        "identity_class": "organization",
+    }
+    rel = {
+        "type": "relationship",
+        "id": "relationship--cccccccc-0000-4000-8000-000000000003",
+        "relationship_type": "located-at",
+        "source_ref": infra["id"],
+        "target_ref": identity["id"],
+    }
+    bundle = {"type": "bundle", "id": "bundle--1",
+              "objects": [infra, identity, rel]}
+
+    topology = build_topology(bundle, {})
+
+    assert topology["type"] == "x-cti-topology"
+    assert topology["id"].startswith("x-cti-topology--")
+
+    names = {h["name"] for h in topology["hosts"]}
+    assert names, "no hosts derived"
+    assert all(n.startswith("host-") for n in names), names
+
+    networks = topology.get("networks") or []
+    anchored = {m for net in networks if net.get("anchor_identity")
+                for m in net.get("members") or []}
+    unanchored = {m for net in networks if not net.get("anchor_identity")
+                  for m in net.get("members") or []}
+
+    assert names <= anchored, (
+        f"hosts lost their identity anchor: {sorted(names - anchored)}; "
+        f"unanchored={sorted(unanchored)}"
+    )
+    assert not unanchored, f"unexpected unanchored hosts: {sorted(unanchored)}"

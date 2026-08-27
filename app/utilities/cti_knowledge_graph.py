@@ -67,7 +67,7 @@ def canonical_key(obj: dict) -> str:
         version = _norm(obj.get("version") or "")
         vendor = _norm(obj.get("vendor") or "")
         return f"software:{vendor}:{name}:{version}"
-    if otype == "x-cti-range-host":
+    if otype == "x-cti-host":
         ip = obj.get("ip")
         if ip:
             return f"host-ip-sha256:{_hash_token(ip)}"
@@ -184,7 +184,7 @@ def persist_bundle_topology(bundle: dict, topology: dict,
             if not isinstance(host, dict):
                 continue
             host_obj = {
-                "type": "x-cti-range-host",
+                "type": "x-cti-host",
                 "id": host.get("name"),
                 "name": host.get("name"),
                 "ip": host.get("ip"),
@@ -226,7 +226,7 @@ def persist_bundle_topology(bundle: dict, topology: dict,
                 if not host:
                     continue
                 host_key = canonical_key({
-                    "type": "x-cti-range-host",
+                    "type": "x-cti-host",
                     "name": host.get("name"),
                     "ip": host.get("ip"),
                 })

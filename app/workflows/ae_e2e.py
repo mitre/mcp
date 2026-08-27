@@ -315,7 +315,7 @@ class AEEndToEndWorkflow:
                         counts["tools"] += 1
                     elif t == "relationship":
                         counts["relationships"] += 1
-                    elif t == "x-cti-range-topology":
+                    elif t == "x-cti-topology":
                         counts["hosts"] += len(o.get("hosts") or [])
             except Exception as e:
                 self.log.warning(f"failed to count STIX objects: {e}")
@@ -331,7 +331,7 @@ class AEEndToEndWorkflow:
 
     # ------------------------------------------------------------------
     # Stage 3 — topology. Reuse the stage4 output when available, else
-    # call build_range_topology in-process.
+    # call build_topology in-process.
     # ------------------------------------------------------------------
     async def _stage_topology(self, state: dict, ctx: dict) -> dict:
         cti_payload = (state["stages"].get("cti") or {}).get("payload") or {}
@@ -341,8 +341,8 @@ class AEEndToEndWorkflow:
         topo_obj: Optional[dict] = None
         if ctx["dry_run"]:
             topo_obj = {
-                "type": "x-cti-range-topology",
-                "id": "x-cti-range-topology--dry-run",
+                "type": "x-cti-topology",
+                "id": "x-cti-topology--dry-run",
                 "primary_platform": "windows",
                 "hosts": [], "user_accounts": [], "identities": [],
             }
@@ -350,7 +350,7 @@ class AEEndToEndWorkflow:
             topo_obj = json.loads(Path(topo_path).read_text(encoding="utf-8"))
         elif stix_path and Path(stix_path).is_file():
             from plugins.mcp.app.utilities.cti_topology_inference import (
-                build_range_topology,
+                build_topology,
             )
             taxonomy: dict = {}
             try:
@@ -361,7 +361,7 @@ class AEEndToEndWorkflow:
             except Exception as e:
                 self.log.warning(f"taxonomy load failed: {e}; using empty taxonomy")
             bundle = json.loads(Path(stix_path).read_text(encoding="utf-8"))
-            topo_obj = build_range_topology(bundle, taxonomy, [])
+            topo_obj = build_topology(bundle, taxonomy, [])
         else:
             raise RuntimeError("topology stage requires a stage_cti payload with stix_path or topology_path")
 

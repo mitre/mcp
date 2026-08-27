@@ -4,16 +4,16 @@
   "objects": [
 
     {
-      "_comment": "STIX 2.1 spec defines an extension-definition for custom object types. The pipeline should emit one of these whenever it produces an x-cti-range-topology object so downstream consumers (range plugin) can validate.",
+      "_comment": "STIX 2.1 spec defines an extension-definition for custom object types. The pipeline should emit one of these whenever it produces an x-cti-topology object so downstream consumers can validate.",
       "type": "extension-definition",
       "spec_version": "2.1",
-      "id": "extension-definition--cti-range-topology-v1",
+      "id": "extension-definition--cti-topology-v1",
       "created_by_ref": "identity--mcp-cti-pipeline",
       "created": "2026-05-10T00:00:00.000Z",
       "modified": "2026-05-10T00:00:00.000Z",
       "name": "CTI Range Topology",
       "description": "Caldera-specific deployable range shape inferred from CTI ingestion. Lists host roles, services, group memberships sufficient for plugins/range/conf/onprem_images.yml to pick images and plugins/range/automation/playbooks to wire identities.",
-      "schema": "https://example.invalid/schemas/cti-range-topology-v1.json",
+      "schema": "https://example.invalid/schemas/cti-topology-v1.json",
       "version": "1.0",
       "extension_types": ["new-sdo"]
     },
@@ -153,14 +153,14 @@
     },
 
     {
-      "_comment": "Custom x-cti-range-topology object. THIS is the bridge between STIX-as-CTI and Caldera-range-as-deployable. The range plugin reads this to pick images and wire roles. Hosts are scoped by 'platform' (matches onprem_images.yml's 'os' field) and 'role' (drives ansible group membership e.g., tag_role_dc, tag_role_workstation).",
-      "type": "x-cti-range-topology",
+      "_comment": "Custom x-cti-topology object. The inferred victim topology. Hosts carry 'platform' and 'role' so consumers can group them.",
+      "type": "x-cti-topology",
       "spec_version": "2.1",
-      "id": "x-cti-range-topology--blackcat-v1",
+      "id": "x-cti-topology--blackcat-v1",
       "created": "2026-05-10T00:00:00.000Z",
       "modified": "2026-05-10T00:00:00.000Z",
       "extensions": {
-        "extension-definition--cti-range-topology-v1": {
+        "extension-definition--cti-topology-v1": {
           "extension_type": "new-sdo"
         }
       },
@@ -170,7 +170,7 @@
       "primary_platform_source": "malware.x_mitre_platforms[0] + technique-platform aggregate (167:38 windows vs linux)",
       "hosts": [
         {
-          "name": "range-dc-01",
+          "name": "host-dc-01",
           "role": "dc",
           "platform": "windows",
           "image_candidates": ["timestone-windows-victim"],
@@ -179,28 +179,28 @@
           "inferred_from": ["technique T1003.006 (DCSync)", "technique T1558 (Kerberoasting)"]
         },
         {
-          "name": "range-workstation-01",
+          "name": "host-workstation-01",
           "role": "workstation",
           "platform": "windows",
           "image_candidates": ["timestone-windows-victim"],
           "services": [],
-          "member_of": ["range-dc-01"],
+          "member_of": ["host-dc-01"],
           "inferred_from": ["malware.x_mitre_platforms includes Windows", "technique T1486 (Data Encrypted for Impact)"]
         },
         {
-          "name": "range-exchange-01",
+          "name": "host-exchange-01",
           "role": "exchange",
           "platform": "windows",
           "image_candidates": ["timestone-windows-victim"],
           "services": ["microsoft-exchange"],
-          "member_of": ["range-dc-01"],
+          "member_of": ["host-dc-01"],
           "inferred_from": ["IR.infrastructure mentions 'Unpatched Exchange server'"]
         }
       ],
       "networks": [
         {
           "name": "internal-corp",
-          "members": ["range-dc-01", "range-workstation-01", "range-exchange-01"]
+          "members": ["host-dc-01", "host-workstation-01", "host-exchange-01"]
         }
       ],
       "notes": "Every field above derives from an ontology/dictionary lookup against MITRE ATT&CK (taxonomy already loaded by cti_taxonomy_loader.py), MITRE D3fend (cloned to utilities/D3fend_CAD), or STIX 2.1 open vocabs. No malware-name-to-OS hardcoded mapping is required: x_mitre_platforms on the malware object answers the OS question directly."

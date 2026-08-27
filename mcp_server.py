@@ -294,7 +294,7 @@ async def ingest_cti(file_path: str) -> dict:
                     counts["threat_actors"] += 1
                 elif t == "intrusion-set":
                     counts["intrusion_sets"] += 1
-                elif t == "x-cti-range-topology":
+                elif t == "x-cti-topology":
                     counts["hosts"] += len(obj.get("hosts") or [])
         except Exception as e:
             log.warning(f"counts assembly failed: {e}")
@@ -312,7 +312,7 @@ async def ingest_cti(file_path: str) -> dict:
 @mcp.tool(name="cti_pipeline_build_topology")
 @_stdout_safe
 async def build_topology(stix_path: str) -> dict:
-    """Build (or rebuild) the x-cti-range-topology SDO from a STIX bundle.
+    """Build (or rebuild) the x-cti-topology SDO from a STIX bundle.
 
     Use this when ingest_cti has already produced a bundle and you want
     a fresh topology inference, OR when an external bundle was placed in
@@ -328,7 +328,7 @@ async def build_topology(stix_path: str) -> dict:
         identities, networks, saved_to}
     """
     from plugins.mcp.app.utilities.cti_topology_inference import (
-        build_range_topology,
+        build_topology,
     )
 
     if not stix_path:
@@ -361,9 +361,9 @@ async def build_topology(stix_path: str) -> dict:
         log.warning(f"taxonomy load failed: {e}; proceeding without it")
 
     try:
-        topology = build_range_topology(bundle, taxonomy)
+        topology = build_topology(bundle, taxonomy)
     except Exception as e:
-        log.exception("build_range_topology failed")
+        log.exception("build_topology failed")
         return {"error": f"topology build failed: {e}"}
 
     try:
@@ -481,7 +481,7 @@ async def fuse_cti_bundles(stix_paths: list[str],
     surviving object IDs.
     """
     from plugins.mcp.app.utilities.cti_fusion import fuse_bundles
-    from plugins.mcp.app.utilities.cti_topology_inference import build_range_topology
+    from plugins.mcp.app.utilities.cti_topology_inference import build_topology
 
     if not stix_paths:
         return {"error": "stix_paths is required"}
@@ -533,7 +533,7 @@ async def fuse_cti_bundles(stix_paths: list[str],
         except Exception as e:
             log.warning(f"taxonomy load failed during fusion topology: {e}")
 
-            topology = build_range_topology(fused, taxonomy)
+            topology = build_topology(fused, taxonomy)
         try:
             from plugins.mcp.app.cti_pipeline_stage4_topology import (
                 _adversary_candidates_from_bundle,

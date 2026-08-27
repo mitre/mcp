@@ -10,8 +10,8 @@ enriched by stage 3), this stage:
   2. Discovers the matching Adversary Emulation (AE) plan by matching
      the bundle's malware / threat-actor / intrusion-set names against
      the vendored AE plan adversary slugs.
-  3. Builds an ``x-cti-range-topology`` SDO via
-     :func:`cti_topology_inference.build_range_topology`.
+  3. Builds an ``x-cti-topology`` SDO via
+     :func:`cti_topology_inference.build_topology`.
   4. When a matching AE plan exists, parses it into an IR with
      :func:`cti_ae_library_loader.parse_ae_plan` and uses the IR to
      enrich every host's ``inferred_from`` provenance trail with
@@ -34,7 +34,7 @@ from pathlib import Path
 from typing import Optional
 
 from plugins.mcp.app.utilities.cti_topology_inference import (
-    build_range_topology,
+    build_topology,
 )
 from plugins.mcp.app.utilities.cti_ae_library_loader import (
     discover_ae_plans,
@@ -165,8 +165,11 @@ def _norm_key(value: str) -> str:
 
 def _host_key(value: str) -> str:
     key = _norm_key(value)
-    if key.startswith("range-"):
-        key = key[len("range-"):]
+    # "range-" is the pre-rename prefix; strip it so topologies written by
+    # an earlier build still match.
+    for prefix in ("host-", "range-"):
+        if key.startswith(prefix):
+            return key[len(prefix):]
     return key
 
 
@@ -235,7 +238,7 @@ def _ae_topology_host(ae_host: dict, default_domain: Optional[str]) -> dict:
         role = _ae_role_from_evidence(evidence, hostname=hostname) or role
     os_name = os_name or _ae_os_from_evidence(evidence, role, default="windows")
     return {
-        "name": f"range-{_host_key(hostname or 'host')}",
+        "name": f"host-{_host_key(hostname or 'host')}",
         "hostname": hostname,
         "ip": (ae_host.get("ip") or "").strip() or None,
         "role": role,
@@ -400,7 +403,7 @@ def _enrich_topology_with_ae_plan(
             ae_role = ae_h["role"]
             ae_os = ae_h["os"]
             matched_on = []
-            # Name substring match (range-<slug> may contain AE name)
+            # Name substring match (host-<slug> may contain AE name)
             if ae_name and ae_name in host_name:
                 matched_on.append(f"name={ae_name}")
             # IP exact
@@ -636,7 +639,7 @@ def _process_bundle(stix_path: Path,
         )
 
     # Build the topology SDO.
-    topology = build_range_topology(bundle, taxonomy)
+    topology = build_topology(bundle, taxonomy)
 
     # Cross-reference with AE library IR when a plan matched.
     if plan_match is not None:
@@ -674,7 +677,7 @@ def _process_bundle(stix_path: Path,
     # Remove any pre-existing topology SDO (idempotent re-run).
     objects[:] = [o for o in objects
                   if not (isinstance(o, dict)
-                          and o.get("type") == "x-cti-range-topology")]
+                          and o.get("type") == "x-cti-topology")]
     objects.append(topology)
     stix_path.write_text(
         json.dumps(bundle, indent=2, default=str), encoding="utf-8",
