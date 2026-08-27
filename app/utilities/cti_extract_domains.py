@@ -4,8 +4,8 @@ cti_extract_domains.py — Windows Active-Directory domain-name extraction
 PURPOSE
 -------
 Pull Windows AD domain names (NetBIOS + DNS) out of cleaned CTI prose and
-surface them as first-class IR entries so downstream range deployment can
-provision a Domain Controller and join workstations to it.
+surface them as first-class IR entries so consumers can model a Domain
+Controller and the workstations joined to it.
 
 ONTOLOGY-GROUNDED ONLY — NO STATIC VOCABULARY LISTS
 ---------------------------------------------------

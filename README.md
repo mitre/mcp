@@ -1,8 +1,8 @@
 # Caldera MCP Plugin
 
-CALDERA MCP adds an AI-assisted operations workspace to CALDERA. It gives operators chat-based workflows for creating adversary content, ingesting CTI, selecting generated STIX, planning adversary-emulation runs, and coordinating Range infrastructure when the Range plugin is available.
+CALDERA MCP adds an AI-assisted operations workspace to CALDERA. It gives operators chat-based workflows for creating adversary content, ingesting CTI, selecting generated STIX, and planning adversary-emulation runs.
 
-The plugin is designed to keep the LLM grounded in MCP tools and server-side context instead of asking the operator to manually stitch together CTI, CALDERA state, Range inventory, and operation planning details.
+The plugin is designed to keep the LLM grounded in MCP tools and server-side context instead of asking the operator to manually stitch together CTI, CALDERA state, and operation planning details.
 
 <p align="center">
   <img src="docs/images/mcp-main-screen.png" alt="Caldera MCP main screen" width="900">
@@ -17,10 +17,9 @@ The plugin is designed to keep the LLM grounded in MCP tools and server-side con
 ## Features
 
 - **Author workflow**: Create CALDERA abilities and adversaries from an operator prompt while using available MCP server tools.
-- **Plan and Execute workflow**: Select or upload CTI/STIX, infer victim topology, choose one or more Range providers, synthesize a deploy spec, provision real infrastructure, place the starting agent, run the CALDERA operation, and summarize detection coverage.
+- **Plan and Execute workflow**: Select or upload CTI/STIX, infer victim topology, build an adversary from the observed techniques, run the CALDERA operation against available agents, and summarize detection coverage.
 - **CTI ingest pipeline**: Upload raw CTI in HTML, PDF, plaintext, or Markdown and produce STIX 2.1 bundles for retrieval and planning.
 - **STIX selection for planning**: Pick generated STIX bundles from the Plan and Execute workspace. Selecting STIX automatically enables CTI retrieval for that run.
-- **Range-aware planning**: Discover loaded Range providers, images, profiles, and features so deploy specs use available infrastructure instead of invented hosts or services.
 - **Model and CTI/RAG profiles**: Configure the chat model, API base, API key, temperature, token budget, and tool-call budget. CTI/RAG can use the chat model by default or a saved profile when it needs a different endpoint.
 - **MCP server discovery**: Expose CALDERA core tools and optional plugin servers, including the CTI pipeline when installed.
 - **Run history and transcripts**: Keep chat sessions, tool calls, reasoning summaries, and final artifacts available for review.
@@ -29,7 +28,7 @@ The plugin is designed to keep the LLM grounded in MCP tools and server-side con
 
 ### Plan and Execute Workspace
 
-Plan and Execute now has a dedicated workspace for CTI-driven adversary emulation. The workflow keeps its prompt context centralized, shows the LLM endpoint controls in the session, and separates CTI/RAG selection from Range build options.
+Plan and Execute now has a dedicated workspace for CTI-driven adversary emulation. The workflow keeps its prompt context centralized, and shows the LLM endpoint controls in the session.
 
 <p align="center">
   <img src="docs/images/mcp-plan-execute-workspace.png" alt="MCP Plan and Execute workspace" width="900">
@@ -37,13 +36,13 @@ Plan and Execute now has a dedicated workspace for CTI-driven adversary emulatio
 
 <br>
 
-<p align="center"><em>Plan and Execute workspace with LLM endpoint, CTI/RAG, and Range controls.</em></p>
+<p align="center"><em>Plan and Execute workspace with LLM endpoint and CTI/RAG controls.</em></p>
 
 <br>
 
 ### STIX Selection Modal
 
-The Plan and Execute CTI picker is now a graphical modal that lists generated STIX bundles with model, provider, and size metadata. The selected bundles are summarized under the CTI / Range section in the workflow sidebar.
+The Plan and Execute CTI picker is now a graphical modal that lists generated STIX bundles with model, provider, and size metadata. The selected bundles are summarized under the CTI section in the workflow sidebar.
 
 <p align="center">
   <img src="docs/images/mcp-plan-execute-stix-selector.png" alt="MCP Plan and Execute STIX selector" width="900">
@@ -71,11 +70,7 @@ The CTI ingest workflow stages raw CTI files, runs extraction, and displays gene
 
 ### CTI Pipeline Fidelity
 
-The CTI pipeline now extracts more deployable structure from STIX and related observables, including infrastructure objects, network-traffic services, software inventory, identities, user accounts, ATT&CK platform hints, CVE references, and operator-review gaps. The goal is to improve deploy-spec fidelity without relying on static, hardcoded host or service lists.
-
-### Range Integration
-
-Plan and Execute reads available Range providers and feature inventory when the Range plugin is present. Generated deploy specs can register Range profiles before deployment so LLM-generated profile names do not fail provider validation.
+The CTI pipeline now extracts more deployable structure from STIX and related observables, including infrastructure objects, network-traffic services, software inventory, identities, user accounts, ATT&CK platform hints, CVE references, and operator-review gaps. The goal is to improve topology fidelity without relying on static, hardcoded host or service lists.
 
 ## Installation
 
@@ -104,7 +99,6 @@ plugins:
   - magma
   - sandcat
   - stockpile
-  - range
   - detections
   - mcp
 ```
@@ -149,9 +143,9 @@ python server.py --insecure --log=DEBUG --build
 
 4. In **Global Model Config**, choose or create an endpoint profile. The default model field is `openai/gpt-oss-120b`; set API base, API key, temperature, tool-call budget, and token budget for your environment.
 
-5. Use **Upload CTI** to ingest raw reports and generate STIX, or start **Plan and Execute** and select existing STIX bundles from the CTI / Range sidebar.
+5. Use **Upload CTI** to ingest raw reports and generate STIX, or start **Plan and Execute** and select existing STIX bundles from the CTI sidebar.
 
-6. For Plan and Execute, select the Range provider or providers you want to use. If no CTI is selected, the workflow runs without CTI retrieval. If STIX is selected, CTI retrieval is enabled automatically.
+6. For Plan and Execute, if no CTI is selected, the workflow runs without CTI retrieval. If STIX is selected, CTI retrieval is enabled automatically.
 
 ## Workflow Guide
 
@@ -169,8 +163,6 @@ Use Plan and Execute for CTI-driven operations. The workflow can:
 
 - Read selected STIX bundles and CTI/RAG context.
 - Infer hosts, operating systems, domains, users, services, and topology.
-- Query Range inventory for available providers, images, profiles, and features.
-- Synthesize a deploy spec that uses real Range capability.
 - Provision infrastructure when requested.
 - Place the selected CALDERA agent on the starting host.
 - Build and run the CALDERA operation.
@@ -280,7 +272,6 @@ plugins/mcp/
 |   |   +-- plan_execute.py        # Plan and Execute workflow
 |   |   +-- prompts/               # centralized prompt context
 |   +-- utilities/
-|       +-- cti_deploy_spec.py     # topology and deploy-spec synthesis
 |       +-- cti_*                  # CTI extraction, validation, enrichment
 +-- conf/
 |   +-- default.yml                # safe defaults only
@@ -320,7 +311,6 @@ Use `--build` after changing Vue, CSS, or other Magma-loaded UI assets.
 - **UI changes are missing**: Restart with `--build` so Magma rebuilds plugin UI bundles.
 - **Model calls fail**: Check the endpoint profile, API base, API key, and model name. The API base often needs a `/v1` suffix for OpenAI-compatible servers.
 - **CTI/RAG does not run**: Select at least one generated STIX bundle in Plan and Execute. CTI selection automatically enables RAG for that workflow.
-- **Range options are empty**: Confirm the Range plugin is installed, enabled, and reachable by CALDERA. Plan and Execute only lists providers and images that Range reports as available.
 - **Deploy spec has review gaps**: The CTI did not provide enough grounded evidence. Add richer CTI, select more STIX bundles, or review the gaps before deployment.
 
 ## License

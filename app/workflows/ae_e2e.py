@@ -68,7 +68,7 @@ def _iso() -> str:
 
 
 class AEEndToEndWorkflow:
-    """Full CTI -> STIX -> AE plan -> range deploy -> sandcat -> operation -> detections.
+    """Full CTI -> STIX -> AE plan -> adversary -> operation -> detections.
 
     Instantiated lazily at run time (see ``_workflow_runner`` below); the
     Workflow registration in this module only needs the ``run`` callable.

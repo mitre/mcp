@@ -45,7 +45,7 @@ _YAML_PATH = 'plugins/mcp/conf/default.yml'
 
 # max_tokens is the per-completion budget DSPy passes to the LM. Each
 # ReAct iteration consumes one completion, and a verbose model on a
-# multi-server tool surface (caldera_core + range = 27 tools) routinely
+# multi-server tool surface (caldera_core + cti_pipeline) routinely
 # produces a long `next_thought` per iteration. With the previous 10k
 # default, those iterations would truncate, the closing parser marker
 # never got emitted, and DSPy's ChatAdapter would fail the whole run.

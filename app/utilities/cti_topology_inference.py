@@ -1,5 +1,5 @@
 """
-cti_topology_inference.py — Stage 4: Range topology inference.
+cti_topology_inference.py — Stage 4: topology inference.
 
 Reads a finalized STIX 2.1 bundle (produced by stage 2 + stage 3) and the
 loaded MITRE ATT&CK taxonomy, then emits a custom SDO of type
@@ -768,9 +768,8 @@ def _d3fend_technique_artifact_index() -> dict:
 def _role_from_infra_types(types: list) -> str:
     """
     Reduce STIX 2.1 `infrastructure_types` to a single role slug. We
-    return the first vocab term unchanged (slugified) — downstream
-    consumers (the range plugin) accept any slug; the names match the
-    spec's open vocab, so a custom range-role registry can be data-only.
+    return the first vocab term unchanged (slugified). The names match
+    the spec's open vocab, so a consumer's role registry can be data-only.
     """
     if not types:
         return "unknown"
@@ -882,7 +881,7 @@ def aggregate_target_platforms(bundle_objects: list, taxonomy: dict) -> dict:
 # Service-name discovery from ATT&CK data-component graph
 # ----------------------------------------------------------------------
 #
-# A "service" in the range topology is a logical operating-system service
+# A "service" in the topology is a logical operating-system service
 # (e.g. "active-directory-domain-services", "remote-desktop-services") the
 # host must run. We derive it dynamically:
 #
@@ -1034,9 +1033,8 @@ def _service_tokens_from_signals(signals: dict) -> list:
     list of service slug tokens. The token comes straight from ATT&CK
     data-source / data-component names, slugified. We deliberately do
     NOT translate "Active Directory" -> "active-directory-domain-services"
-    via a table — `_slug()` produces "active-directory", which the range
-    plugin's role registry can resolve. Any downstream alias mapping
-    lives in `plugins/range/conf/*.yml`, not here.
+    via a table — `_slug()` produces "active-directory". Any alias mapping
+    belongs to the consumer, not here.
     """
     out = set()
     for ds in signals.get("data_sources", []) or []:
@@ -1544,8 +1542,7 @@ def derive_hosts(bundle_objects: list, primary_platform: str,
 
 def _ansible_user_input(sco: dict, domain_name: Optional[str]) -> dict:
     """
-    Build the var shape the range plugin's roles/users role consumes
-    (per plugins/range/automation/roles/users/tasks/{domain,local}_users.yml):
+    Build the user var shape consumers expect:
 
         { username, password, is_admin, user_tags }
 

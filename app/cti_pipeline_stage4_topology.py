@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Phase 4 — Range Topology Inference + AE-Library Cross-Reference
+Phase 4 — Topology Inference + AE-Library Cross-Reference
 ================================================================
 
 For every finalised STIX 2.1 bundle written by stage 2 (and optionally
@@ -10,8 +10,7 @@ enriched by stage 3), this stage:
   2. Discovers the matching Adversary Emulation (AE) plan by matching
      the bundle's malware / threat-actor / intrusion-set names against
      the vendored AE plan adversary slugs.
-  3. Loads the on-prem image catalog (``plugins/range/conf/onprem_images.yml``)
-     and builds an ``x-cti-range-topology`` SDO via
+  3. Builds an ``x-cti-range-topology`` SDO via
      :func:`cti_topology_inference.build_range_topology`.
   4. When a matching AE plan exists, parses it into an IR with
      :func:`cti_ae_library_loader.parse_ae_plan` and uses the IR to

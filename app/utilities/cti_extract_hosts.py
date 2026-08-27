@@ -15,8 +15,7 @@ victim environment using *named* hosts with structured fields:
 
 Stage 1 historically produced only generic "Internet-facing RDP server"
 infrastructure entries which strip those names away. This module recovers
-them so downstream range provisioning has concrete host identities to
-deploy.
+them so downstream consumers have concrete host identities.
 
 Hard constraints
 ----------------

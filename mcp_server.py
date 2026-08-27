@@ -113,7 +113,7 @@ MCP_METADATA = {
     "default_enabled": True,
     "description": (
         "End-to-end CTI ingest tools: PDF/HTML -> STIX 2.1 bundle -> "
-        "range topology SDO -> deploy spec -> range deploy -> operation "
+        "topology SDO -> adversary -> operation "
         "-> detection validation. Thin wrappers over the deterministic "
         "pipeline services."
     ),
@@ -149,8 +149,7 @@ def _caldera_headers() -> dict:
 
 def _caldera_root() -> str:
     """Caldera HTTP root (without the /api/v2/ suffix) - used for plugin
-    endpoints like /plugin/range/onprem/manage/deploy that live outside
-    the v2 API namespace.
+    endpoints that live outside the v2 API namespace.
     """
     api = _caldera_base_url()
     # api looks like "http://host:port/api/v2/"; strip the trailing
@@ -693,8 +692,7 @@ async def run_operation(
         # v2 API accepts paws via the 'group' or 'agents' field shape;
         # we pass it as a hint via name suffix so downstream observers
         # can correlate - the actual paw filtering happens through
-        # group membership which the range plugin / sandcat agents
-        # already apply.
+        # group membership which sandcat agents already apply.
         body["_target_paws"] = list(agent_paws)
 
     import aiohttp
