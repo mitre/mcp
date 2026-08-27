@@ -347,6 +347,78 @@ async def fuse_cti_bundles(stix_paths: list[str]) -> dict:
     }
 
 
+@mcp.tool(name="cti_pipeline_build_source")
+@_stdout_safe
+async def build_source(stix_path: str, source_name: Optional[str] = None) -> dict:
+    """Turn a STIX bundle into a CALDERA fact source.
+
+    Seeds an operation with the hosts, accounts and domains the report
+    actually named, so a run is grounded in the CTI instead of using
+    placeholder values. Nothing is invented; a bundle that names none of
+    these yields no facts.
+
+    Args:
+        stix_path: path to a stage 2 STIX bundle.
+        source_name: name for the created source. Defaults to the bundle stem.
+
+    Returns:
+        {source_id, name, fact_count, facts, response}
+    """
+    from plugins.mcp.app.utilities.cti_caldera_facts import bundle_to_facts
+
+    if not stix_path:
+        return {"error": "stix_path is required"}
+
+    p = _resolve_pipeline_file(
+        stix_path, data_subdirs=("outputs_stix", "stix_cti", "raw/uploads"),
+    )
+    if not p.is_file():
+        return {"error": f"stix_path not found: {stix_path}"}
+    try:
+        bundle = json.loads(p.read_text(encoding="utf-8"))
+    except Exception as e:
+        return {"error": f"failed to parse STIX bundle: {e}"}
+
+    facts = bundle_to_facts(bundle)
+    if not facts:
+        return {
+            "error": "bundle named no hosts, accounts or domains",
+            "stix_path": str(p),
+            "fact_count": 0,
+        }
+
+    name = (source_name or "").strip() or f"cti-{p.stem}"
+    body = {"name": name, "facts": facts}
+
+    import aiohttp
+    url = _caldera_base_url() + "sources"
+    try:
+        async with aiohttp.ClientSession(headers=_caldera_headers()) as session:
+            async with session.post(url, json=body,
+                                    timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                text = await resp.text()
+                try:
+                    payload = json.loads(text) if text else {}
+                except json.JSONDecodeError:
+                    payload = {"raw": text}
+                if resp.status >= 400:
+                    return {
+                        "error": f"source creation returned {resp.status}",
+                        "url": url,
+                        "response": payload,
+                    }
+    except Exception as e:
+        return {"error": f"source creation request failed: {e}", "url": url}
+
+    return {
+        "source_id": (payload or {}).get("id"),
+        "name": name,
+        "fact_count": len(facts),
+        "facts": facts,
+        "stix_path": str(p),
+    }
+
+
 @mcp.tool(name="cti_pipeline_run_operation")
 async def run_operation(
     adversary_id: str,

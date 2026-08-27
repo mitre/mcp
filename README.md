@@ -163,6 +163,7 @@ Use Plan and Execute for CTI-driven operations. The workflow can:
 
 - Read selected STIX bundles and CTI/RAG context.
 - Extract hosts, operating systems, domains, users, and software.
+- Turn those into a CALDERA fact source so operations run on values the report named.
 - Provision infrastructure when requested.
 - Place the selected CALDERA agent on the starting host.
 - Build and run the CALDERA operation.
