@@ -1,5 +1,6 @@
 from aiohttp import web
 import logging
+import re
 import mlflow
 import os
 import json
@@ -26,17 +27,20 @@ _RAG_DEFAULTS = {
 
 # conf/local.yml is plaintext on disk beside tracked config, so credentials
 # never go in it. They come from .env or the per-session UI.
-_SECRET_FIELDS = ("api_key", "embed_api_key", "rag_api_key")
+# Matched by name rather than listed: the UI keeps growing key fields
+# (embed_api_key, plan_api_key, cti_rag_api_key) and a list keeps missing them.
+# api_key_env names a variable, not a value, so it is kept.
+_SECRET_KEY_NAME = re.compile(r"api_?key", re.IGNORECASE)
+
+
+def _is_secret(name) -> bool:
+    return bool(_SECRET_KEY_NAME.search(str(name))) and not str(name).endswith("_env")
 
 
 def _without_secrets(value):
     """Recursive: callers have posted nested shapes, so one level is not enough."""
     if isinstance(value, dict):
-        return {
-            k: _without_secrets(v)
-            for k, v in value.items()
-            if k not in _SECRET_FIELDS
-        }
+        return {k: _without_secrets(v) for k, v in value.items() if not _is_secret(k)}
     if isinstance(value, list):
         return [_without_secrets(v) for v in value]
     return value
