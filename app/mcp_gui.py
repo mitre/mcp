@@ -50,10 +50,8 @@ class McpGUI(BaseWorld):
         except Exception:
             caldera = {}
 
-        # An api_key alone stopped being a complete precondition once
-        # api_base moved out of the shipped yaml: without a base LiteLLM
-        # routes to its own default, so the resolver refuses the run. Both
-        # have to be present before this page may claim to be configured.
+        # api_key alone stopped being a complete precondition when api_base
+        # left the shipped yaml: without a base the resolver refuses the run.
         llm_missing_env = [
             env_var
             for env_var, value in (

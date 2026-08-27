@@ -72,16 +72,9 @@ def apply_litellm_ssl_verify(value):
 def dspy_lm_kwargs_from_settings(settings: dict) -> dict:
     """Translate resolved MCP LLM settings into DSPy/LiteLLM kwargs.
 
-    Raises ValueError when no api_base survived resolution. Every dspy.LM()
-    in this plugin is built from kwargs this function returns, so it is the
-    one place that can guarantee LiteLLM never falls back to its built-in
-    https://api.openai.com/v1. config.resolve_llm_config raises earlier
-    with friendlier remediation text; this is the backstop for the callers
-    that never pass through it.
-
-    The check is deliberately not conditioned on provider: an empty base is
-    unusable for ollama too, and an unrecognized provider must not read as
-    permission to skip validation.
+    Raises ValueError without an api_base. Every dspy.LM() in the plugin is
+    built from these kwargs, so this is the one place that can guarantee
+    LiteLLM never falls back to https://api.openai.com/v1.
     """
     settings = settings or {}
     model = settings.get("model") or _DEFAULTS["model"]

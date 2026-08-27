@@ -1,11 +1,7 @@
-"""Tests for config.py and dspy_env.py: LLM profile resolution and its guards.
+"""Tests for LLM profile resolution and the api_base guards.
 
-Covers the three tiers resolve_llm_config merges (yaml, env, UI override)
-and the two refusals that keep an unresolved endpoint from reaching
-LiteLLM, which would otherwise fall back to https://api.openai.com/v1.
-
-_load_defaults is stubbed throughout so these never read conf/default.yml
-and never depend on the developer's own .env.
+_load_defaults is stubbed throughout, so these read neither
+conf/default.yml nor the developer's .env.
 """
 import pytest
 
@@ -83,8 +79,8 @@ class TestResolveEnvIndirection:
         assert cfg["api_base_env"] == "MCP_LLM_API_BASE"
 
     def test_explicit_null_provider_is_coerced(self):
-        # setdefault left a yaml `provider:` null in place, and every
-        # `provider == "openai_compatible"` branch then silently skipped.
+        # setdefault left a yaml `provider:` null in place, silently
+        # skipping every `provider == "openai_compatible"` branch.
         from plugins.mcp.app.utilities.llm_client import resolve_env_indirection
         resolved = resolve_env_indirection({"provider": None, "api_base": "https://h"})
         assert resolved["provider"] == "openai_compatible"
@@ -135,8 +131,7 @@ class TestResolveLlmConfig:
     @pytest.mark.parametrize("provider", ["ollama", "azure", "wat", None])
     def test_api_base_required_for_every_provider(self, yaml_defaults, provider):
         # The guard used to sit inside `if provider == "openai_compatible"`,
-        # so naming any other provider skipped it while model stayed
-        # openai/*, which is exactly the routing the guard exists to block.
+        # so naming any other provider skipped it while model stayed openai/*.
         from plugins.mcp.app.config import resolve_llm_config
         with pytest.raises(ValueError, match="No LLM api_base"):
             resolve_llm_config({"provider": provider})
@@ -148,8 +143,7 @@ class TestResolveLlmConfig:
         assert merged["api_base"] == "https://ui.example.com/v1"
 
     def test_whitespace_override_falls_back_to_default(self, yaml_defaults, monkeypatch):
-        # "   " is truthy and normalizes to "/v1", which satisfied the guard
-        # and failed later inside the HTTP client instead of here.
+        # "   " is truthy and normalizes to "/v1", satisfying the guard.
         from plugins.mcp.app.config import resolve_llm_config
         monkeypatch.setenv("MCP_LLM_API_BASE", "https://env.example.com")
         merged = resolve_llm_config({"api_base": "   "})

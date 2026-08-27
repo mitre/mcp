@@ -94,15 +94,10 @@ def mlflow_settings() -> dict:
 
 
 def profile_defaults(profile: str = 'llm') -> dict:
-    """Resolve one LLM profile from yaml: shape plus env-resolved credentials.
+    """Resolve one LLM profile: yaml shape plus env-resolved credentials.
 
-    Every profile in the yaml shares one shape, so credential resolution is
-    delegated to llm_client.resolve_env_indirection rather than reimplemented
-    here. That keeps the parent-side resolver and the provenance path used by
-    the CTI pipeline reading `api_key_env` / `api_base_env` identically.
-
-    api_key and api_base are empty strings when neither yaml nor env supplies
-    one; the caller decides whether that is fatal.
+    api_key and api_base are empty when unresolved; the caller decides
+    whether that is fatal.
     """
     cfg = resolve_env_indirection(_load_defaults().get(profile) or {})
     cfg.setdefault('fields_locked', {})
@@ -223,10 +218,8 @@ def resolve_llm_config(ui_overrides: dict | None) -> dict:
     """
     base = llm_defaults()
     locked = base.get('fields_locked') or {}
-    # Strings are stripped before the emptiness test so a field the user
-    # only put spaces in falls back to the server default like a cleared
-    # one. Without this an api_base of "   " is truthy, normalizes to the
-    # relative path "/v1", and satisfies the guard below.
+    # Strip first: an api_base of "   " is truthy and normalizes to the
+    # relative path "/v1", which would satisfy the guard below.
     overrides = {}
     for key, value in (ui_overrides or {}).items():
         if isinstance(value, str):
@@ -245,12 +238,8 @@ def resolve_llm_config(ui_overrides: dict | None) -> dict:
             "No LLM API key. Set MCP_LLM_API_KEY in plugins/mcp/.env or "
             "enter one in the UI's Global Model Configuration."
         )
-    # provider arrives from the request body unvalidated, so normalize it
-    # before branching. Only the normalization is provider-specific; the
-    # api_base requirement is not. dspy_lm_kwargs_from_settings drops a
-    # falsy api_base entirely, which leaves LiteLLM routing openai/* models
-    # to https://api.openai.com/v1 no matter what provider the caller named,
-    # and the ollama path needs a base to post to just as much.
+    # provider is unvalidated request input, so normalize before branching.
+    # Only normalization is provider-specific; every provider needs a base.
     provider = merged.get('provider') or 'openai_compatible'
     merged['provider'] = provider
     if provider == 'openai_compatible':
