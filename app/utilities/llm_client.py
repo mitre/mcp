@@ -183,9 +183,8 @@ def get_llm_provenance(profile: str = "llm", *, runtime: bool = False) -> dict:
     if not runtime:
         return base
 
-    # Runtime-only fields (do NOT log these). resolve_env_indirection has
-    # already applied the env fallback and normalized an openai_compatible
-    # base, so these are the values that will actually reach the provider.
+    # Runtime-only fields (do NOT log these). Already env-resolved and
+    # normalized above, so these are what reach the provider.
     base["api_key"] = llm["api_key"]
     base["api_base"] = llm["api_base"]
 
@@ -233,8 +232,8 @@ class LLMClient:
         if not raw_cfg:
             raise KeyError(f"No LLM profile '{profile}' in config")
 
-        # Deterministic early exit, before any credential resolution: an
-        # offline profile is allowed to carry no key and no base at all.
+        # Deterministic early exit, before credential resolution: an
+        # offline profile may legitimately carry no key and no base.
         if raw_cfg.get("offline") or raw_cfg.get("use_mock"):
             return None
 
