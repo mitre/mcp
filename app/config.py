@@ -30,7 +30,11 @@ import os
 
 from app.utility.base_world import BaseWorld
 from plugins.mcp.app.dspy_env import coerce_optional_bool
-from plugins.mcp.app.utilities.llm_client import load_config, normalize_openai_api_base
+from plugins.mcp.app.utilities.llm_client import (
+    load_config,
+    normalize_openai_api_base,
+    resolve_env_indirection,
+)
 
 
 _YAML_PATH = 'plugins/mcp/conf/default.yml'
@@ -53,21 +57,6 @@ _NUMERIC_FALLBACKS = {
 _BOOLEAN_FALLBACKS = {
     "ssl_verify": True,
 }
-
-
-def _resolve_api_base(cfg: dict) -> str:
-    """Yaml api_base, falling back to the env var named by api_base_env.
-
-    Consumes the api_base_env key so it never leaks into the settings dict
-    handed to DSPy. Whitespace is stripped here because
-    normalize_openai_api_base treats a blank-but-truthy string as a real
-    URL and would turn it into the relative path "/v1".
-    """
-    configured = str(cfg.pop('api_base', '') or '').strip()
-    env_var = cfg.pop('api_base_env', None)
-    if configured:
-        return configured
-    return os.environ.get(env_var, '').strip() if env_var else ''
 
 
 def _load_defaults() -> dict:
@@ -104,19 +93,18 @@ def mlflow_settings() -> dict:
     }
 
 
-def llm_defaults() -> dict:
-    """Resolve the LLM block: yaml shape plus api_key/api_base from env vars.
+def profile_defaults(profile: str = 'llm') -> dict:
+    """Resolve one LLM profile from yaml: shape plus env-resolved credentials.
 
-    api_key and api_base are empty strings when their env vars are unset;
-    the caller decides whether that is fatal.
+    Every profile in the yaml shares one shape, so credential resolution is
+    delegated to llm_client.resolve_env_indirection rather than reimplemented
+    here. That keeps the parent-side resolver and the provenance path used by
+    the CTI pipeline reading `api_key_env` / `api_base_env` identically.
+
+    api_key and api_base are empty strings when neither yaml nor env supplies
+    one; the caller decides whether that is fatal.
     """
-    cfg = dict(_load_defaults().get('llm') or {})
-    env_var = cfg.pop('api_key_env', None)
-    cfg['api_key'] = os.environ.get(env_var, '') if env_var else cfg.get('api_key', '') or ''
-    cfg['api_base'] = _resolve_api_base(cfg)
-    if cfg.get('provider', 'openai_compatible') == 'openai_compatible':
-        cfg['api_base'] = normalize_openai_api_base(cfg.get('api_base'))
-    cfg.setdefault('provider', 'openai_compatible')
+    cfg = resolve_env_indirection(_load_defaults().get(profile) or {})
     cfg.setdefault('fields_locked', {})
     for key, fallback in _NUMERIC_FALLBACKS.items():
         cfg.setdefault(key, fallback)
@@ -124,6 +112,11 @@ def llm_defaults() -> dict:
         value = coerce_optional_bool(cfg.get(key))
         cfg[key] = fallback if value is None else value
     return cfg
+
+
+def llm_defaults() -> dict:
+    """The `llm` profile: the default for chat and workflow execution."""
+    return profile_defaults('llm')
 
 
 def _normalise_api_url(url: str) -> str:

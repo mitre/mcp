@@ -101,19 +101,45 @@ def normalize_openai_api_base(api_base: str | None) -> str | None:
     return urlunsplit((parts.scheme, parts.netloc, path, parts.query, parts.fragment))
 
 
-def resolve_api_base(llm_cfg: dict) -> str:
-    """Yaml api_base for a profile, else the env var named by api_base_env.
+# Fields whose value the yaml may name indirectly, through a sibling
+# *_env key holding the name of the environment variable to read. Adding
+# an entry here is how a new credential joins the pattern.
+ENV_INDIRECT_FIELDS = {
+    "api_key": "api_key_env",
+    "api_base": "api_base_env",
+}
 
-    Keeps the shipped yaml free of any deployment's gateway hostname while
-    letting both the `llm` and `cti` profiles read one env var. Whitespace
-    is stripped because normalize_openai_api_base treats a blank-but-truthy
-    string as a real URL and would turn it into the relative path "/v1".
+
+def resolve_env_indirection(cfg: dict) -> dict:
+    """Resolve a profile's *_env indirection into concrete values.
+
+    Every profile in the yaml (`llm`, `cti`, ...) shares one shape, so the
+    parent-side resolver in app/config.py and the provenance path here read
+    credentials through this single function rather than each rolling its
+    own. Returns a copy; the caller's dict is not mutated.
+
+    The *_env keys are consumed so they never reach the settings dict handed
+    to DSPy. Values are stripped because normalize_openai_api_base treats a
+    blank-but-truthy string as a real URL and would turn it into the
+    relative path "/v1".
+
+    Credentials come back as empty strings when neither yaml nor env supplies
+    one; the caller decides whether that is fatal.
     """
-    configured = str((llm_cfg or {}).get("api_base") or "").strip()
-    if configured:
-        return configured
-    env_var = (llm_cfg or {}).get("api_base_env")
-    return os.environ.get(env_var, "").strip() if env_var else ""
+    resolved = dict(cfg or {})
+    for field, env_key in ENV_INDIRECT_FIELDS.items():
+        env_var = resolved.pop(env_key, None)
+        value = str(resolved.get(field) or "").strip()
+        if not value and env_var:
+            value = os.environ.get(env_var, "").strip()
+        resolved[field] = value
+    # `or` rather than setdefault: yaml may carry an explicit null, which
+    # setdefault would leave in place. dspy_env.py coerces the same way, and
+    # a None here would skip every `provider == "openai_compatible"` branch.
+    resolved["provider"] = resolved.get("provider") or "openai_compatible"
+    if resolved["provider"] == "openai_compatible":
+        resolved["api_base"] = normalize_openai_api_base(resolved["api_base"]) or ""
+    return resolved
 
 
 def _aiohttp_ssl_arg(ssl_verify):
@@ -138,11 +164,10 @@ def get_llm_provenance(profile: str = "llm", *, runtime: bool = False) -> dict:
     If runtime=True, include runtime fields required to execute (api_key, api_base).
     Keep runtime=False as safe-to-log (no secrets).
     """
-    cfg = load_config()
-    llm = cfg.get(profile, {}) or {}
+    llm = resolve_env_indirection(load_config().get(profile, {}) or {})
 
     base = {
-        "provider": llm.get("provider", "openai_compatible"),
+        "provider": llm["provider"],
         "model": llm.get("model"),
         "offline": llm.get("offline", False),
         "use_mock": llm.get("use_mock", False),
@@ -158,11 +183,11 @@ def get_llm_provenance(profile: str = "llm", *, runtime: bool = False) -> dict:
     if not runtime:
         return base
 
-    # Runtime-only fields (do NOT log these)
-    base["api_key"] = llm.get("api_key")
-    base["api_base"] = resolve_api_base(llm)
-    if base["provider"] == "openai_compatible":
-        base["api_base"] = normalize_openai_api_base(base["api_base"])
+    # Runtime-only fields (do NOT log these). resolve_env_indirection has
+    # already applied the env fallback and normalized an openai_compatible
+    # base, so these are the values that will actually reach the provider.
+    base["api_key"] = llm["api_key"]
+    base["api_base"] = llm["api_base"]
 
     if not base["api_key"]:
         raise ValueError(f"{profile}.api_key missing from MCP config")
@@ -204,24 +229,25 @@ class LLMClient:
         self.cfg = load_config()
 
     async def generate(self, prompt: str, profile: str = "llm") -> str | None:
-        llm_cfg = self.cfg.get(profile, {})
-        if not llm_cfg:
+        raw_cfg = self.cfg.get(profile, {})
+        if not raw_cfg:
             raise KeyError(f"No LLM profile '{profile}' in config")
 
-        # Deterministic early exit
-        if llm_cfg.get("offline") or llm_cfg.get("use_mock"):
+        # Deterministic early exit, before any credential resolution: an
+        # offline profile is allowed to carry no key and no base at all.
+        if raw_cfg.get("offline") or raw_cfg.get("use_mock"):
             return None
 
+        llm_cfg = resolve_env_indirection(raw_cfg)
         model = llm_cfg.get("model")
-        api_base = resolve_api_base(llm_cfg)
+        api_base = llm_cfg["api_base"]
         temperature = llm_cfg.get("temperature", 0.0)
 
         if not model or not api_base:
             raise ValueError("LLM config missing model or api_base")
 
-        provider = llm_cfg.get("provider", "openai_compatible")
+        provider = llm_cfg["provider"]
         if provider == "openai_compatible":
-            api_base = normalize_openai_api_base(api_base)
             apply_litellm_ssl_verify(llm_cfg.get("ssl_verify"))
 
         if provider == "ollama":
@@ -273,17 +299,7 @@ class LLMClient:
         temperature: float,
         llm_cfg: dict,
     ) -> str | None:
-        # Resolve api_key with env-var fallback: load_config() returns the
-        # raw YAML which only carries `api_key_env`; the env-var resolution
-        # happens in plugins.mcp.app.config.llm_defaults but the LLMClient
-        # path bypasses that. Without this fallback the Authorization header
-        # comes back as "Bearer " (empty) and the upstream gateway returns
-        # 401 "Malformed API Key".
         api_key = llm_cfg.get("api_key") or ""
-        if not api_key:
-            env_var = llm_cfg.get("api_key_env") or ""
-            if env_var:
-                api_key = os.environ.get(env_var, "") or ""
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {api_key}",
