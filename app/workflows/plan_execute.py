@@ -86,9 +86,25 @@ def get_env(lm_settings=None):
 
     return env
 
-mlflow.set_tracking_uri(mlflow_settings()['tracking_uri'])
-mlflow.set_experiment("caldera-mcp-client-1")
-mlflow.dspy.autolog()
+_MLFLOW_READY = False
+
+
+def _ensure_mlflow():
+    """set_experiment is a network call, so it cannot run at import time.
+
+    Doing it at module scope made importing this module block whenever the
+    tracking server was down, which put every workflow out of reach of a
+    test, a linter, or anything running before the server comes up.
+    """
+    global _MLFLOW_READY
+    if _MLFLOW_READY:
+        return
+    mlflow.set_tracking_uri(mlflow_settings()['tracking_uri'])
+    mlflow.set_experiment("caldera-mcp-client-1")
+    mlflow.dspy.autolog()
+    _MLFLOW_READY = True
+
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -144,6 +160,7 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None,
       - None, to fall back to llm_defaults() from the shared config module
         (used by tests / direct invocation)
     """
+    _ensure_mlflow()
     if isinstance(lm_obj, dspy.LM):
         lm_instance = lm_obj
         lm_settings = None
