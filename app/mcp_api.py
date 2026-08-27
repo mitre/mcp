@@ -11,7 +11,7 @@ from pathlib import Path
 from datetime import datetime
 
 from plugins.mcp.app.config import llm_defaults
-from plugins.mcp.app.utilities.llm_client import load_config
+from plugins.mcp.app.utilities.llm_client import load_config, reload_config
 from plugins.mcp.app.utilities.paths import get_mcp_data_dir, get_mcp_root
 from plugins.mcp.app.cti_ingest_svc import CTIIngestService
 
@@ -23,6 +23,10 @@ _RAG_DEFAULTS = {
     "rag_embed_model": "openai/text-embedding-3-small",
     "rag_topk": 5,
 }
+
+# conf/local.yml is plaintext on disk beside tracked config, so credentials
+# never go in it. They come from .env or the per-session UI.
+_SECRET_FIELDS = ("api_key", "embed_api_key", "rag_api_key")
 
 class McpAPI:
 
@@ -953,12 +957,21 @@ class McpAPI:
                 if isinstance(cfg, dict):
                     existing[section] = cfg
 
-            # 3️⃣ Write merged config back
+            # 3️⃣ Scrub secrets from every section, not just the posted ones,
+            # so a save also clears a key an earlier build already wrote.
+            for section, cfg in existing.items():
+                if isinstance(cfg, dict):
+                    existing[section] = {
+                        k: v for k, v in cfg.items() if k not in _SECRET_FIELDS
+                    }
+
+            # 4️⃣ Write merged config back
             with local_path.open("w", encoding="utf-8") as f:
                 yaml.safe_dump(existing, f, sort_keys=False)
 
-            # 4️⃣ Reload effective config in memory
-            self.services["config"] = load_config()
+            # 5️⃣ Reload effective config. load_config is lru_cached, so the
+            # cache must be cleared or this reads back the pre-write contents.
+            self.services["config"] = reload_config()
 
             self.log.info(f"[MCP] Config updated in {conf_dir}/local.yml")
 
