@@ -28,6 +28,19 @@ _RAG_DEFAULTS = {
 # never go in it. They come from .env or the per-session UI.
 _SECRET_FIELDS = ("api_key", "embed_api_key", "rag_api_key")
 
+
+def _without_secrets(value):
+    """Recursive: callers have posted nested shapes, so one level is not enough."""
+    if isinstance(value, dict):
+        return {
+            k: _without_secrets(v)
+            for k, v in value.items()
+            if k not in _SECRET_FIELDS
+        }
+    if isinstance(value, list):
+        return [_without_secrets(v) for v in value]
+    return value
+
 class McpAPI:
 
     def __init__(self, services):
@@ -957,13 +970,9 @@ class McpAPI:
                 if isinstance(cfg, dict):
                     existing[section] = cfg
 
-            # 3️⃣ Scrub secrets from every section, not just the posted ones,
-            # so a save also clears a key an earlier build already wrote.
-            for section, cfg in existing.items():
-                if isinstance(cfg, dict):
-                    existing[section] = {
-                        k: v for k, v in cfg.items() if k not in _SECRET_FIELDS
-                    }
+            # 3️⃣ Scrub secrets from the whole file, not just the posted
+            # sections, so a save also clears a key an earlier build wrote.
+            existing = _without_secrets(existing)
 
             # 4️⃣ Write merged config back
             with local_path.open("w", encoding="utf-8") as f:
