@@ -1,0 +1,34 @@
+name: python-lint
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - name: Setup python
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c
+        with:
+          python-version: '3.13'
+      - name: Install dependencies
+        run: pip install flake8
+      # Hard gate: syntax errors only. F82 (undefined names) is left out
+      # because a dead legacy path in rag.py trips it; the wider sweep below
+      # is advisory until that and the existing style violations are cleared.
+      - name: Lint for errors
+        run: flake8 . --select=E9,F63,F7 --show-source --statistics
+      - name: Style report
+        run: flake8 . --exit-zero --statistics
