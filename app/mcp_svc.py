@@ -373,18 +373,21 @@ class MCPService(BaseService):
         # below uses `mlflow.start_run(run_id=...)` in its own context
         # manager, which is per-task and doesn't conflict.
         from mlflow.tracking import MlflowClient as _Mlc
-        # The workflow module creates this on its first run(), which is after
-        # this lookup, so mint it here rather than filing the run under
-        # Default. create_experiment not set_experiment: the latter would
-        # mutate the process-wide active experiment this block avoids.
-        _exp = mlflow.get_experiment_by_name("caldera-mcp-client-1")
+        # Mint into the workflow's own experiment. Hardcoding one name here
+        # broke every run after the first: mlflow.start_run(run_id=...) raises
+        # when the process-wide active experiment differs from the run's, and
+        # a workflow that set_experiment a different name flipped it.
+        # create_experiment not set_experiment: the latter would mutate the
+        # process-wide active experiment this block avoids.
+        _exp_name = workflow.mlflow_experiment
+        _exp = mlflow.get_experiment_by_name(_exp_name)
         if _exp is not None:
             _exp_id = _exp.experiment_id
         else:
             try:
-                _exp_id = _Mlc().create_experiment("caldera-mcp-client-1")
+                _exp_id = _Mlc().create_experiment(_exp_name)
             except Exception:
-                _exp = mlflow.get_experiment_by_name("caldera-mcp-client-1")
+                _exp = mlflow.get_experiment_by_name(_exp_name)
                 _exp_id = _exp.experiment_id if _exp else "0"
         run = _Mlc().create_run(
             experiment_id=_exp_id,
