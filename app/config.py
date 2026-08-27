@@ -1,29 +1,33 @@
 """Parent-side configuration resolver.
 
-Two credentials, three tiers, one resolver:
+Three env-resolved values, three tiers, one resolver:
 
-  CORE_CALDERA_API_KEY   env only. Authenticates the caldera_core MCP
-                         subprocess to the running Caldera REST API.
-  MCP_LLM_API_KEY        env default plus per-session UI override.
-                         Authenticates DSPy / signatures / embeddings to
+  CORE_CALDERA_API_KEY   Authenticates the caldera_core MCP subprocess to
+                         the running Caldera REST API.
+  MCP_LLM_API_KEY        Authenticates DSPy / signatures / embeddings to
                          the LLM provider.
+  MCP_LLM_API_BASE       The OpenAI-compatible endpoint they reach. No
+                         default ships; an unresolved value is refused
+                         rather than falling back to public OpenAI.
 
 Storage tiers:
 
-  conf/default.yml carries non-secret defaults and names of env vars to
-  consult. It never holds credential values.
+  conf/default.yml carries non-secret defaults and the names of env vars
+  to consult. It never holds credential values, and neither does the
+  conf/local.yml the UI writes: set_config strips secrets on save.
 
   .env carries credential values. It is gitignored. The plugin's hook.py
   loads it once in the parent process; subprocesses inherit.
 
-  The UI submits per-session overrides on each /execute request and never
-  writes back to disk.
+  The UI submits per-session overrides on each /execute request.
 
 Resolution order for an LLM request:
 
   1. yaml defaults (model, api_base, temperature, ...)
-  2. env-resolved api_key (read from the env var named in api_key_env)
-  3. UI overrides (only non-empty fields, only fields not declared
+  2. env indirection, per llm_client.ENV_INDIRECT_FIELDS. Secrets resolve
+     env-first so rotating .env takes effect; endpoints resolve yaml-first
+     so a deployment can pin one on disk.
+  3. UI overrides (non-empty fields only, and only fields not declared
      fields_locked: true in yaml)
 """
 import os
