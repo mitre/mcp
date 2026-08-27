@@ -116,7 +116,18 @@ source venv/bin/activate
 pip install -r plugins/mcp/requirements.txt
 ```
 
-5. Configure model credentials through the UI or environment/local config. Avoid committing secrets.
+5. Copy `.env.example` to `.env` and set the LLM endpoint and credential. Both are required; nothing ships in `conf/default.yml`.
+
+```bash
+cp plugins/mcp/.env.example plugins/mcp/.env
+```
+
+| Variable | Purpose |
+|---|---|
+| `MCP_LLM_API_BASE` | OpenAI-compatible API root, for example `https://api.openai.com/v1`. An unresolved value is refused rather than defaulting to public OpenAI. |
+| `MCP_LLM_API_KEY` | Key for whichever provider `MCP_LLM_API_BASE` points at. Optional only if every request supplies its own through the UI. |
+
+Both may instead be supplied per-session through the UI's Global Model Configuration. Avoid committing secrets.
 
 ## Quick Start
 
@@ -184,22 +195,24 @@ CTI/RAG model settings can use the chat endpoint by default or a separate saved 
 
 ### Local Settings
 
-Use `conf/local.yml` or environment variables for local values. Keep `conf/default.yml` limited to safe defaults.
+Prefer environment variables for local values, and keep `conf/default.yml` limited to safe defaults.
 
-Common values include:
+To pin values on disk instead, copy `conf/default.yml` to `conf/local.yml` and edit that. **`local.yml` replaces `default.yml` rather than merging with it**, so a partial file silently drops every key it omits, including the `api_key_env` and `api_base_env` indirection that makes the environment variables work.
+
+The `llm` block sits at the top level of the file:
 
 ```yaml
-mcp:
-  llm:
-    model: openai/gpt-oss-120b
-    api_base: https://api.example.com/v1
-    api_key: ''
-    temperature: 0.5
-    max_tool_calls: 5
-    max_tokens: 24000
+llm:
+  model: openai/gpt-oss-120b
+  api_base: https://api.example.com/v1
+  api_base_env: MCP_LLM_API_BASE
+  api_key_env: MCP_LLM_API_KEY
+  temperature: 0.5
+  max_tool_calls: 5
+  max_tokens: 24000
 ```
 
-Environment variables can also be used by deployments that prefer not to store secrets in YAML.
+A value set here outranks the environment variable named beside it, so leave `api_base` empty to keep resolving it from `MCP_LLM_API_BASE`. The `cti` block takes the same shape and may name a different variable if CTI extraction should reach a separate endpoint.
 
 ## API Surface
 
