@@ -192,7 +192,7 @@ async function save() {
         provider: local.provider,
         model: local.model,
         api_base: local.api_base,
-        api_key: local.api_key,
+        // api_key is deliberately absent: set_config refuses to persist it.
         temperature: local.temperature,
         top_p: local.top_p,
         max_tokens: local.max_tokens,

@@ -541,10 +541,25 @@ const availableServers = ref([])
 
 const LOCAL_STORAGE_KEY = 'mcp_global_config'
 
+// localStorage is readable by anything on this origin, so the key lives in
+// memory for the session only. Stripping at the storage boundary covers the
+// global config and every saved endpoint profile in one place.
+function stripSecrets(config) {
+  const { apiKey, ...rest } = config || {}
+  if (Array.isArray(rest.endpointProfiles)) {
+    rest.endpointProfiles = rest.endpointProfiles.map(({ apiKey: _drop, ...p }) => p)
+  }
+  return rest
+}
+
 function loadConfig() {
   try {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY)
-    if (saved) return JSON.parse(saved)
+    if (!saved) return null
+    const cleaned = JSON.stringify(stripSecrets(JSON.parse(saved)))
+    // Purge a key an earlier build persisted instead of waiting for a write.
+    if (cleaned !== saved) localStorage.setItem(LOCAL_STORAGE_KEY, cleaned)
+    return JSON.parse(cleaned)
   } catch (e) {
     console.warn('[MCP] Failed to load saved config:', e)
   }
@@ -553,7 +568,7 @@ function loadConfig() {
 
 function saveConfig(config) {
   try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(config))
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stripSecrets(config)))
   } catch (e) {
     console.warn('[MCP] Failed to save config:', e)
   }
