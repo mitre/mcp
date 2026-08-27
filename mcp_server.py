@@ -1,6 +1,6 @@
 """cti_pipeline MCP server.
 
-Exposes the deterministic CTI -> STIX -> topology -> deploy-spec -> deploy
+Exposes the deterministic CTI -> STIX
 -> operation -> detections pipeline as MCP tools so plan_execute (and any
 other DSPy ReAct workflow) can drive the same artefacts via tool calls
 instead of a parallel hard-coded workflow.
@@ -113,7 +113,7 @@ MCP_METADATA = {
     "default_enabled": True,
     "description": (
         "End-to-end CTI ingest tools: PDF/HTML -> STIX 2.1 bundle -> "
-        "topology SDO -> adversary -> operation "
+        "adversary -> operation "
         "-> detection validation. Thin wrappers over the deterministic "
         "pipeline services."
     ),
@@ -186,11 +186,10 @@ def _caldera_root() -> str:
 @mcp.tool(name="cti_pipeline_ingest_cti")
 @_stdout_safe
 async def ingest_cti(file_path: str) -> dict:
-    """Run the full CTI ingest pipeline (raw -> STIX -> topology) on a file.
+    """Run the full CTI ingest pipeline (raw -> STIX) on a file.
 
-    Stages 1+2+4 (cleaning, IR extraction, STIX assembly, topology
-    inference + AE-library cross-reference) are executed in order. The
-    file is copied into the plugin's data/raw/uploads/ directory first
+    Stages 1 and 2 (cleaning, IR extraction, STIX assembly) run in order.
+    The file is copied into the plugin's data/raw/uploads/ directory first
     so the pipeline's working tree stays canonical.
 
     Args:
@@ -198,9 +197,9 @@ async def ingest_cti(file_path: str) -> dict:
             (PDF, HTML, plaintext). Mandatory.
 
     Returns:
-        {stix_path, topology_path, counts} where counts breaks down the
-        bundle by SDO type (malware, infrastructure, hosts, identities,
-        attack_patterns, tools, relationships, user_accounts).
+        {stix_path, counts} where counts breaks down the bundle by SDO
+        type (malware, infrastructure, identities, attack_patterns, tools,
+        relationships, user_accounts).
     """
     from plugins.mcp.app.cti_ingest_svc import CTIIngestService
     from plugins.mcp.app.utilities.paths import get_mcp_data_dir
@@ -239,7 +238,6 @@ async def ingest_cti(file_path: str) -> dict:
 
     stem = src.stem
     outputs_stix = base_dir / "outputs_stix"
-    outputs_topo = base_dir / "outputs_topology"
 
     def _matches_stem(p: Path) -> bool:
         s_norm = "".join(c for c in stem.lower() if c.isalnum())
@@ -247,23 +245,16 @@ async def ingest_cti(file_path: str) -> dict:
         return bool(s_norm) and s_norm in n_norm
 
     stix_path: Optional[Path] = None
-    topo_path: Optional[Path] = None
     if outputs_stix.is_dir():
         for p in outputs_stix.glob("*.stix.json"):
             if _matches_stem(p):
                 stix_path = p
-                break
-    if outputs_topo.is_dir():
-        for p in outputs_topo.glob("*.topology.json"):
-            if _matches_stem(p):
-                topo_path = p
                 break
 
     counts = {
         "malware": 0,
         "infrastructure": 0,
         "user_accounts": 0,
-        "hosts": 0,
         "identities": 0,
         "attack_patterns": 0,
         "tools": 0,
@@ -294,8 +285,6 @@ async def ingest_cti(file_path: str) -> dict:
                     counts["threat_actors"] += 1
                 elif t == "intrusion-set":
                     counts["intrusion_sets"] += 1
-                elif t == "x-cti-topology":
-                    counts["hosts"] += len(obj.get("hosts") or [])
         except Exception as e:
             log.warning(f"counts assembly failed: {e}")
 
@@ -303,185 +292,21 @@ async def ingest_cti(file_path: str) -> dict:
         "input": str(src),
         "filename": src.name,
         "stix_path": str(stix_path) if stix_path else None,
-        "topology_path": str(topo_path) if topo_path else None,
         "counts": counts,
         "state": svc.status(),
     }
 
 
-@mcp.tool(name="cti_pipeline_build_topology")
-@_stdout_safe
-async def build_topology(stix_path: str) -> dict:
-    """Build (or rebuild) the x-cti-topology SDO from a STIX bundle.
-
-    Use this when ingest_cti has already produced a bundle and you want
-    a fresh topology inference, OR when an external bundle was placed in
-    data/outputs_stix/ manually. The taxonomy + AE-library cross-
-    reference happen inside cti_topology_inference - this tool does not
-    pick scenes apart on its own.
-
-    Args:
-        stix_path: absolute or repo-relative path to a *.stix.json file.
-
-    Returns:
-        {topology_id, primary_platform, hosts, services, software, users,
-        identities, networks, saved_to}
-    """
-    from plugins.mcp.app.utilities.cti_topology_inference import (
-        build_topology,
-    )
-
-    if not stix_path:
-        return {"error": "stix_path is required"}
-    p = _resolve_pipeline_file(
-        stix_path,
-        data_subdirs=("outputs_stix", "stix_cti", "raw/uploads"),
-    )
-    if not p.is_file():
-        return {"error": f"stix_path not found: {stix_path}"}
-
-    try:
-        bundle = json.loads(p.read_text(encoding="utf-8"))
-    except Exception as e:
-        return {"error": f"failed to parse STIX bundle: {e}"}
-
-    taxonomy: dict = {}
-    try:
-        from plugins.mcp.app.utilities.cti_taxonomy_loader import (
-            load_mitre_taxonomy,
-            load_mitre_bundle,
-        )
-        taxonomy = load_mitre_taxonomy() or {}
-        try:
-            raw_bundle = load_mitre_bundle()
-            taxonomy["_raw_objects"] = raw_bundle.get("objects", []) or []
-        except Exception:
-            pass
-    except Exception as e:
-        log.warning(f"taxonomy load failed: {e}; proceeding without it")
-
-    try:
-        topology = build_topology(bundle, taxonomy)
-    except Exception as e:
-        log.exception("build_topology failed")
-        return {"error": f"topology build failed: {e}"}
-
-    try:
-        from plugins.mcp.app.cti_pipeline_stage4_topology import (
-            _adversary_candidates_from_bundle,
-            _enrich_topology_with_ae_plan,
-            _technique_ids_in_bundle,
-        )
-        from plugins.mcp.app.utilities.cti_ae_library_loader import (
-            discover_ae_plans,
-            find_plan_by_adversary,
-            parse_ae_plan,
-        )
-        stem_hint = p.stem[:-len(".stix")] if p.stem.endswith(".stix") else p.stem
-        plans = discover_ae_plans()
-        for cand in _adversary_candidates_from_bundle(bundle, stem_hint=stem_hint):
-            plan = find_plan_by_adversary(plans, cand)
-            if not plan:
-                continue
-            ae_ir = parse_ae_plan(plan, taxonomy=taxonomy)
-            topology = _enrich_topology_with_ae_plan(
-                topology, plan, ae_ir, _technique_ids_in_bundle(bundle),
-            )
-            break
-    except Exception as e:
-        log.warning(f"AE plan topology enrichment skipped: {e}")
-
-    knowledge_graph = None
-    try:
-        from plugins.mcp.app.utilities.cti_knowledge_graph import (
-            persist_bundle_topology,
-        )
-        knowledge_graph = persist_bundle_topology(bundle, topology)
-    except Exception as e:
-        log.warning(f"knowledge graph persistence skipped: {e}")
-
-    # Persist alongside the bundle for downstream tools.
-    out_dir = p.parent.parent / "outputs_topology"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    stem = p.stem
-    if stem.endswith(".stix"):
-        stem = stem[: -len(".stix")]
-    out_path = out_dir / f"{stem}.topology.json"
-    try:
-        out_path.write_text(
-            json.dumps(topology, indent=2, default=str), encoding="utf-8",
-        )
-    except Exception as e:
-        log.warning(f"could not persist topology to {out_path}: {e}")
-
-    hosts = topology.get("hosts") or []
-    users = topology.get("user_accounts") or []
-    identities = topology.get("identities") or []
-    networks = topology.get("networks") or []
-    network_edges = topology.get("network_edges") or []
-
-    # Collect aggregate service + software counts so the LLM can reason
-    # about scale without having to read the whole topology back.
-    services_seen: set = set()
-    software_seen: set = set()
-    for h in hosts:
-        for s in h.get("services") or []:
-            services_seen.add(s)
-        for sw in h.get("software_required") or []:
-            name = sw.get("name") if isinstance(sw, dict) else str(sw)
-            if name:
-                software_seen.add(name)
-
-    return {
-        "topology_id": topology.get("id"),
-        "primary_platform": topology.get("primary_platform"),
-        "primary_platform_confidence": topology.get("primary_platform_confidence"),
-        "host_count": len(hosts),
-        "hosts": [{"name": h.get("name"),
-                   "role": h.get("role"),
-                   "platform": h.get("platform"),
-                   "domain_membership": h.get("domain_membership"),
-                   "services": list(h.get("services") or [])}
-                  for h in hosts],
-        "services": sorted(services_seen),
-        "software": sorted(software_seen),
-        "users": [{"username": u.get("username"),
-                   "domain": u.get("domain"),
-                   "privilege": u.get("privilege")}
-                  for u in users],
-        "identities": [{"name": i.get("name"),
-                        "domain_type": i.get("domain_type")}
-                       for i in identities],
-        "networks": [{"name": n.get("name"),
-                      "members": list(n.get("members") or [])}
-                     for n in networks],
-        "network_edges": [
-            {
-                "service": e.get("service"),
-                "protocol": e.get("protocol"),
-                "port": e.get("port"),
-                "host_refs": list(e.get("host_refs") or []),
-            }
-            for e in network_edges
-        ],
-        "attack_surface": topology.get("attack_surface") or {},
-        "knowledge_graph": knowledge_graph,
-        "saved_to": str(out_path),
-    }
-
-
 @mcp.tool(name="cti_pipeline_fuse")
 @_stdout_safe
-async def fuse_cti_bundles(stix_paths: list[str],
-                           build_topology_after_fuse: bool = True) -> dict:
-    """Fuse multiple STIX bundles into one merged bundle/deploy topology.
+async def fuse_cti_bundles(stix_paths: list[str]) -> dict:
+    """Fuse multiple STIX bundles into one merged bundle.
 
     Bundles are merged by canonical identifiers: MITRE ATT&CK IDs, CVEs,
     CPEs, and normalized STIX names. Relationships are remapped to the
     surviving object IDs.
     """
     from plugins.mcp.app.utilities.cti_fusion import fuse_bundles
-    from plugins.mcp.app.utilities.cti_topology_inference import build_topology
 
     if not stix_paths:
         return {"error": "stix_paths is required"}
@@ -515,131 +340,9 @@ async def fuse_cti_bundles(stix_paths: list[str],
     except Exception as e:
         return {"error": f"failed to persist fused bundle: {e}"}
 
-    topology_path = None
-    topology_summary = None
-    if build_topology_after_fuse:
-        taxonomy: dict = {}
-        try:
-            from plugins.mcp.app.utilities.cti_taxonomy_loader import (
-                load_mitre_taxonomy,
-                load_mitre_bundle,
-            )
-            taxonomy = load_mitre_taxonomy() or {}
-            try:
-                raw_bundle = load_mitre_bundle()
-                taxonomy["_raw_objects"] = raw_bundle.get("objects", []) or []
-            except Exception:
-                pass
-        except Exception as e:
-            log.warning(f"taxonomy load failed during fusion topology: {e}")
-
-            topology = build_topology(fused, taxonomy)
-        try:
-            from plugins.mcp.app.cti_pipeline_stage4_topology import (
-                _adversary_candidates_from_bundle,
-                _enrich_topology_with_ae_plan,
-                _technique_ids_in_bundle,
-            )
-            from plugins.mcp.app.utilities.cti_ae_library_loader import (
-                discover_ae_plans,
-                find_plan_by_adversary,
-                parse_ae_plan,
-            )
-            plans = discover_ae_plans()
-            for cand in _adversary_candidates_from_bundle(fused, stem_hint=out_path.stem):
-                plan = find_plan_by_adversary(plans, cand)
-                if not plan:
-                    continue
-                ae_ir = parse_ae_plan(plan, taxonomy=taxonomy)
-                topology = _enrich_topology_with_ae_plan(
-                    topology, plan, ae_ir, _technique_ids_in_bundle(fused),
-                )
-                break
-        except Exception as e:
-            log.warning(f"AE plan topology enrichment skipped for fusion: {e}")
-        topo_dir = out_dir.parent / "outputs_topology"
-        topo_dir.mkdir(parents=True, exist_ok=True)
-        topology_path = topo_dir / f"fused-{digest}.topology.json"
-        topology_path.write_text(
-            json.dumps(topology, indent=2, default=str), encoding="utf-8",
-        )
-        try:
-            from plugins.mcp.app.utilities.cti_knowledge_graph import (
-                persist_bundle_topology,
-            )
-            kg = persist_bundle_topology(fused, topology)
-        except Exception as e:
-            log.warning(f"knowledge graph persistence skipped for fusion: {e}")
-            kg = None
-        topology_summary = {
-            "topology_id": topology.get("id"),
-            "host_count": len(topology.get("hosts") or []),
-            "primary_platform": topology.get("primary_platform"),
-            "services": sorted({
-                svc
-                for h in topology.get("hosts") or []
-                for svc in (h.get("services") or [])
-            }),
-            "knowledge_graph": kg,
-        }
-
     return {
         "source_count": len(bundles),
         "object_count": len(fused.get("objects") or []),
-        "saved_to": str(out_path),
-        "topology_path": str(topology_path) if topology_path else None,
-        "topology": topology_summary,
-    }
-
-
-@mcp.tool(name="cti_pipeline_refine_topology")
-@_stdout_safe
-async def refine_topology(raw_report_path: str, topology_path: str) -> dict:
-    """Run the optional DSPy ReAct cite-back refinement pass.
-
-    The pass returns candidate additions only; it does not mutate the
-    topology. Each candidate is expected to carry kind, value, confidence,
-    and the report sentence that justifies it.
-    """
-    from plugins.mcp.app.utilities.cti_refinement import (
-        refine_topology_with_dspy_react,
-    )
-
-    if not raw_report_path:
-        return {"error": "raw_report_path is required"}
-    if not topology_path:
-        return {"error": "topology_path is required"}
-
-    raw_p = _resolve_pipeline_file(
-        raw_report_path,
-        data_subdirs=("raw/uploads", "raw", "inputs"),
-    )
-    topo_p = _resolve_pipeline_file(topology_path, data_subdirs=("outputs_topology",))
-    if not raw_p.is_file():
-        return {"error": f"raw_report_path not found: {raw_report_path}"}
-    if not topo_p.is_file():
-        return {"error": f"topology_path not found: {topology_path}"}
-
-    try:
-        raw_report = raw_p.read_text(encoding="utf-8", errors="ignore")
-        topology = json.loads(topo_p.read_text(encoding="utf-8"))
-    except Exception as e:
-        return {"error": f"failed to load refinement inputs: {e}"}
-
-    result = await refine_topology_with_dspy_react(raw_report, topology)
-    out_path = topo_p.with_suffix(".refinement.json")
-    try:
-        out_path.write_text(
-            json.dumps(result, indent=2, default=str), encoding="utf-8",
-        )
-    except Exception as e:
-        log.warning(f"could not persist refinement output to {out_path}: {e}")
-
-    return {
-        "candidate_count": len(result.get("candidate_additions") or []),
-        "candidate_additions": result.get("candidate_additions") or [],
-        "skipped": bool(result.get("skipped")),
-        "reason": result.get("reason"),
         "saved_to": str(out_path),
     }
 

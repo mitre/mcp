@@ -17,7 +17,7 @@ The plugin is designed to keep the LLM grounded in MCP tools and server-side con
 ## Features
 
 - **Author workflow**: Create CALDERA abilities and adversaries from an operator prompt while using available MCP server tools.
-- **Plan and Execute workflow**: Select or upload CTI/STIX, infer victim topology, build an adversary from the observed techniques, run the CALDERA operation against available agents, and summarize detection coverage.
+- **Plan and Execute workflow**: Select or upload CTI/STIX, build an adversary from the observed techniques, run the CALDERA operation against available agents, and summarize detection coverage.
 - **CTI ingest pipeline**: Upload raw CTI in HTML, PDF, plaintext, or Markdown and produce STIX 2.1 bundles for retrieval and planning.
 - **STIX selection for planning**: Pick generated STIX bundles from the Plan and Execute workspace. Selecting STIX automatically enables CTI retrieval for that run.
 - **Model and CTI/RAG profiles**: Configure the chat model, API base, API key, temperature, token budget, and tool-call budget. CTI/RAG can use the chat model by default or a saved profile when it needs a different endpoint.
@@ -56,7 +56,7 @@ The Plan and Execute CTI picker is now a graphical modal that lists generated ST
 
 ### CTI Ingest Pipeline
 
-The CTI ingest workflow stages raw CTI files, runs extraction, and displays generated STIX bundles for later use by RAG-enabled workflows. The generated STIX output is what Plan and Execute uses to infer topology and deployment requirements.
+The CTI ingest workflow stages raw CTI files, runs extraction, and displays generated STIX bundles for later use by RAG-enabled workflows. The generated STIX output is what Plan and Execute uses to build adversaries and seed operations.
 
 <p align="center">
   <img src="docs/images/mcp-cti-ingest-pipeline.png" alt="MCP CTI ingest pipeline screen" width="900">
@@ -70,7 +70,7 @@ The CTI ingest workflow stages raw CTI files, runs extraction, and displays gene
 
 ### CTI Pipeline Fidelity
 
-The CTI pipeline now extracts more deployable structure from STIX and related observables, including infrastructure objects, network-traffic services, software inventory, identities, user accounts, ATT&CK platform hints, CVE references, and operator-review gaps. The goal is to improve topology fidelity without relying on static, hardcoded host or service lists.
+The CTI pipeline extracts structure from STIX and related observables, including hosts, identities, user accounts, domains, software, ATT&CK platform hints, and CVE references. These become CALDERA facts so an operation runs against values the report actually named, not placeholders.
 
 ## Installation
 
@@ -162,7 +162,7 @@ Use Upload CTI to stage raw reports, run CTI extraction, and produce STIX 2.1 bu
 Use Plan and Execute for CTI-driven operations. The workflow can:
 
 - Read selected STIX bundles and CTI/RAG context.
-- Infer hosts, operating systems, domains, users, services, and topology.
+- Extract hosts, operating systems, domains, users, and software.
 - Provision infrastructure when requested.
 - Place the selected CALDERA agent on the starting host.
 - Build and run the CALDERA operation.

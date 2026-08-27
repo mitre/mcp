@@ -574,7 +574,7 @@ async def process_file(
     ir["attack_patterns"] = merged
 
     # ---------------------------------------------------------
-    # 6b. Domain Extraction (AD topology signal)
+    # 6b. Domain Extraction (AD signal)
     #
     # Pulls Windows AD / DNS domain names out of the cleaned prose.
     # Ontology-grounded: regex + spaCy ORG NER, gated by ATT&CK
@@ -611,7 +611,7 @@ async def process_file(
     # 6c. Observable Surface Extraction
     #
     # Reuse the generic AE-library parsers for first-class observables
-    # that matter to topology fidelity: CIDR subnets, filesystem paths,
+    # that matter as operation facts: filesystem paths,
     # and Windows registry keys/values. These helpers are structural
     # regex extractors, not scenario-specific lists; Stage 2 turns the
     # resulting IR fields into STIX SCOs.

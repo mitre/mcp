@@ -211,7 +211,7 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None,
                     "display_name": "CTI Pipeline",
                     "default_enabled": True,
                     "description": (
-                        "CTI ingest -> STIX -> topology -> deploy spec -> "
+                        "CTI ingest -> STIX -> adversary -> "
                         "deploy -> operation -> detection-validation tools."
                     ),
                 },

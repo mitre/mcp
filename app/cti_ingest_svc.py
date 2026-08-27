@@ -30,8 +30,6 @@ from plugins.mcp.app.cti_pipeline_stage1 import (
 )
 
 from plugins.mcp.app.cti_pipeline_stage2 import run_phase2
-from plugins.mcp.app.cti_pipeline_stage3 import run_phase3_infrastructure
-from plugins.mcp.app.cti_pipeline_stage4_topology import run_phase4_topology
 
 # ==============================================================
 # Pipeline State
@@ -41,8 +39,6 @@ class PipelineState(Enum):
     INIT = "init"
     STAGE1 = "stage1"
     STAGE2 = "stage2"
-    STAGE3 = "stage3"
-    STAGE4 = "stage4"
     COMPLETE = "complete"
     FAILED = "failed"
 
@@ -85,17 +81,6 @@ class CTIIngestService:
                 case "stage2":
                     self.run_stage2(base_dir)
 
-                case "stage3-infra":
-                    # default deterministic
-                    self.run_stage3(base_dir, use_llm=False)
-
-                case "stage3-infra-llm":
-                    # optional: use LLM for refinement only
-                    self.run_stage3(base_dir, use_llm=True)
-
-                case "stage4-topology" | "topology":
-                    self.run_stage4(base_dir)
-
                 case "all":
                     step_raw_to_clean(base_dir)
                     step_parse_to_ir(base_dir)
@@ -106,8 +91,6 @@ class CTIIngestService:
                         raise RuntimeError("Stage 1 did not produce IR; aborting before Stage 2")
 
                     self.run_stage2(base_dir)
-                    # Stage 4: topology + AE-library cross-reference
-                    self.run_stage4(base_dir)
                     self.finalize_run(base_dir, self.selected)
 
                 case _:
@@ -129,25 +112,7 @@ class CTIIngestService:
             self.errors.append(str(e))
             raise
 
-    def run_stage3(self, base_dir: Path, use_llm: bool = False):
-        try:
-            self._set_state(PipelineState.STAGE3)
-            run_phase3_infrastructure(base_dir, use_llm=use_llm)
-            self._set_state(PipelineState.COMPLETE)
-        except Exception as e:
-            self._set_state(PipelineState.FAILED)
-            self.errors.append(str(e))
-            raise
 
-    def run_stage4(self, base_dir: Path):
-        try:
-            self._set_state(PipelineState.STAGE4)
-            run_phase4_topology(base_dir)
-            self._set_state(PipelineState.COMPLETE)
-        except Exception as e:
-            self._set_state(PipelineState.FAILED)
-            self.errors.append(str(e))
-            raise
 
     def status(self):
         return {

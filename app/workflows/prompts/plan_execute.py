@@ -7,7 +7,7 @@ from typing import Any
 
 PLAN_EXECUTE_DESCRIPTION = (
     "Turn CTI into an adversary-emulation run. Select or upload CTI/STIX, "
-    "extract STIX 2.1 entities, infer the victim topology, build an adversary "
+    "extract STIX 2.1 entities, build an adversary "
     "from the observed techniques, run the CALDERA operation against available "
     "agents, and summarize detection coverage."
 )
@@ -16,7 +16,7 @@ PLAN_EXECUTE_DESCRIPTION = (
 PLAN_EXECUTE_EXAMPLES = [
     "Create the BlackCat adversary from the selected STIX, run it against my agents, and summarize detections.",
     "Fuse the selected STIX bundles, infer the victim infrastructure, and tell me which hosts and services it implies.",
-    "Convert this raw CTI into STIX 2.1, infer the topology, and identify any operator-review gaps.",
+    "Convert this raw CTI into STIX 2.1 and identify any operator-review gaps.",
     "Plan an emulation against the Discovery adversary on my available agents.",
 ]
 
@@ -37,16 +37,15 @@ Prefer reusing existing artifacts over creating new ones.
 
 When operation_context contains selected STIX bundles, treat those filenames
 as the operator's intended CTI set. If multiple bundles are selected, fuse
-them before topology synthesis. If one bundle is selected, build or rebuild
-topology from that bundle. If no bundle is selected, use CTI tools only when
-the user's prompt asks for CTI ingest or discovery.
+them into one bundle first. If no bundle is selected, use CTI tools only
+when the user's prompt asks for CTI ingest or discovery.
 
 Execution contract:
 - Do not fabricate hosts, users, domains, services, credentials, or network
   edges. Use only what the CTI pipeline, tool observations, or user supplied
   context support.
-- If the topology marks required infrastructure as missing, return the missing
-  items for operator review instead of inventing substitutes.
+- If the CTI does not name something the plan needs, return it for operator
+  review instead of inventing a substitute.
 - Run operations against agents that have already checked in. If no agent is
   available, say so rather than assuming one.
 
@@ -84,15 +83,14 @@ the provided CTI context so the operation mirrors real-world threat behavior.
 
 When operation_context contains selected STIX bundles, treat those filenames
 as the operator's intended CTI set. If multiple bundles are selected, fuse
-them before topology synthesis. If one bundle is selected, build or rebuild
-topology from that bundle.
+them into one bundle first.
 
 Execution contract:
 - Do not fabricate hosts, users, domains, services, credentials, or network
   edges. Use only what cti_context, operation_context, tool observations, or
   the user's prompt support.
-- If the CTI topology identifies missing required infrastructure, return an
-  operator-review gap instead of inventing a host.
+- If the CTI does not name a host, user or domain the plan needs, return an
+  operator-review gap instead of inventing one.
 - Run operations against agents that have already checked in, or clearly
   report that no suitable agent is available.
 

@@ -9,7 +9,7 @@ Stage order matches scripts/e2e_full_vision_lib.py so the legacy shell
 script can hand off to / resume from the same checkpoint file
 (``/tmp/e2e_full_vision_state.json``):
 
-    preflight -> cti -> topology -> agents -> adversary ->
+    preflight -> cti -> agents -> adversary ->
     operation -> detections -> report
 
 Differences vs. the shell script:
@@ -48,7 +48,6 @@ from plugins.mcp.app.workflows.base import Workflow
 STAGES = [
     "preflight",
     "cti",
-    "topology",
     "agents",
     "adversary",
     "operation",
@@ -259,12 +258,9 @@ class AEEndToEndWorkflow:
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(None, svc.run_stage, base_dir, "all")
 
-        # Look for outputs. The stage4 pipeline writes both:
-        #   data/outputs_stix/<stem>.stix.json
-        #   data/outputs_topology/<stem>.topology.json
+        # data/outputs_stix/<stem>.stix.json
         stem = src.stem
         outputs_stix = base_dir / "outputs_stix"
-        outputs_topo = base_dir / "outputs_topology"
 
         def _match(p: Path) -> bool:
             s_norm = "".join(c for c in stem.lower() if c.isalnum())
@@ -272,7 +268,6 @@ class AEEndToEndWorkflow:
             return bool(s_norm) and s_norm in n_norm
 
         found_stix: Optional[Path] = None
-        found_topo: Optional[Path] = None
         if not ctx["dry_run"]:
             # The pipeline ran synchronously above (run_in_executor). Files
             # should be present immediately, but allow a short grace window
@@ -284,17 +279,12 @@ class AEEndToEndWorkflow:
                         if _match(p):
                             found_stix = p
                             break
-                if outputs_topo.is_dir():
-                    for p in outputs_topo.glob("*.topology.json"):
-                        if _match(p):
-                            found_topo = p
-                            break
                 if found_stix:
                     break
                 await asyncio.sleep(2)
 
         counts: dict = {"malware": 0, "infrastructure": 0, "user_accounts": 0,
-                        "hosts": 0, "identities": 0, "attack_patterns": 0,
+                        "identities": 0, "attack_patterns": 0,
                         "tools": 0, "relationships": 0}
         if found_stix:
             try:
@@ -315,8 +305,6 @@ class AEEndToEndWorkflow:
                         counts["tools"] += 1
                     elif t == "relationship":
                         counts["relationships"] += 1
-                    elif t == "x-cti-topology":
-                        counts["hosts"] += len(o.get("hosts") or [])
             except Exception as e:
                 self.log.warning(f"failed to count STIX objects: {e}")
 
@@ -324,59 +312,11 @@ class AEEndToEndWorkflow:
             "input": str(src),
             "filename": src.name,
             "stix_path": str(found_stix) if found_stix else None,
-            "topology_path": str(found_topo) if found_topo else None,
             "counts": counts,
             "dry_run": ctx["dry_run"],
         }
 
     # ------------------------------------------------------------------
-    # Stage 3 — topology. Reuse the stage4 output when available, else
-    # call build_topology in-process.
-    # ------------------------------------------------------------------
-    async def _stage_topology(self, state: dict, ctx: dict) -> dict:
-        cti_payload = (state["stages"].get("cti") or {}).get("payload") or {}
-        topo_path = cti_payload.get("topology_path")
-        stix_path = cti_payload.get("stix_path")
-
-        topo_obj: Optional[dict] = None
-        if ctx["dry_run"]:
-            topo_obj = {
-                "type": "x-cti-topology",
-                "id": "x-cti-topology--dry-run",
-                "primary_platform": "windows",
-                "hosts": [], "user_accounts": [], "identities": [],
-            }
-        elif topo_path and Path(topo_path).is_file():
-            topo_obj = json.loads(Path(topo_path).read_text(encoding="utf-8"))
-        elif stix_path and Path(stix_path).is_file():
-            from plugins.mcp.app.utilities.cti_topology_inference import (
-                build_topology,
-            )
-            taxonomy: dict = {}
-            try:
-                from plugins.mcp.app.utilities.cti_taxonomy_loader import (
-                    load_mitre_taxonomy,
-                )
-                taxonomy = load_mitre_taxonomy() or {}
-            except Exception as e:
-                self.log.warning(f"taxonomy load failed: {e}; using empty taxonomy")
-            bundle = json.loads(Path(stix_path).read_text(encoding="utf-8"))
-            topo_obj = build_topology(bundle, taxonomy, [])
-        else:
-            raise RuntimeError("topology stage requires a stage_cti payload with stix_path or topology_path")
-
-        # Persist for downstream stages + final report.
-        out_path = Path("/tmp/e2e_full_vision_topology.json")
-        out_path.write_text(json.dumps(topo_obj, indent=2, default=str), encoding="utf-8")
-        return {
-            "topology_id": topo_obj.get("id"),
-            "primary_platform": topo_obj.get("primary_platform"),
-            "host_count": len(topo_obj.get("hosts") or []),
-            "user_count": len(topo_obj.get("user_accounts") or []),
-            "identity_count": len(topo_obj.get("identities") or []),
-            "saved_to": str(out_path),
-            "dry_run": ctx["dry_run"],
-        }
     async def _stage_agents(self, state: dict, ctx: dict) -> dict:
         if ctx["dry_run"]:
             return {"paw_count": 0, "paws": [], "platforms": [], "dry_run": True}
