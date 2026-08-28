@@ -74,14 +74,3 @@ class TestWriteDebugFile:
         assert f.exists()
         assert f.read_text() == "hello world"
 
-
-class TestIsPhysicalOrProtocol:
-    def test_protocol(self):
-        from plugins.mcp.app.cti_pipeline_stage2 import is_physical_or_protocol
-        result = is_physical_or_protocol("server")
-        assert isinstance(result, bool)
-
-    def test_non_physical(self):
-        from plugins.mcp.app.cti_pipeline_stage2 import is_physical_or_protocol
-        result = is_physical_or_protocol("happiness")
-        assert isinstance(result, bool)

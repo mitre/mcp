@@ -1,0 +1,73 @@
+BlackCat (ALPHV) Ransomware: Observed Tradecraft
+
+Summary
+-------
+BlackCat, also tracked as ALPHV, is a ransomware-as-a-service operation whose
+affiliates have been observed compromising enterprise estates across several
+sectors. This note summarises the techniques attributed to the group so an
+emulation plan can be derived from it. Technique identifiers refer to MITRE
+ATT&CK Enterprise.
+
+Initial access and account use
+------------------------------
+Affiliates have entered environments using valid credentials for domain
+accounts (T1078.002) and for local accounts on internet-facing hosts
+(T1078.003). Credentials were frequently obtained beforehand rather than
+brute forced.
+
+Execution
+---------
+Operators executed tooling through PowerShell (T1059.001) and through the
+Windows command shell (T1059.003). Service execution was also observed for
+running payloads with elevated rights (T1569.002).
+
+Discovery
+---------
+Once resident, affiliates enumerated the host and its configuration
+(T1082), listed running processes (T1057), identified the current user
+(T1033), and walked the filesystem to locate data of interest (T1083).
+Remote systems were discovered across the network (T1018), network
+services were scanned (T1046), and domain group membership was enumerated
+to locate privileged principals (T1069.002).
+
+Credential access
+-----------------
+Credential material was harvested from LSASS memory (T1003.001) and from
+password stores present on compromised endpoints (T1555).
+
+Lateral movement
+----------------
+Movement between hosts used Remote Desktop (T1021.001) and administrative
+SMB shares (T1021.004). Tooling was transferred to the targets it was
+needed on (T1570), and additional payloads were ingressed from operator
+infrastructure (T1105).
+
+Defense evasion
+---------------
+The operators modified the registry to weaken host configuration (T1112),
+impaired endpoint defences (T1562.001), cleared Windows event logs
+(T1070.001), and deleted files they had staged (T1070.004). Payloads were
+obfuscated before delivery (T1027), and in some intrusions the binaries
+carried invalid or stolen code signatures (T1027.009). Bypassing user
+account control was observed through the Windows registry (T1197). File
+and directory permissions were modified to guarantee access (T1222).
+
+Collection and exfiltration
+---------------------------
+Data of interest was archived prior to removal (T1560.002). Exfiltration
+was carried out over alternative protocols, both unencrypted (T1048.003)
+and using asymmetric encryption (T1048.002), to infrastructure the
+operators controlled.
+
+Impact
+------
+The final stage encrypted data across reachable hosts (T1486), destroyed
+selected data outright (T1485), stopped services to free files for
+encryption (T1489), inhibited system recovery by removing shadow copies
+(T1490), and defaced local systems with a ransom note (T1491.001).
+
+Notes for emulation
+-------------------
+This document is a synthetic summary written for pipeline testing. It
+contains no host names, account names or addresses, and describes only
+technique-level behaviour.
