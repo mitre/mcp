@@ -56,7 +56,19 @@ class RAGService:
 
         self.corpus = all_corpus
         self.adv_step = all_adv_step
-        
+
+        if not self.corpus:
+            # Embeddings() raises numpy AxisError on an empty corpus, and the
+            # caller swallows it and silently runs without CTI grounding.
+            # Bundles with no attack-pattern and no threat-actor are the
+            # normal way to get here. search_cti_title handles search=None.
+            self.search = None
+            self.log.warning(
+                "[RAG] No attack-pattern or threat-actor objects in the "
+                "selected STIX; CTI retrieval is unavailable for this run"
+            )
+            return
+
         self.log.info("Initializing embeddings and retriever for STIX corpus")
         embedder_kwargs = {"api_key": self.api_key}
         if self.api_base:

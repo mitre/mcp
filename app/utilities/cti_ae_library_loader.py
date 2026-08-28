@@ -581,6 +581,22 @@ def _extract_hosts_inline(text: str) -> dict[str, dict]:
         rec = hosts.setdefault(token, {"hostname": token, "ip": "",
                                        "evidence": text[lo:hi][:200]})
     return hosts
+# Extension stop-list: common script/doc/image extensions that aren't
+# encryption-marker / IOC extensions. Sourced from STIX 2.1 'file' SCO
+# examples + mimetypes stdlib types.
+_EXTENSION_STOPLIST = {
+    "com", "net", "org", "gov", "edu", "io", "html", "htm", "php", "asp",
+    "aspx", "jsp", "json", "xml", "txt", "log", "md", "pdf", "png", "jpg",
+    "jpeg", "gif", "svg", "yml", "yaml", "csv", "exe", "dll", "ps1", "py",
+    "sh", "bat", "cmd", "ini", "conf", "cfg", "iso", "zip", "tar", "gz",
+    "bz2", "xz", "rar", "msi", "lnk", "dat", "rs", "go", "js", "ts",
+    "java", "cs", "cpp", "c", "h", "hpp", "rb", "pl", "swift", "kt",
+    "manifest", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "rtf", "tex",
+    # AE plan boilerplate
+    "name", "type", "url", "ref", "key", "val", "id", "tag",
+}
+
+
 def _extract_extensions(text: str) -> list[str]:
     """File extensions used as encryption / IOC markers.
 
