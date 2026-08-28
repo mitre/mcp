@@ -1,9 +1,8 @@
 """cti_pipeline MCP server.
 
-Exposes the deterministic CTI -> STIX
--> operation -> detections pipeline as MCP tools so plan_execute (and any
-other DSPy ReAct workflow) can drive the same artefacts via tool calls
-instead of a parallel hard-coded workflow.
+Exposes the deterministic CTI -> STIX -> operation pipeline as MCP tools
+so plan_execute (and any other DSPy ReAct workflow) can drive the same
+artefacts via tool calls instead of a parallel hard-coded workflow.
 
 Every tool is a thin async wrapper around an already-existing service or
 utility in this plugin (or a Caldera REST endpoint for cross-plugin
@@ -114,8 +113,7 @@ MCP_METADATA = {
     "default_enabled": False,
     "description": (
         "End-to-end CTI ingest tools: PDF/HTML -> STIX 2.1 bundle -> "
-        "adversary -> operation "
-        "-> detection validation. Thin wrappers over the deterministic "
+        "adversary -> operation. Thin wrappers over the deterministic "
         "pipeline services."
     ),
 }
@@ -160,24 +158,6 @@ def _caldera_root() -> str:
             return api[: -len(marker)]
     # Fallback - use the scheme+host only.
     return api
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -428,68 +408,6 @@ async def run_operation(
         "name": (payload or {}).get("name", name),
         "adversary_id": adversary_id,
         "target_paws": list(agent_paws),
-        "response": payload,
-    }
-
-
-@mcp.tool(name="cti_pipeline_validate_detections")
-async def validate_detections(operation_id: str) -> dict:
-    """Score a finished operation against the SIEM detection rules.
-
-    Wraps the detections plugin's POST /plugin/detections/validate
-    endpoint, which itself calls DetectionService.validate_operation.
-
-    Args:
-        operation_id: the Caldera operation id to score.
-
-    Returns:
-        {coverage_pct, summary, links_validated, per_link, response}
-    """
-    if not operation_id:
-        return {"error": "operation_id is required"}
-
-    import aiohttp
-    url = _caldera_root().rstrip("/") + "/plugin/detections/validate"
-    body = {"operation_id": operation_id}
-    try:
-        async with aiohttp.ClientSession(headers=_caldera_headers()) as session:
-            async with session.post(url, json=body, timeout=aiohttp.ClientTimeout(total=120)) as resp:
-                text = await resp.text()
-                try:
-                    payload = json.loads(text) if text else {}
-                except json.JSONDecodeError:
-                    payload = {"raw": text}
-                if resp.status >= 400:
-                    return {
-                        "error": f"validate returned {resp.status}",
-                        "url": url,
-                        "response": payload,
-                    }
-    except Exception as e:
-        return {"error": f"detections validate request failed: {e}", "url": url}
-
-    # The detection_gui endpoint returns {results: [...], summary: {...}}.
-    summary = (payload or {}).get("summary") or {}
-    results = (payload or {}).get("results") or []
-    coverage = summary.get("mean_coverage")
-    if coverage is None and isinstance(summary.get("coverage_pct"), (int, float)):
-        coverage = summary["coverage_pct"]
-
-    per_link = []
-    for r in results:
-        # detection_svc returns dataclass dumps; defensive against shape drift.
-        per_link.append({
-            "link_id": r.get("link_id") if isinstance(r, dict) else None,
-            "matching_rules": (r or {}).get("matching_rules") if isinstance(r, dict) else None,
-            "coverage_score": (r or {}).get("coverage_score") if isinstance(r, dict) else None,
-        })
-
-    return {
-        "operation_id": operation_id,
-        "coverage_pct": coverage,
-        "links_validated": len(per_link),
-        "summary": summary,
-        "per_link": per_link,
         "response": payload,
     }
 

@@ -286,7 +286,7 @@
                   <div class="box" style="background-color: #4a4a4a; border-left: 4px solid #3273dc;">
                     <h5 class="title is-6 has-text-light">Threat Hunter</h5>
                     <p class="is-size-7 has-text-light">
-                      Analyzes adversary profile data to identify potential threats and suggests detection rules.
+                      Turns a threat report into an adversary profile and reports which techniques have no matching ability.
                     </p>
                   </div>
                 </div>
