@@ -188,11 +188,9 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None,
 
     # Resolve which MCP servers to spawn
     if not enabled_servers:
-        # Default to both caldera_core and cti_pipeline so the planner has
-        # the full CTI -> STIX -> deploy -> operation -> detections toolset
-        # out of the box. cti_pipeline is filtered out below if its server
-        # file is missing (graceful fall-back to caldera_core-only mode).
-        enabled_servers = ["caldera_core", "cti_pipeline"]
+        # Default to caldera_core only. cti_pipeline is opt-in: the GUI ticks
+        # it on when STIX is selected, and callers can pass it explicitly.
+        enabled_servers = ["caldera_core"]
     if server_registry is None:
         # Fallback used only when run() is invoked without a registry (e.g. tests).
         # mcp_server.py lives one directory up after the workflows/ split.
@@ -210,7 +208,7 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None,
                 "path": cti_pipeline_server_path,
                 "metadata": {
                     "display_name": "CTI Pipeline",
-                    "default_enabled": True,
+                    "default_enabled": False,
                     "description": (
                         "CTI ingest -> STIX -> adversary -> "
                         "deploy -> operation -> detection-validation tools."

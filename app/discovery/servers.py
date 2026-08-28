@@ -57,7 +57,7 @@ def discover_mcp_servers(plugins_root: Path) -> dict:
     if cti_pipeline_path.exists():
         cti_metadata = _safe_load_metadata(cti_pipeline_path) or {
             "display_name": "CTI Pipeline",
-            "default_enabled": True,
+            "default_enabled": False,
             "description": (
                 "CTI ingest -> STIX -> adversary -> "
                 "-> operation -> detection-validation tools."
