@@ -363,9 +363,13 @@ async function uploadCti() {
     body: form
   })
 
-  if (!res.ok) throw new Error('CTI upload failed')
+  if (!res.ok) {
+    ctiStatus.value = `Upload failed (${res.status}).`
+    return
+  }
 
-  ctiStatus.value = 'Raw CTI ingestion successful.'
+  // Staged only. Nothing is extracted until Run Pipeline.
+  ctiStatus.value = 'File staged. Select it and press Run Pipeline to extract.'
   ctiFile.value = null
   ctiFileInput.value.value = ''
 
@@ -437,13 +441,40 @@ async function viewStix(filename) {
  * Pipeline Execution
  * ============================================================ */
 async function runPipelineForSelected() {
-  await fetch('/plugin/mcp/cti/run', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ files: Array.from(selectedRaw), step: 'all' })
-  })
+  const count = selectedRaw.size
+  if (!count) {
+    ctiStatus.value = 'Select a file first.'
+    return
+  }
 
-  ctiStatus.value = 'CTI pipeline started.'
+  ctiStatus.value = 'Starting pipeline…'
+
+  let res
+  try {
+    res = await fetch('/plugin/mcp/cti/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: Array.from(selectedRaw), step: 'all' })
+    })
+  } catch (e) {
+    ctiStatus.value = `Could not reach the server: ${e.message}`
+    return
+  }
+
+  // The handler rejects an empty or malformed file list with a 400, which
+  // this used to report as success.
+  if (!res.ok) {
+    let detail = ''
+    try { detail = (await res.json()).error || '' } catch { /* non-JSON body */ }
+    ctiStatus.value = `Pipeline did not start (${res.status})${detail ? ': ' + detail : ''}.`
+    return
+  }
+
+  // Accepted, not finished: extraction runs in the background and the file
+  // stays "pending" until its IR lands. Failures appear in the caldera log.
+  ctiStatus.value =
+    `Pipeline running on ${count} file${count === 1 ? '' : 's'}. ` +
+    'Status updates when extraction completes; check the server log for errors.'
   selectedRaw.clear()
 
   loadRawFiles()

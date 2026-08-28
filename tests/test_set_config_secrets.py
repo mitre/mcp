@@ -123,3 +123,26 @@ async def test_keeps_the_env_var_indirection(api, tmp_path):
     assert _saved(tmp_path)["llm"] == {
         "api_key_env": "MCP_LLM_API_KEY", "api_base_env": "MCP_LLM_API_BASE",
     }
+
+
+@pytest.mark.asyncio
+async def test_rejects_an_unsupported_provider(api, tmp_path):
+    # llm_client raises "Unsupported model provider" at extraction time, so a
+    # value like "OpenAI" saved cleanly and then failed on every document.
+    resp = await api.set_config(_FakeRequest({"cti": {"provider": "OpenAI"}}))
+    assert resp.status == 400
+    assert not (tmp_path / "conf" / "local.yml").exists()
+
+
+@pytest.mark.asyncio
+async def test_accepts_the_supported_providers(api, tmp_path):
+    for provider in ("openai_compatible", "ollama"):
+        resp = await api.set_config(_FakeRequest({"cti": {"provider": provider}}))
+        assert resp.status == 200
+    assert _saved(tmp_path)["cti"]["provider"] == "ollama"
+
+
+@pytest.mark.asyncio
+async def test_a_section_without_a_provider_is_untouched(api, tmp_path):
+    resp = await api.set_config(_FakeRequest({"cti": {"model": "m"}}))
+    assert resp.status == 200
