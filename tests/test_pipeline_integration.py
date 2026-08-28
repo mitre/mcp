@@ -30,14 +30,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1].parents[1]))
 
 def test_core_imports():
     """All pipeline modules import without error."""
-    from plugins.mcp.app.utilities.nlp_model import nlp
+    from plugins.mcp.app.utilities.nlp_model import get_nlp
     from plugins.mcp.app.utilities.cti_taxonomy_loader import load_mitre_taxonomy
     from plugins.mcp.app.utilities.cti_offline_ir import extract_ir_offline
     from plugins.mcp.app.utilities.cti_stix_builders import make_malware, make_tool, make_threat_actor
     from plugins.mcp.app.utilities.cti_defend_validation import validate_techniques_by_tactic
     from plugins.mcp.app.utilities.cti_ontology_inference import infer_techniques_from_entities
     from plugins.mcp.app.utilities.cti_entity_validator import reclassify_entities
-    assert nlp is not None
+    assert get_nlp() is not None
     print("  ✓ All core imports successful")
 
 
