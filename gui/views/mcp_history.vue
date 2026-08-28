@@ -69,7 +69,7 @@
                   </td>
                   <td @click="viewRunDetail(run.run_id)">{{ run.stage || '-' }}</td>
                   <td @click="viewRunDetail(run.run_id)">{{ run.model || '-' }}</td>
-                  <td @click="viewRunDetail(run.run_id)">{{ formatDuration(run.start_time, run.end_time) }}</td>
+                  <td @click="viewRunDetail(run.run_id)">{{ formatDuration(run) }}</td>
                   <td>
                     <button class="button is-small is-info" @click="viewRunDetail(run.run_id)">
                       View Details
@@ -311,9 +311,13 @@ function formatDate(timestamp) {
   }
 }
 
-function formatDuration(startTime, endTime) {
+function formatDuration(run) {
+  const { start_time: startTime, end_time: endTime, status } = run
   if (!startTime) return '-'
   if (!endTime) return 'Running...'
+  // A run reconciled at boot was terminated by the sweep, not by itself,
+  // so its end_time says when we noticed rather than when it stopped.
+  if (status?.toUpperCase() === 'KILLED') return '-'
 
   try {
     const duration = endTime - startTime
@@ -341,6 +345,8 @@ function getStatusClass(status) {
       return 'is-info'
     case 'FAILED':
       return 'is-danger'
+    case 'KILLED':
+      return 'is-warning'
     default:
       return 'is-light'
   }

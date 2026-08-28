@@ -52,8 +52,8 @@ class Workflow:
     accepted_capabilities: list[str] = field(default_factory=list)
 
     # MLflow experiment this workflow's runs belong to. mcp_svc mints the run
-    # here, and the workflow must set_experiment the same name: mlflow refuses
-    # start_run(run_id=...) when the active experiment differs from the run's.
+    # here, and the boot-time orphan sweep only reconciles runs in the
+    # experiments the registered workflows declare.
     mlflow_experiment: str = "caldera-mcp-client-1"
 
     # Optional plan-then-execute mode. When set, the orchestrator treats the

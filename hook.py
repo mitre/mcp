@@ -130,14 +130,17 @@ async def enable(services):
     log.info(f"[MCP] Workflow registry: {list(workflow_registry.keys())}")
     log.info(f"[MCP] Capability registry: {list(capability_registry.keys())}")
 
-    services.get('data_svc').add_service(
-        'mcp_svc', MCPService(
-            services,
-            server_registry=server_registry,
-            workflow_registry=workflow_registry,
-            capability_registry=capability_registry,
-        )
+    mcp_svc = MCPService(
+        services,
+        server_registry=server_registry,
+        workflow_registry=workflow_registry,
+        capability_registry=capability_registry,
     )
+    services.get('data_svc').add_service('mcp_svc', mcp_svc)
+
+    # Runs stranded as RUNNING by a previous process can only be closed out
+    # from outside the task that owned them, so it happens here at boot.
+    await mcp_svc.reconcile_orphaned_runs()
     mcp_gui = McpGUI(services, name=name, description=description)
     app.router.add_static('/mcp', 'plugins/mcp/static/', append_version=True)
     # Server-rendered landing page. Reports plugin readiness (LLM key,
