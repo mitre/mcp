@@ -21,8 +21,8 @@ This replaces the old loader that assumed 3 separate JSON files.
 
 import json, re
 from pathlib import Path
-import spacy
-nlp = spacy.load("en_core_web_lg")
+
+from plugins.mcp.app.utilities.nlp_model import get_nlp
 
 # ======================================================================
 #  Load the unified MITRE ATT&CK bundle
@@ -233,7 +233,7 @@ def build_normalized_attack_patterns():
         "desc_tokens": {...},        # description tokens
         "kill_chain": [...],
         "platforms": [...],
-        "vector": nlp(description).vector,
+        "vector": get_nlp()(description).vector,
     }
 
     Returns: (techniques_list, lookup_by_id_dict)
@@ -270,7 +270,7 @@ def build_normalized_attack_patterns():
             "desc_tokens": desc_tokens,
             "kill_chain": kill_chain,
             "platforms": platforms,
-            "vector": nlp(desc).vector.tolist()
+            "vector": get_nlp()(desc).vector.tolist()
         }
 
         techniques.append(entry)

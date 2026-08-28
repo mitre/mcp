@@ -19,7 +19,8 @@ NO brittle mappings.
 
 import re
 import numpy as np
-import spacy
+
+from plugins.mcp.app.utilities.nlp_model import get_nlp
 import asyncio
 from rapidfuzz import fuzz
 from functools import lru_cache
@@ -28,7 +29,6 @@ from functools import lru_cache
 # NLP MODEL (GLOBAL SINGLE LOAD)
 # ============================================================
 
-nlp = spacy.load("en_core_web_lg")
 
 # ===========================================================
 # Attempt to capture command-line invocations
@@ -203,7 +203,7 @@ def normalize_entity_type(name: str, ir: dict) -> str:
 @lru_cache(maxsize=4096)
 def phrase_vector(phrase: str) -> np.ndarray:
     try:
-        return nlp(phrase).vector
+        return get_nlp()(phrase).vector
     except Exception:
         return np.zeros(300)
 
@@ -232,14 +232,14 @@ def extract_candidate_phrases(text: str) -> list[str]:
 
     raw_phrases = set()
 
-    MAX_CHARS = int(nlp.max_length * 0.8)
+    MAX_CHARS = int(get_nlp().max_length * 0.8)
     doc_cache = {}
 
     for offset in range(0, len(text), MAX_CHARS):
         chunk = text[offset:offset + MAX_CHARS]
 
         if chunk not in doc_cache:
-            doc_cache[chunk] = nlp(chunk)
+            doc_cache[chunk] = get_nlp()(chunk)
 
         doc = doc_cache[chunk]
 
@@ -277,7 +277,7 @@ def extract_candidate_phrases(text: str) -> list[str]:
     cleaned = []
 
     for p in raw_phrases:
-        doc_p = nlp(p)
+        doc_p = get_nlp()(p)
 
         if not any(t.pos_ == "VERB" for t in doc_p):
             continue
@@ -411,7 +411,7 @@ async def extract_dynamic_techniques(text: str, arg2, arg3=None, limit=25, *_, *
     return out
 
 def _sentencize(text: str) -> list[str]:
-    doc = nlp(text or "")
+    doc = get_nlp()(text or "")
     return [s.text.strip() for s in doc.sents if s.text.strip()]
 
 def _best_sentence_for_behavior(behavior: dict, sentences: list[str]) -> str | None:
@@ -424,11 +424,11 @@ def _best_sentence_for_behavior(behavior: dict, sentences: list[str]) -> str | N
     if not btxt:
         return None
 
-    b_tokens = {t.text.lower() for t in nlp(btxt) if t.is_alpha}
+    b_tokens = {t.text.lower() for t in get_nlp()(btxt) if t.is_alpha}
     best, score = None, 0
 
     for s in sentences:
-        s_tokens = {t.text.lower() for t in nlp(s) if t.is_alpha}
+        s_tokens = {t.text.lower() for t in get_nlp()(s) if t.is_alpha}
         overlap = len(b_tokens & s_tokens)
         if overlap > score:
             best, score = s, overlap

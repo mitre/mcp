@@ -20,7 +20,6 @@ import aiofiles.ospath
 import math
 # import spacy
 
-# _nlp = spacy.load("en_core_web_lg")
 
 # Limit async concurrency
 SEMAPHORE = asyncio.Semaphore(8)
@@ -212,14 +211,10 @@ def _is_linguistically_dominant(text: str) -> bool:
     Rejects:
     - Code-only or minified blobs
     """
-    # doc = _nlp(text)
-    import spacy
+    # Resolved inside the function to avoid fork corruption.
+    from plugins.mcp.app.utilities.nlp_model import get_nlp
 
-    # Lazy-load inside function to avoid fork corruption
-    if not hasattr(_is_linguistically_dominant, "_nlp"):
-        _is_linguistically_dominant._nlp = spacy.load("en_core_web_lg")
-
-    doc = _is_linguistically_dominant._nlp(text)
+    doc = get_nlp()(text)
 
     word_tokens = [t for t in doc if t.is_alpha]
     verb_tokens = [t for t in doc if t.pos_ == "VERB"]
