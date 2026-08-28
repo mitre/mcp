@@ -191,7 +191,7 @@ def step_parse_to_ir(base_dir: Path, stop_after: str | None = None):
     _preload_thread_shared_nlp_resources()
 
     # Stage1 work is LLM/IO-bound, not CPU-bound: each file makes
-    # remote calls to the AIP gateway, downloads embeddings, reads
+    # remote calls to the LLM gateway, downloads embeddings, reads
     # taxonomy data, etc. Use ThreadPoolExecutor instead of
     # ProcessPoolExecutor so we don't fork-from-a-multithreaded
     # FastMCP process (which deadlocks the workers — they inherit
@@ -358,8 +358,7 @@ async def process_file(
     # Distinct from ir["tools"]: ir["tools"] stays scoped to
     # ATT&CK-known offensive software, while ir["software"] is the
     # broader observed-software list -- INCLUDING versions and
-    # non-ATT&CK entries -- needed by the range plugin's LLM deploy
-    # step to pre-stage matching binaries via ansible.
+    # non-ATT&CK entries -- so consumers can match concrete binaries.
     #
     # Pure ontology-driven: ATT&CK name_index for admission, OSV.dev
     # + nvdlib for optional external validation (gated behind
@@ -441,8 +440,7 @@ async def process_file(
     # Service / Application Extraction (NEW: cti_extract_services)
     #
     # CTI reports name application-level services (Active Directory,
-    # RDP, SMB, SQL Server, Exchange, KVM, NetBNMBackup, ...) that
-    # downstream range provisioning needs to spin up. The new
+    # RDP, SMB, SQL Server, Exchange, KVM, NetBNMBackup, ...). The
     # extractor admits each candidate ONLY when one of these
     # ontology sources backs it:
     #   * IANA service registry (Python stdlib socket / /etc/services)
@@ -576,10 +574,9 @@ async def process_file(
     ir["attack_patterns"] = merged
 
     # ---------------------------------------------------------
-    # 6b. Domain Extraction (AD topology signal)
+    # 6b. Domain Extraction (AD signal)
     #
-    # Pulls Windows AD / DNS domain names out of the cleaned prose so
-    # downstream range deployment can provision a DC and join VMs.
+    # Pulls Windows AD / DNS domain names out of the cleaned prose.
     # Ontology-grounded: regex + spaCy ORG NER, gated by ATT&CK
     # technique IDs whose canonical names imply AD (T1003.006, T1558.*,
     # T1078.002, T1069.002, T1087.002, T1018, T1482, T1484, T1098.007,
@@ -614,7 +611,7 @@ async def process_file(
     # 6c. Observable Surface Extraction
     #
     # Reuse the generic AE-library parsers for first-class observables
-    # that matter to range fidelity: CIDR subnets, filesystem paths,
+    # that matter as operation facts: filesystem paths,
     # and Windows registry keys/values. These helpers are structural
     # regex extractors, not scenario-specific lists; Stage 2 turns the
     # resulting IR fields into STIX SCOs.

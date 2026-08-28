@@ -59,7 +59,7 @@ def discover_mcp_servers(plugins_root: Path) -> dict:
             "display_name": "CTI Pipeline",
             "default_enabled": True,
             "description": (
-                "CTI ingest -> STIX -> topology -> deploy spec -> deploy "
+                "CTI ingest -> STIX -> adversary -> "
                 "-> operation -> detection-validation tools."
             ),
         }

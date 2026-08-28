@@ -11,10 +11,9 @@ candidate against:
 
 The output augments the IR with an ``ir["software"][]`` list, distinct
 from the existing ``ir["tools"][]`` (which stays scoped to ATT&CK-known
-offensive software). The range plugin's LLM deploy step needs the
-version + canonical identifier to pre-stage matching binaries via
-ansible, so each entry surfaces a Package URL (PURL) when one can be
-formed.
+offensive software). Consumers need the version and a canonical
+identifier to match concrete binaries, so each entry surfaces a Package
+URL (PURL) when one can be formed.
 
 Driving use case
 ----------------
@@ -174,7 +173,7 @@ _ENUM_ITEM_RE = re.compile(r"([A-Z][\w.-]{2,40}(?:\s+scanner|\s+module|\s+agent|
 # =============================================================
 
 # Tactic -> software_kind mapping (this is just renaming spec tactics
-# to the friendlier slugs consumed by the range plugin's deploy step;
+# to the friendlier slugs consumers expect;
 # the source-of-truth tactics come from ATT&CK's `kill_chain_phases`).
 _TACTIC_TO_KIND = {
     "reconnaissance":       "recon",
@@ -497,7 +496,7 @@ def extract_software(
     # We emit BOTH the full filename (e.g. "ADRecon.ps1") AND the bare
     # canonical name (e.g. "ADRecon") so downstream consumers that
     # match by either form (CTID AE-plan vocabulary uses the bare name,
-    # range deploy needs the artifact extension) get a hit. Each form
+    # consumers need the artifact extension) get a hit. Each form
     # rides as its own candidate with the same evidence span. ATT&CK
     # lookup happens on the bare form below.
     for m in _FILENAME_RE.finditer(text):
@@ -514,7 +513,7 @@ def extract_software(
             "evidence": evidence,
             "_origin": "filename-canonical",
         })
-        # Full filename -- the form range deploy needs.
+        # Full filename.
         full_name = f"{base}.{ext}"
         full_key = (full_name.lower(), "")
         candidates.setdefault(full_key, {
@@ -624,7 +623,7 @@ def extract_software(
 
     # If a name has BOTH a versioned and an unversioned entry, drop the
     # unversioned one -- the version-bearing record is strictly more
-    # useful for the range deploy step (it knows which binary to stage).
+    # useful downstream for identifying the concrete binary.
     versioned_names = {
         low_name for (low_name, ver) in candidates.keys() if ver
     }
@@ -674,7 +673,7 @@ def extract_software(
                         purl = _format_purl(lookup_name, version or None, purl_type="generic")
 
             if source == "cti-text-only":
-                # Generic PURL is still useful for the range deploy step.
+                # Generic PURL is still useful downstream.
                 purl = _format_purl(lookup_name, version or None, purl_type="generic")
                 confidence = 0.45 if version else 0.35
 

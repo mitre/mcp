@@ -4,8 +4,8 @@ cti_extract_domains.py — Windows Active-Directory domain-name extraction
 PURPOSE
 -------
 Pull Windows AD domain names (NetBIOS + DNS) out of cleaned CTI prose and
-surface them as first-class IR entries so downstream range deployment can
-provision a Domain Controller and join workstations to it.
+surface them as first-class IR entries so consumers can model a Domain
+Controller and the workstations joined to it.
 
 ONTOLOGY-GROUNDED ONLY — NO STATIC VOCABULARY LISTS
 ---------------------------------------------------
@@ -355,7 +355,7 @@ def _derive_ad_signal_ids(taxonomy: dict | None) -> frozenset[str]:
          description.
       2. Exclude techniques whose only kill-chain phases are
          `reconnaissance` or `resource-development` (these are
-         internet-domain / DNS acquisition activities, not AD topology
+         internet-domain / DNS acquisition activities, not AD
          — see T1583.001, T1584.001, T1593, T1590.001).
     """
     if not taxonomy:
@@ -379,7 +379,7 @@ def _derive_ad_signal_ids(taxonomy: dict | None) -> frozenset[str]:
             p.get("phase_name") for p in kc if isinstance(p, dict)
         }
         # If every phase is pre-engagement, this is an internet-domain
-        # technique, not AD topology.
+        # technique, not an AD domain.
         if phases and phases.issubset(pre_engagement_phases):
             continue
         # Command-and-control "domain" is generally DGA / fronting.
@@ -859,7 +859,7 @@ def extract_domains(
             "name": "",
             "type": "active-directory",
             "evidence": (
-                "No explicit AD domain name in source prose; topology "
+                "No explicit AD domain name in source prose; "
                 "inferred from ATT&CK technique signals."
             ),
             "confidence": round(min(0.7, 0.3 + ad_prior * 0.4), 3),

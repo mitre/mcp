@@ -1,9 +1,9 @@
 """
-Tests for LLM model configuration — modelSelector.vue backend.
+Tests for the LLM model configuration API backing the CTI config panel.
 
 Tests different LLM backend configurations:
 - Ollama (local)
-- OpenAI-compatible (MITRE AIP, OpenAI, etc.)
+- OpenAI-compatible (any OpenAI-compatible gateway)
 - Offline mode (no LLM)
 - Config validation (required fields)
 - Config persistence
@@ -36,7 +36,7 @@ skip = pytest.mark.skipif(not mcp_available(), reason="MCP not enabled")
 
 @skip
 class TestConfigStructure:
-    """Test that config has all fields the modelSelector.vue expects."""
+    """Test that the cti profile carries the fields the LLM client reads."""
 
     def test_has_cti_section(self):
         r = requests.get(f"{CALDERA_URL}/plugin/mcp/get_config", headers=HEADERS)
@@ -44,21 +44,21 @@ class TestConfigStructure:
         assert "cti" in config
 
     def test_cti_has_model_fields(self):
-        """modelSelector.vue requires: provider, model, api_key, api_base."""
+        """The cti profile must name a provider and a model."""
         r = requests.get(f"{CALDERA_URL}/plugin/mcp/get_config", headers=HEADERS)
         cti = r.json().get("config", r.json()).get("cti", {})
         for field in ("provider", "model"):
             assert field in cti, f"Missing config field: {field}"
 
     def test_cti_has_parameter_fields(self):
-        """modelSelector.vue binds: temperature, top_p, max_tokens, timeout."""
+        """The cti profile must carry the LM tunables llm_client reads."""
         r = requests.get(f"{CALDERA_URL}/plugin/mcp/get_config", headers=HEADERS)
         cti = r.json().get("config", r.json()).get("cti", {})
         for field in ("temperature", "top_p", "max_tokens", "timeout"):
             assert field in cti, f"Missing config field: {field}"
 
     def test_cti_has_toggle_fields(self):
-        """modelSelector.vue has checkboxes: stream, offline, use_mock."""
+        """The cti profile must carry the run-mode toggles."""
         r = requests.get(f"{CALDERA_URL}/plugin/mcp/get_config", headers=HEADERS)
         cti = r.json().get("config", r.json()).get("cti", {})
         for field in ("stream", "offline", "use_mock"):
@@ -99,7 +99,7 @@ class TestOllamaConfig:
 
 @skip
 class TestOpenAICompatibleConfig:
-    """Test OpenAI-compatible backend (MITRE AIP, OpenAI, etc.)."""
+    """Test OpenAI-compatible backend (any OpenAI-compatible gateway)."""
 
     def test_set_openai_compatible_config(self):
         """Set config to use OpenAI-compatible backend."""
@@ -118,7 +118,7 @@ class TestOpenAICompatibleConfig:
                     "offline": False,
                     "use_mock": False,
                     "ssl_verify": False,
-                    "extra_headers": {"Host": "models.k8s.aip.mitre.org"},
+                    "extra_headers": {"Host": "llm.example.com"},
                 }
             }
         }
@@ -157,12 +157,12 @@ class TestOfflineConfig:
 
 
 # ============================================================
-# CONFIG VALIDATION (what modelSelector.vue checks)
+# CONFIG VALIDATION
 # ============================================================
 
 @skip
 class TestConfigValidation:
-    """Test config validation as modelSelector.vue does it."""
+    """Test that set_config accepts the value ranges the panel offers."""
 
     def test_valid_temperature_range(self):
         """Temperature should be 0.0-2.0."""
@@ -243,7 +243,7 @@ class TestRestoreConfig:
                     "offline": False,
                     "use_mock": False,
                     "ssl_verify": False,
-                    "extra_headers": {"Host": "models.k8s.aip.mitre.org"},
+                    "extra_headers": {"Host": "llm.example.com"},
                 }
             }
         }

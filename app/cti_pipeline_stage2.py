@@ -270,8 +270,7 @@ def convert_ir_to_stix(ir: dict, debug: dict, taxonomy: dict) -> dict:
             continue
         # AD / unknown / dns-only — every one becomes an identity SDO;
         # the type slug rides as x_cti_domain_type for downstream
-        # consumers (range plugin reads it to decide whether to spin up
-        # a Domain Controller).
+        # consumers.
         obj = make_identity(d, identity_class="organization")
         log(f"Identity (domain) → {d.get('name')} → "
             f"{obj['id'] if obj else 'SKIPPED'} "
@@ -308,9 +307,7 @@ def convert_ir_to_stix(ir: dict, debug: dict, taxonomy: dict) -> dict:
     # ------- Software (NEW IR field) -------
     # cti_extract_software emits dicts shaped {name, version, source,
     # purl, software_kind, attack_id, cve_refs, evidence, confidence}.
-    # Each becomes a STIX 2.1 `software` SCO with the version + PURL
-    # the range plugin's LLM deploy step needs to pre-stage matching
-    # binaries via ansible.
+    # Each becomes a STIX 2.1 `software` SCO with version and PURL.
     for sw in ir.get("software", []) or []:
         if not isinstance(sw, dict):
             continue

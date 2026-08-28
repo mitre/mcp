@@ -51,6 +51,11 @@ class Workflow:
     # capability's enrich() when its id appears here AND the user enabled it.
     accepted_capabilities: list[str] = field(default_factory=list)
 
+    # MLflow experiment this workflow's runs belong to. mcp_svc mints the run
+    # here, and the workflow must set_experiment the same name: mlflow refuses
+    # start_run(run_id=...) when the active experiment differs from the run's.
+    mlflow_experiment: str = "caldera-mcp-client-1"
+
     # Optional plan-then-execute mode. When set, the orchestrator treats the
     # signature's structured output as a plan, hands it to the dotted-path
     # validate function for validation/binding, and executes whatever tool
@@ -83,6 +88,6 @@ class Workflow:
     # turn runs single-shot: the chat UI still renders past turns visually,
     # but the LLM sees a fresh context each time. Author-style workflows where
     # each request is fully self-described should leave this False; workflows
-    # that produce entities (instances, profiles, deployments) referenced by
+    # that produce entities (abilities, adversaries, operations) referenced by
     # later turns should opt in.
     supports_chat_history: bool = False

@@ -553,8 +553,8 @@ def make_infrastructure(i: dict, related_attack_patterns: list = None,
     # Stage-1 host extractor (cti_extract_hosts) emits `ip`/`os`/`role`
     # in the IR `infrastructure[]` shape. STIX 2.1's `infrastructure`
     # SDO has no spec slots for these, so they ride as `x_*` extensions
-    # — preserved verbatim for downstream consumers (range deployment,
-    # AE evaluation, etc.). Stripping the fields from the generic
+    # — preserved verbatim for downstream consumers. Stripping the
+    # fields from the generic
     # x_<k> copy loop below keeps the keys spec-named.
     extractor_fields = {"ip", "os", "role"}
     for k, v in i.items():
@@ -569,15 +569,14 @@ def make_infrastructure(i: dict, related_attack_patterns: list = None,
     os_v = (i.get("os") or "").strip().lower()
     if os_v and os_v != "unknown":
         obj["x_cti_os"] = os_v
-        # Mirror to the downstream-consumer key (range plugins read
-        # `x_cti_target_os` to choose Ansible playbooks).
+        # Mirror to the downstream-consumer key.
         obj["x_cti_target_os"] = os_v
 
     role_v = (i.get("role") or "").strip().lower()
     if role_v and role_v != "unknown":
         obj["x_cti_role"] = role_v
         # Custom tag extension: explicit Domain-Controller marker so
-        # downstream range/AE consumers don't have to re-parse the role
+        # downstream consumers don't have to re-parse the role
         # vocab. Only set when the role slug == "dc" (per task spec).
         if role_v == "dc":
             obj["tag_cti_role"] = "domain-controller"
@@ -924,8 +923,8 @@ def make_identity(d: dict, identity_class: str = "organization") -> dict:
         obj["x_cti_identity_class_extension"] = True
 
     # Domain-type slug (active-directory / dns-only / unknown) from the
-    # extractor. AD domains in particular need a downstream signal so
-    # range provisioning knows to spin up a Domain Controller.
+    # extractor. AD domains need a downstream signal for the presence
+    # of a Domain Controller.
     dtype = (d.get("type") or "").strip().lower()
     if dtype:
         obj["x_cti_domain_type"] = dtype
@@ -1133,8 +1132,8 @@ def make_software(s: dict, taxonomy: dict | None = None) -> dict | None:
 
     # ---- ATT&CK ontology enrichment (vendor / platforms) ----
     # ATT&CK tool/malware entries carry x_mitre_platforms verbatim;
-    # we surface them as x_mitre_platforms on the SCO so the range
-    # deploy step knows which OS-family to provision for.
+    # we surface them as x_mitre_platforms on the SCO so consumers know
+    # the OS family.
     if attack_id and taxonomy:
         # The taxonomy.name_index keys by lowercased name; strip any
         # filename extension first (the lookup name is the bare

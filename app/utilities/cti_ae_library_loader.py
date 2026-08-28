@@ -1208,7 +1208,7 @@ def ae_plan_to_stix(ir: dict, taxonomy: Optional[dict] = None) -> dict:
             objects.append(obj)
 
     # ---- Network subnets / file paths / registry / extensions ----
-    # These travel as a custom ``x-cti-range-topology``-like context block
+    # These travel as a custom context block
     # so the diff vs. the hand-crafted measuring-stick remains visible.
     if any(ir.get(k) for k in (
         "network_subnets", "file_paths", "registry_keys", "file_extensions",

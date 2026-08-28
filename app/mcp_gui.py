@@ -50,6 +50,17 @@ class McpGUI(BaseWorld):
         except Exception:
             caldera = {}
 
+        # api_key alone stopped being a complete precondition when api_base
+        # left the shipped yaml: without a base the resolver refuses the run.
+        llm_missing_env = [
+            env_var
+            for env_var, value in (
+                ("MCP_LLM_API_KEY", llm.get("api_key")),
+                ("MCP_LLM_API_BASE", llm.get("api_base")),
+            )
+            if not value
+        ]
+
         servers = getattr(mcp_svc, "server_registry", None) or {}
         workflows = getattr(mcp_svc, "workflow_registry", None) or {}
         capabilities = getattr(mcp_svc, "capability_registry", None) or {}
@@ -57,10 +68,10 @@ class McpGUI(BaseWorld):
         return {
             "name": self.name,
             "description": self.description,
-            "llm_configured": bool(llm.get("api_key")),
+            "llm_configured": not llm_missing_env,
+            "llm_missing_env": llm_missing_env,
             "llm_model": llm.get("model") or "",
             "llm_api_base": llm.get("api_base") or "",
-            "llm_api_key_env": "MCP_LLM_API_KEY",
             "caldera_url": caldera.get("url") or "",
             "caldera_api_key_env": caldera.get("api_key_env") or "CORE_CALDERA_API_KEY",
             "server_names": sorted(servers.keys()),

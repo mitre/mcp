@@ -51,9 +51,28 @@ def get_env(lm_settings=None):
 
     return env
 
+# set_tracking_uri and autolog are local state and stay eager. autolog must:
+# it calls dspy.settings.configure, which pins ownership to the first asyncio
+# task that reaches it, so deferring it into run() breaks the second workflow.
 mlflow.set_tracking_uri(mlflow_settings()['tracking_uri'])
-mlflow.set_experiment("caldera-mcp-FACTORY-client-1")
 mlflow.dspy.autolog()
+
+_MLFLOW_EXPERIMENT = "caldera-mcp-FACTORY-client-1"
+_MLFLOW_EXPERIMENT_SET = False
+
+
+def _ensure_mlflow():
+    """set_experiment is the network call, so it cannot run at import time.
+
+    At module scope it made importing this module block whenever the tracking
+    server was down, which silently dropped both workflows from the registry.
+    """
+    global _MLFLOW_EXPERIMENT_SET
+    if _MLFLOW_EXPERIMENT_SET:
+        return
+    mlflow.set_experiment(_MLFLOW_EXPERIMENT)
+    _MLFLOW_EXPERIMENT_SET = True
+
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -160,12 +179,17 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
     # + UI overrides, with fields_locked enforced). Workflows trust it; they
     # do not re-merge yaml here. Tests that call run() directly without
     # lm_obj fall back to the same yaml-resolved defaults.
+    _ensure_mlflow()
     lm_settings = dict(lm_obj) if lm_obj else llm_defaults()
     max_tool_calls = lm_settings.get("max_tool_calls") or 5
 
-    # Validate API key is provided
-    if not lm_settings.get("api_key"):
-        error_msg = "API key is required but not provided. Please set your API key in the Global Model Configuration."
+    # Both credentials are checked here rather than at dspy.LM() so the
+    # failure lands before the AsyncExitStack spawns MCP subprocesses.
+    missing = next(
+        (f for f in ("api_key", "api_base") if not lm_settings.get(f)), None
+    )
+    if missing:
+        error_msg = f"{missing} is required but not provided. Please set it in the Global Model Configuration."
         print(f"[MCP] ERROR: {error_msg}")
         if not run_id:
             run = mlflow.start_run(run_name="MCP Ability Factory")
@@ -336,6 +360,7 @@ WORKFLOWS = [
         required_servers=["caldera_core"],
         optional_servers=[],
         accepted_capabilities=["rag"],
+        mlflow_experiment=_MLFLOW_EXPERIMENT,
         ui_component="author.vue",
         example_prompts=[
             "Create a few abilities related to persistence with WMI for Windows, then create an adversary with those abilities. Please create more than one ability.",

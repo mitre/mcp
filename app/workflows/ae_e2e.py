@@ -9,25 +9,17 @@ Stage order matches scripts/e2e_full_vision_lib.py so the legacy shell
 script can hand off to / resume from the same checkpoint file
 (``/tmp/e2e_full_vision_state.json``):
 
-    preflight -> cti -> topology -> deploy_spec -> deploy -> meta ->
-    sandcat -> agents -> adversary -> operation -> detections -> report
+    preflight -> cti -> agents -> adversary ->
+    operation -> detections -> report
 
 Differences vs. the shell script:
 
-* deploy: calls ``range_svc.build_onprem(profile, images)`` directly and
-  watches ``range_svc._deploy_status[stack_id]`` in-process. No HTTP poll
-  parser, so the silent-hang bug the script hit is gone.
 * adversary: stores ``Adversary`` straight into ``data_svc`` and locates
   abilities via ``data_svc.locate('abilities')``.
 * operation: builds an ``Operation`` via the v2 ``OperationApiManager``
   helpers (same code path the REST API uses) and lets the data_svc run it.
 * detections: calls ``detection_svc.validate_operation()`` directly. No
   Aiohttp roundtrip.
-* sandcat: still shells out to ``ansible-playbook microvm-implant.yml``
-  because the implant transport / inventory generation is bulk I/O work
-  that gains nothing from being in-process. But the inventory itself is
-  built from ``data_svc.locate('agents')`` + meta.json reads, never from
-  an HTTP response.
 
 The workflow exposes a single ``run()`` coroutine. The MCP API endpoint
 ``POST /plugin/mcp/workflows/run-ae-end-to-end`` thinly wraps it.
@@ -56,11 +48,6 @@ from plugins.mcp.app.workflows.base import Workflow
 STAGES = [
     "preflight",
     "cti",
-    "topology",
-    "deploy_spec",
-    "deploy",
-    "meta",
-    "sandcat",
     "agents",
     "adversary",
     "operation",
@@ -80,7 +67,7 @@ def _iso() -> str:
 
 
 class AEEndToEndWorkflow:
-    """Full CTI -> STIX -> AE plan -> range deploy -> sandcat -> operation -> detections.
+    """Full CTI -> STIX -> AE plan -> adversary -> operation -> detections.
 
     Instantiated lazily at run time (see ``_workflow_runner`` below); the
     Workflow registration in this module only needs the ``run`` callable.
@@ -125,29 +112,23 @@ class AEEndToEndWorkflow:
         self,
         *,
         cti_source: Optional[str] = None,
-        profile_name: Optional[str] = None,
         dry_run: bool = False,
         start_stage: Optional[str] = None,
         only_stage: Optional[str] = None,
         checkpoint_path: Optional[str] = None,
         elk_url: Optional[str] = None,
         kibana_url: Optional[str] = None,
-        microvm_base: Optional[str] = None,
         adversary_slug: str = "alphv_blackcat",
         agents_timeout: int = 600,
         operation_timeout: int = 1800,
-        deploy_timeout: int = 1200,
         cti_timeout: int = 900,
         **_extra,
     ) -> dict:
-        """Run the 12-stage pipeline end-to-end.
+        """Run the pipeline end-to-end.
 
         cti_source: path (absolute or repo-relative) to a CTI document to
             upload. Required unless start_stage > 'cti' or a previous run's
             checkpoint already has a cti payload.
-        profile_name: range deploy profile name to use. Defaults to
-            ``e2e-blackcat-<timestamp>`` so concurrent runs don't collide
-            on the onprem service's stack_id lookup.
         dry_run: when True, each stage records what it would do and
             returns a synthetic payload without touching the wider system.
         start_stage / only_stage: stage filters mirroring the shell
@@ -163,23 +144,20 @@ class AEEndToEndWorkflow:
         # stage method — they're sticky for the whole run.
         ctx = {
             "cti_source": cti_source,
-            "profile_name": profile_name or f"e2e-ae-{int(time.time())}",
             "dry_run": bool(dry_run),
             "elk_url": elk_url or os.environ.get("ELK_URL", "http://192.168.66.1:9200"),
             "kibana_url": kibana_url or os.environ.get("KIBANA_URL", "http://192.168.66.1:5601"),
-            "microvm_base": microvm_base or os.environ.get(
-                "TIMESTONE_MICROVM_RUNTIME_BASE", "/tmp/timestone-microvms"
-            ),
             "adversary_slug": adversary_slug,
             "agents_timeout": int(agents_timeout),
             "operation_timeout": int(operation_timeout),
-            "deploy_timeout": int(deploy_timeout),
             "cti_timeout": int(cti_timeout),
         }
 
         if only_stage:
             order = [only_stage]
         else:
+            if start_stage and start_stage not in STAGES:
+                raise ValueError(f"unknown start_stage {start_stage!r}; valid: {STAGES}")
             start_idx = STAGES.index(start_stage) if start_stage else 0
             order = STAGES[start_idx:]
 
@@ -235,8 +213,6 @@ class AEEndToEndWorkflow:
         chk("app_svc", services.get("app_svc") is not None)
         chk("rest_svc", services.get("rest_svc") is not None)
         chk("mcp_svc", services.get("mcp_svc") is not None)
-        chk("range_svc", services.get("range_svc") is not None,
-            fail_hint="OnPremService not registered; range plugin loaded?")
         chk("detection_svc", services.get("detection_svc") is not None,
             fail_hint="detections plugin not loaded; detections stage will skip")
         ok = all(c["ok"] for c in checks if c["name"] != "detection_svc")
@@ -284,12 +260,9 @@ class AEEndToEndWorkflow:
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(None, svc.run_stage, base_dir, "all")
 
-        # Look for outputs. The stage4 pipeline writes both:
-        #   data/outputs_stix/<stem>.stix.json
-        #   data/outputs_topology/<stem>.topology.json
+        # data/outputs_stix/<stem>.stix.json
         stem = src.stem
         outputs_stix = base_dir / "outputs_stix"
-        outputs_topo = base_dir / "outputs_topology"
 
         def _match(p: Path) -> bool:
             s_norm = "".join(c for c in stem.lower() if c.isalnum())
@@ -297,7 +270,6 @@ class AEEndToEndWorkflow:
             return bool(s_norm) and s_norm in n_norm
 
         found_stix: Optional[Path] = None
-        found_topo: Optional[Path] = None
         if not ctx["dry_run"]:
             # The pipeline ran synchronously above (run_in_executor). Files
             # should be present immediately, but allow a short grace window
@@ -309,17 +281,12 @@ class AEEndToEndWorkflow:
                         if _match(p):
                             found_stix = p
                             break
-                if outputs_topo.is_dir():
-                    for p in outputs_topo.glob("*.topology.json"):
-                        if _match(p):
-                            found_topo = p
-                            break
                 if found_stix:
                     break
                 await asyncio.sleep(2)
 
         counts: dict = {"malware": 0, "infrastructure": 0, "user_accounts": 0,
-                        "hosts": 0, "identities": 0, "attack_patterns": 0,
+                        "identities": 0, "attack_patterns": 0,
                         "tools": 0, "relationships": 0}
         if found_stix:
             try:
@@ -340,8 +307,6 @@ class AEEndToEndWorkflow:
                         counts["tools"] += 1
                     elif t == "relationship":
                         counts["relationships"] += 1
-                    elif t == "x-cti-range-topology":
-                        counts["hosts"] += len(o.get("hosts") or [])
             except Exception as e:
                 self.log.warning(f"failed to count STIX objects: {e}")
 
@@ -349,347 +314,10 @@ class AEEndToEndWorkflow:
             "input": str(src),
             "filename": src.name,
             "stix_path": str(found_stix) if found_stix else None,
-            "topology_path": str(found_topo) if found_topo else None,
             "counts": counts,
             "dry_run": ctx["dry_run"],
         }
 
-    # ------------------------------------------------------------------
-    # Stage 3 — topology. Reuse the stage4 output when available, else
-    # call build_range_topology in-process.
-    # ------------------------------------------------------------------
-    async def _stage_topology(self, state: dict, ctx: dict) -> dict:
-        cti_payload = (state["stages"].get("cti") or {}).get("payload") or {}
-        topo_path = cti_payload.get("topology_path")
-        stix_path = cti_payload.get("stix_path")
-
-        topo_obj: Optional[dict] = None
-        if ctx["dry_run"]:
-            topo_obj = {
-                "type": "x-cti-range-topology",
-                "id": "x-cti-range-topology--dry-run",
-                "primary_platform": "windows",
-                "hosts": [], "user_accounts": [], "identities": [],
-            }
-        elif topo_path and Path(topo_path).is_file():
-            topo_obj = json.loads(Path(topo_path).read_text(encoding="utf-8"))
-        elif stix_path and Path(stix_path).is_file():
-            from plugins.mcp.app.utilities.cti_topology_inference import (
-                build_range_topology,
-            )
-            taxonomy: dict = {}
-            try:
-                from plugins.mcp.app.utilities.cti_taxonomy_loader import (
-                    load_mitre_taxonomy,
-                )
-                taxonomy = load_mitre_taxonomy() or {}
-            except Exception as e:
-                self.log.warning(f"taxonomy load failed: {e}; using empty taxonomy")
-            images_catalog: list = []
-            try:
-                import yaml  # type: ignore
-                ic_path = Path("plugins/range/conf/onprem_microvm_images.yml")
-                if ic_path.is_file():
-                    images_catalog = (yaml.safe_load(ic_path.read_text()) or {}).get("images") or []
-            except Exception:
-                pass
-            bundle = json.loads(Path(stix_path).read_text(encoding="utf-8"))
-            topo_obj = build_range_topology(bundle, taxonomy, images_catalog)
-        else:
-            raise RuntimeError("topology stage requires a stage_cti payload with stix_path or topology_path")
-
-        # Persist for downstream stages + final report.
-        out_path = Path("/tmp/e2e_full_vision_topology.json")
-        out_path.write_text(json.dumps(topo_obj, indent=2, default=str), encoding="utf-8")
-        return {
-            "topology_id": topo_obj.get("id"),
-            "primary_platform": topo_obj.get("primary_platform"),
-            "host_count": len(topo_obj.get("hosts") or []),
-            "user_count": len(topo_obj.get("user_accounts") or []),
-            "identity_count": len(topo_obj.get("identities") or []),
-            "saved_to": str(out_path),
-            "dry_run": ctx["dry_run"],
-        }
-
-    # ------------------------------------------------------------------
-    # Stage 4 — deploy_spec.
-    # ------------------------------------------------------------------
-    async def _stage_deploy_spec(self, state: dict, ctx: dict) -> dict:
-        topo_path = Path("/tmp/e2e_full_vision_topology.json")
-        if ctx["dry_run"]:
-            spec = {
-                "profile": ctx["profile_name"],
-                "provider": "microvm",
-                "images": [
-                    {"image": "timestone-windows-victim", "name": "vm-dc-1",
-                     "os": "Windows", "role": "dc", "cpus": 2, "memory": 2048,
-                     "ansible_groups": ["tag_os_windows", "tag_role_dc"]},
-                ],
-                "elk_host": {"url": ctx["elk_url"], "kibana_url": ctx["kibana_url"]},
-                "feature_playbooks": ["winlogbeat.yml"],
-            }
-        else:
-            if not topo_path.is_file():
-                raise FileNotFoundError("topology not built; run topology stage first")
-            from plugins.mcp.app.utilities.cti_deploy_spec import synthesize_deploy_spec
-            topo = json.loads(topo_path.read_text(encoding="utf-8"))
-            ae_ir = None
-            try:
-                from plugins.mcp.app.utilities.cti_ae_library_loader import (
-                    discover_ae_plans, find_plan_by_adversary, parse_ae_plan,
-                )
-                plans = discover_ae_plans()
-                plan = find_plan_by_adversary(plans, ctx["adversary_slug"])
-                if plan:
-                    ae_ir = parse_ae_plan(plan, taxonomy=None)
-            except Exception as e:
-                self.log.warning(f"AE plan IR not loaded: {e}")
-            images_catalog: list = []
-            try:
-                import yaml  # type: ignore
-                ic_path = Path("plugins/range/conf/onprem_microvm_images.yml")
-                if ic_path.is_file():
-                    images_catalog = (yaml.safe_load(ic_path.read_text()) or {}).get("images") or []
-            except Exception:
-                pass
-            spec = synthesize_deploy_spec(
-                topo, ae_plan_ir=ae_ir, images_catalog=images_catalog,
-                elk_host={"url": ctx["elk_url"], "kibana_url": ctx["kibana_url"]},
-            )
-            # Stamp our run's profile so deploys never collide.
-            spec["profile"] = ctx["profile_name"]
-            # The microvm provider is the only image set that boots in our env.
-            spec["provider"] = "microvm"
-
-        Path("/tmp/e2e_full_vision_deploy_spec.json").write_text(
-            json.dumps(spec, indent=2, default=str), encoding="utf-8",
-        )
-        return {
-            "profile": spec.get("profile"),
-            "provider": spec.get("provider"),
-            "image_count": len(spec.get("images") or []),
-            "feature_playbooks": spec.get("feature_playbooks") or [],
-            "elk_host": spec.get("elk_host"),
-            "saved_to": "/tmp/e2e_full_vision_deploy_spec.json",
-            "dry_run": ctx["dry_run"],
-        }
-
-    # ------------------------------------------------------------------
-    # Stage 5 — deploy. In-process: build_onprem(profile, images).
-    # ------------------------------------------------------------------
-    async def _stage_deploy(self, state: dict, ctx: dict) -> dict:
-        spec_path = Path("/tmp/e2e_full_vision_deploy_spec.json")
-        spec: dict = {}
-        if spec_path.is_file():
-            spec = json.loads(spec_path.read_text(encoding="utf-8"))
-        body = {
-            "profile":  spec.get("profile") or ctx["profile_name"],
-            "provider": spec.get("provider") or "microvm",
-            "images":   spec.get("images") or [],
-        }
-        if ctx["dry_run"]:
-            return {
-                "profile": body["profile"], "provider": body["provider"],
-                "image_count": len(body["images"]),
-                "deploy_status": {"status": "running", "dry_run": True},
-                "dry_run": True,
-            }
-
-        # Walk all registered services to find the OnPremService instance.
-        # Multiple range objects (each cdktf provider, OnPremService itself)
-        # all call `add_service("range_svc", self)` — the last writer wins,
-        # which is typically a single provider like MicroVMProvider, NOT the
-        # OnPremService that owns _deploy_status and build_onprem. So do not
-        # trust `services["range_svc"]`; locate by capability instead.
-        range_svc = None
-        services_iter = self.services.values() if hasattr(self.services, "values") else []
-        for svc in services_iter:
-            if hasattr(svc, "_deploy_status") and hasattr(svc, "build_onprem"):
-                range_svc = svc
-                break
-        if range_svc is None:
-            # Fall back via the range plugin's GUI handler, which holds the
-            # canonical onprem_svc reference on `self.onprem_svc`.
-            try:
-                for svc in services_iter:
-                    onprem = getattr(svc, "onprem_svc", None)
-                    if onprem is not None and hasattr(onprem, "_deploy_status"):
-                        range_svc = onprem
-                        break
-            except Exception:
-                pass
-        if range_svc is None:
-            raise RuntimeError(
-                "OnPremService not found among registered services; "
-                "range plugin must be loaded before the ae-e2e workflow runs."
-            )
-
-        # Resolve our stack_id the same way the GUI handler does so we can
-        # watch _deploy_status[stack_id] directly without HTTP polling.
-        from plugins.range.app.cdktf.cdktf_utilities import sanitize_stack_id
-        stack_id = sanitize_stack_id(body["provider"], body["profile"])
-        # Pre-mark deploying so the wait loop below never sees a stale 'idle'.
-        range_svc._deploy_status[stack_id] = {"status": "deploying", "error": None}
-
-        # Kick the deploy as a background task; we own the polling.
-        async def _deploy_bg():
-            try:
-                await range_svc.build_onprem(profile=body["profile"], images=body["images"])
-            except Exception as e:
-                self.log.exception("build_onprem failed")
-                range_svc._deploy_status[stack_id] = {"status": "error", "error": str(e)}
-
-        deploy_task = asyncio.create_task(_deploy_bg())
-
-        deadline = time.time() + ctx["deploy_timeout"]
-        last_status: dict = {"status": "deploying", "error": None}
-        while time.time() < deadline:
-            raw = range_svc._deploy_status.get(stack_id) or {}
-            last_status = {
-                "status": raw.get("status", "unknown"),
-                "error":  raw.get("error"),
-                "last_phase": raw.get("last_phase"),
-                "new_vm_names": raw.get("new_vm_names"),
-            }
-            self.log.info(f"[ae-e2e] deploy-status: {last_status['status']}")
-            if last_status["status"] in ("running", "error", "idle"):
-                break
-            await asyncio.sleep(5)
-
-        # If we timed out but the task hasn't finished, leave it running;
-        # the next stage can decide whether to bail.
-        if not deploy_task.done():
-            self.log.warning("[ae-e2e] deploy poll loop ended while build_onprem still running")
-
-        return {
-            "profile": body["profile"],
-            "provider": body["provider"],
-            "image_count": len(body["images"]),
-            "stack_id": stack_id,
-            "deploy_status": last_status,
-        }
-
-    # ------------------------------------------------------------------
-    # Stage 6 — meta. Scan TIMESTONE microvm runtime dir for live IPs.
-    # ------------------------------------------------------------------
-    async def _stage_meta(self, state: dict, ctx: dict) -> dict:
-        base = Path(ctx["microvm_base"])
-        hosts: list[dict] = []
-        if ctx["dry_run"]:
-            return {"hosts": [], "base": str(base), "dry_run": True}
-        if not base.is_dir():
-            return {"hosts": [], "base": str(base),
-                    "warning": f"microvm runtime base {base} missing"}
-
-        for d in sorted(base.iterdir()):
-            if not d.is_dir():
-                continue
-            meta = d / "meta.json"
-            if not meta.is_file():
-                continue
-            try:
-                data = json.loads(meta.read_text(encoding="utf-8"))
-            except Exception as e:
-                self.log.warning(f"meta.json parse failed for {d}: {e}")
-                continue
-            hosts.append({
-                "vm_name": data.get("vm_name") or d.name,
-                "os": (data.get("os") or "").lower(),
-                "ip": data.get("ip"),
-                "cid": data.get("cid"),
-                "tap": data.get("tap"),
-                "run_dir": str(d),
-                "vsock_uds": data.get("vsock_uds") or str(d / "shim.sock"),
-                "serial": data.get("serial") or str(d / "serial.log"),
-            })
-        return {"base": str(base), "hosts": hosts}
-
-    # ------------------------------------------------------------------
-    # Stage 7 — sandcat. Subprocess ansible-playbook is acceptable.
-    # ------------------------------------------------------------------
-    async def _stage_sandcat(self, state: dict, ctx: dict) -> dict:
-        meta_payload = (state["stages"].get("meta") or {}).get("payload") or {}
-        hosts = meta_payload.get("hosts") or []
-        if not hosts and not ctx["dry_run"]:
-            return {"hosts": 0, "skipped": "no microvm hosts available"}
-
-        inv_path = Path("/tmp/e2e_full_vision_inventory.ini")
-        inv_path.write_text(_inventory_for(hosts), encoding="utf-8")
-
-        plugin_range = Path("plugins/range")
-        automation = plugin_range / "automation"
-        microvm_implant = automation / "playbooks" / "microvm-implant.yml"
-        winlogbeat = automation / "playbooks" / "feature" / "winlogbeat.yml"
-        auditbeat = automation / "playbooks" / "feature" / "auditbeat.yml"
-
-        primary = microvm_implant if microvm_implant.is_file() else None
-        if not primary and not ctx["dry_run"]:
-            return {"hosts": len(hosts), "skipped": "microvm-implant.yml not found"}
-
-        caldera = caldera_connection()
-        api_key = os.environ.get("CORE_CALDERA_API_KEY") or caldera["api_key"]
-        caldera_url = os.environ.get("CALDERA_URL") or caldera["url"]
-        for suffix in ("/api/v2/", "/api/v2"):
-            if caldera_url.endswith(suffix):
-                caldera_url = caldera_url[: -len(suffix)]
-                break
-        extra_vars = {
-            "caldera_server": caldera_url,
-            "caldera_apikey": api_key,
-            "caldera_group": "red",
-            "bridge_gateway": "192.168.66.1",
-        }
-        cmds: list[list[str]] = []
-        if primary:
-            cmds.append([
-                "ansible-playbook", "-i", str(inv_path), str(primary),
-                "--extra-vars", json.dumps(extra_vars),
-            ])
-        if winlogbeat.is_file() and any((h["os"] or "").lower() == "windows" for h in hosts):
-            cmds.append([
-                "ansible-playbook", "-i", str(inv_path), str(winlogbeat),
-                "--extra-vars", json.dumps({"elk_host": ctx["elk_url"],
-                                            "kibana_host": ctx["kibana_url"]}),
-            ])
-        if auditbeat.is_file() and any((h["os"] or "").lower() == "linux" for h in hosts):
-            cmds.append([
-                "ansible-playbook", "-i", str(inv_path), str(auditbeat),
-                "--extra-vars", json.dumps({"elk_host": ctx["elk_url"],
-                                            "kibana_host": ctx["kibana_url"]}),
-            ])
-
-        env = dict(os.environ)
-        env["ANSIBLE_CONFIG"] = str(automation / "ansible.cfg")
-        results: list[dict] = []
-        loop = asyncio.get_running_loop()
-        for cmd in cmds:
-            if ctx["dry_run"]:
-                results.append({"cmd": cmd, "rc": 0, "dry_run": True})
-                continue
-            try:
-                r = await loop.run_in_executor(
-                    None,
-                    lambda c=cmd: subprocess.run(
-                        c, env=env, cwd=str(automation),
-                        capture_output=True, text=True, timeout=900,
-                    ),
-                )
-                results.append({"cmd": cmd, "rc": r.returncode,
-                                "stdout_tail": r.stdout[-2000:],
-                                "stderr_tail": r.stderr[-2000:]})
-            except Exception as e:
-                results.append({"cmd": cmd, "error": str(e)})
-
-        return {
-            "inventory": str(inv_path),
-            "primary_playbook": str(primary) if primary else None,
-            "host_count": len(hosts),
-            "runs": results,
-            "dry_run": ctx["dry_run"],
-        }
-
-    # ------------------------------------------------------------------
-    # Stage 8 — agents. Poll data_svc.locate('agents') in-process.
     # ------------------------------------------------------------------
     async def _stage_agents(self, state: dict, ctx: dict) -> dict:
         if ctx["dry_run"]:
@@ -913,49 +541,6 @@ class AEEndToEndWorkflow:
         _DEFAULT_REPORT.write_text("\n".join(lines), encoding="utf-8")
         return {"report_path": str(_DEFAULT_REPORT), "dry_run": ctx["dry_run"]}
 
-
-# ----------------------------------------------------------------------
-# Inventory helper. Lifted verbatim from scripts/e2e_full_vision_lib.py
-# so the inventory the workflow generates matches what the timestone
-# connection plugin expects.
-# ----------------------------------------------------------------------
-def _inventory_for(hosts: list[dict]) -> str:
-    out: list[str] = []
-    out.append("# generated by plugins/mcp/app/workflows/ae_e2e.py")
-    out.append("")
-
-    def host_line(h: dict) -> str:
-        name = h["vm_name"]
-        ip = h.get("ip") or "0.0.0.0"
-        os_kind = (h.get("os") or "linux").lower()
-        vars_ = [
-            f"ansible_host={ip}",
-            "ansible_connection=timestone_microvm",
-            f"timestone_os={os_kind}",
-            f"timestone_run_dir={h.get('run_dir', '')}",
-        ]
-        if os_kind == "linux":
-            vars_.append(f"timestone_vsock_uds={h.get('vsock_uds', '')}")
-        else:
-            vars_.append(f"timestone_serial={h.get('serial', '')}")
-        return f"{name} " + " ".join(vars_)
-
-    linux = [h for h in hosts if (h.get("os") or "").lower() == "linux"]
-    windows = [h for h in hosts if (h.get("os") or "").lower() == "windows"]
-
-    out.append("[tag_os_linux]")
-    out += [host_line(h) for h in linux]
-    out.append("")
-    out.append("[tag_os_windows]")
-    out += [host_line(h) for h in windows]
-    out.append("")
-    out.append("[microvms_linux:children]")
-    out.append("tag_os_linux")
-    out.append("")
-    out.append("[microvms_windows:children]")
-    out.append("tag_os_windows")
-    out.append("")
-    return "\n".join(out) + "\n"
 
 
 # ----------------------------------------------------------------------
