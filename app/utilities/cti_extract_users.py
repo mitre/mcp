@@ -8,10 +8,9 @@ Extract user/account names (and privilege level, when stated) from CTI text.
 Driving use case
 ----------------
 Attack-Evaluation (AE) plans such as the MITRE ATT&CK BlackCat evaluation
-list the accounts the range plugin must provision. The range plugin's
-`roles/users` ansible role consumes `{username, password, admin,
-domain_user}`, so this extractor emits the structured signals required to
-populate it.
+list the accounts a victim environment contains. This extractor emits
+`{username, password, admin, domain_user}` so consumers get structured
+account signals rather than prose.
 
 Design constraints
 ------------------

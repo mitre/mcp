@@ -174,7 +174,7 @@
         v-model:selectedRag="selectedRagLocal"
       />
 
-      <Section title="CTI / Range" v-if="isPlanExecute">
+      <Section title="CTI" v-if="isPlanExecute">
         <button class="picker-toggle" type="button" @click="openStixModal">
           <font-awesome-icon :icon="folderOpenIcon" />
           <span>STIX</span>
@@ -314,64 +314,9 @@
             </div>
           </div>
         </div>
+
       </Section>
 
-      <Section title="Build Range" v-if="isPlanExecute">
-
-        <label class="check-row">
-          <input type="checkbox" v-model="buildRange" />
-          <span class="check-name">Build range</span>
-        </label>
-
-        <div v-if="buildRange" class="field-stack">
-          <div class="field-label">Hypervisors</div>
-          <label
-            v-for="provider in rangeProviders"
-            :key="providerName(provider)"
-            class="check-row provider-row"
-            :class="{ selected: selectedRangeProviders.includes(providerName(provider)) }"
-            :title="providerTitle(provider)"
-          >
-            <input
-              type="checkbox"
-              :checked="selectedRangeProviders.includes(providerName(provider))"
-              @change="toggleRangeProvider(providerName(provider), $event.target.checked)"
-            />
-            <span class="selected-copy">
-              <span class="check-name">{{ providerName(provider) }}</span>
-              <span class="check-meta">{{ providerMeta(provider) }}</span>
-            </span>
-          </label>
-          <div v-if="!rangeProviders.length" class="empty-row">No Range hypervisors loaded</div>
-
-          <div class="capability-line">
-            <span>{{ rangeImages.length }} images</span>
-            <span>{{ featureCount }} features</span>
-            <span v-if="microvmStatus">{{ microvmStatus }}</span>
-          </div>
-
-          <div class="identity-grid">
-            <label><input type="checkbox" v-model="identityDomain" /> Domain</label>
-            <label><input type="checkbox" v-model="identityDomainUsers" /> Domain users</label>
-            <label><input type="checkbox" v-model="identityLocalUsers" /> Local users</label>
-          </div>
-
-          <div class="field-stack tight">
-            <label class="field-label" for="plan-agent-mode">Agent</label>
-            <select id="plan-agent-mode" class="compact-select" v-model="agentMode">
-              <option value="sandcat">Sandcat</option>
-              <option value="custom">Custom</option>
-              <option value="cti">CTI decides</option>
-            </select>
-            <label class="check-row compact">
-              <input type="checkbox" v-model="agentUseCtiEntry" />
-              <span class="check-name">CTI entry host</span>
-            </label>
-          </div>
-
-          <div v-if="rangeError" class="error-row">{{ rangeError }}</div>
-        </div>
-      </Section>
     </div>
   </aside>
 
@@ -532,24 +477,12 @@ watch(() => props.selectedRag, (v) => {
   }
 })
 
-// --- Plan and Execute CTI / Range context ----------------------------------
+// --- Plan and Execute CTI context ------------------------------------------
 const isPlanExecute = computed(() => props.workflow?.id === 'plan_execute')
 const modelConfigOpen = ref(false)
 const showStixModal = ref(false)
 const stixFiles = ref([])
 const selectedPlanStix = ref([])
-const buildRange = ref(false)
-const rangeProviders = ref([])
-const selectedRangeProviders = ref([])
-const rangeImagesByProvider = ref({})
-const rangeFeatures = ref({ default: [], custom: [] })
-const microvmSubstrate = ref({})
-const rangeError = ref('')
-const identityDomain = ref(true)
-const identityDomainUsers = ref(true)
-const identityLocalUsers = ref(true)
-const agentMode = ref('sandcat')
-const agentUseCtiEntry = ref(true)
 
 function ensureRagSettings() {
   if (!props.globalConfig.capabilitySettings) props.globalConfig.capabilitySettings = {}
@@ -634,12 +567,6 @@ const modelToggleIcon = computed(() => modelConfigOpen.value ? faAngleDown : faA
 const folderOpenIcon = faFolderOpen
 const timesIcon = faTimes
 
-const featureCount = computed(() => {
-  const f = rangeFeatures.value || {}
-  return (Array.isArray(f.default) ? f.default.length : 0)
-    + (Array.isArray(f.custom) ? f.custom.length : 0)
-    + (Array.isArray(f.features) ? f.features.length : 0)
-})
 
 const selectedStixFiles = computed(() =>
   selectedPlanStix.value.map(name =>
@@ -647,16 +574,8 @@ const selectedStixFiles = computed(() =>
   )
 )
 
-const rangeProvider = computed(() => selectedRangeProviders.value[0] || '')
 
-const rangeImages = computed(() =>
-  selectedRangeProviders.value.flatMap(provider => rangeImagesByProvider.value[provider] || [])
-)
 
-const microvmStatus = computed(() => {
-  const s = microvmSubstrate.value || {}
-  return s.status || s.state || ''
-})
 
 async function apiGet(url) {
   if ($api?.get) {
@@ -678,20 +597,8 @@ function stixMeta(file) {
   return bits.join(' / ')
 }
 
-function providerName(provider) {
-  return provider?.name || provider?.provider || ''
-}
 
-function providerMeta(provider) {
-  const images = Number(provider?.image_count || 0)
-  const profiles = Number(provider?.profile_count || 0)
-  return `${images} images / ${profiles} profiles`
-}
 
-function providerTitle(provider) {
-  const profiles = Array.isArray(provider?.profiles) ? provider.profiles.join(', ') : ''
-  return profiles ? `${providerName(provider)} profiles: ${profiles}` : providerName(provider)
-}
 
 function trimmedProfileName(value) {
   return String(value || '').trim()
@@ -821,13 +728,6 @@ function togglePlanStix(name, checked) {
   selectedPlanStix.value = [...cur]
 }
 
-function toggleRangeProvider(name, checked) {
-  if (!name) return
-  const cur = new Set(selectedRangeProviders.value)
-  if (checked) cur.add(name); else cur.delete(name)
-  selectedRangeProviders.value = [...cur]
-  if (checked) loadRangeImagesForProvider(name)
-}
 
 async function loadPlanStixFiles() {
   try {
@@ -845,79 +745,13 @@ async function loadPlanStixFiles() {
   }
 }
 
-async function loadRangeProviders() {
-  try {
-    rangeError.value = ''
-    const data = await apiGet('/plugin/range/onprem/providers')
-    rangeProviders.value = Array.isArray(data.providers) ? data.providers : []
-    if (!selectedRangeProviders.value.length && rangeProviders.value.length) {
-      const withImages = rangeProviders.value.find(p => Number(p.image_count || 0) > 0)
-      const chosen = withImages || rangeProviders.value[0]
-      const chosenName = providerName(chosen)
-      selectedRangeProviders.value = chosenName ? [chosenName] : []
-    }
-  } catch (e) {
-    rangeProviders.value = []
-    selectedRangeProviders.value = []
-    rangeError.value = 'Range unavailable'
-  }
-}
 
-async function loadRangeImagesForProvider(provider) {
-  if (!provider) return
-  try {
-    const data = await apiGet(
-      `/plugin/range/onprem/images?provider=${encodeURIComponent(provider)}`
-    )
-    rangeImagesByProvider.value = {
-      ...rangeImagesByProvider.value,
-      [provider]: Array.isArray(data.images) ? data.images : [],
-    }
-  } catch (e) {
-    rangeImagesByProvider.value = { ...rangeImagesByProvider.value, [provider]: [] }
-  }
-}
 
-async function loadRangeImages() {
-  if (!selectedRangeProviders.value.length) {
-    rangeImagesByProvider.value = {}
-    microvmSubstrate.value = {}
-    return
-  }
 
-  await Promise.all(selectedRangeProviders.value.map(loadRangeImagesForProvider))
-
-  const selected = new Set(selectedRangeProviders.value)
-  rangeImagesByProvider.value = Object.fromEntries(
-    Object.entries(rangeImagesByProvider.value).filter(([provider]) => selected.has(provider))
-  )
-
-  if (selected.has('microvm')) {
-    try {
-      microvmSubstrate.value = await apiGet('/plugin/range/microvm/substrate-status')
-    } catch (e) {
-      microvmSubstrate.value = {}
-    }
-  } else {
-    microvmSubstrate.value = {}
-  }
-}
-
-async function loadRangeFeatures() {
-  try {
-    const data = await apiGet('/plugin/range/onprem/features')
-    rangeFeatures.value = data || { default: [], custom: [] }
-  } catch (e) {
-    rangeFeatures.value = { default: [], custom: [] }
-  }
-}
 
 async function loadPlanExecuteContextSources() {
   if (!isPlanExecute.value) return
   await loadPlanStixFiles()
-  await loadRangeProviders()
-  await loadRangeFeatures()
-  await loadRangeImages()
   emitPlanContext()
 }
 
@@ -937,37 +771,14 @@ function emitPlanContext() {
     cti_rag_temperature: selectedPlanStix.value.length ? ctiRagTemperature.value : null,
     cti_rag_max_tool_calls: selectedPlanStix.value.length ? ctiRagMaxToolCalls.value : null,
     cti_rag_max_tokens: selectedPlanStix.value.length ? ctiRagMaxTokens.value : null,
-    build_range: buildRange.value,
-    range_provider: buildRange.value ? rangeProvider.value : '',
-    range_providers: buildRange.value ? selectedRangeProviders.value : [],
-    identity_options: {
-      domain: identityDomain.value,
-      domain_users: identityDomainUsers.value,
-      local_users: identityLocalUsers.value,
-    },
-    agent_start: {
-      mode: agentMode.value,
-      use_cti_entry_host: agentUseCtiEntry.value,
-    },
-    range_capabilities: {
-      providers: rangeProviders.value,
-      features: rangeFeatures.value,
-      images: rangeImages.value,
-      image_count: rangeImages.value.length,
-      images_by_provider: rangeImagesByProvider.value,
-      microvm_substrate: microvmSubstrate.value,
-    },
   })
 }
 
 onMounted(loadPlanExecuteContextSources)
 watch(isPlanExecute, loadPlanExecuteContextSources)
-watch(selectedRangeProviders, loadRangeImages, { deep: true })
 watch(
   [
-    selectedPlanStix, buildRange, selectedRangeProviders, rangeProviders, rangeImagesByProvider,
-    rangeFeatures, microvmSubstrate, identityDomain, identityDomainUsers,
-    identityLocalUsers, agentMode, agentUseCtiEntry, ctiRagModel,
+    selectedPlanStix, ctiRagModel,
   ],
   emitPlanContext,
   { deep: true },
@@ -1209,21 +1020,12 @@ watch(
   color: #d8d1e8;
   padding: 0.12rem 0.35rem;
 }
-.identity-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.25rem;
-  color: #d8d8d8;
-  font-size: 0.78rem;
-}
-.identity-grid input { accent-color: #a970ff; }
 .selected-list {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
 }
-.selected-row,
-.provider-row {
+.selected-row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -1232,11 +1034,6 @@ watch(
   border-radius: 4px;
   background: #201d27;
   padding: 0.35rem 0.45rem;
-}
-.provider-row { align-items: flex-start; }
-.provider-row.selected {
-  border-color: rgba(169, 112, 255, 0.75);
-  background: rgba(139, 92, 246, 0.13);
 }
 .selected-copy {
   display: flex;

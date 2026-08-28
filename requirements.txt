@@ -6,7 +6,7 @@ defusedxml
 dspy
 jinja2
 lxml
-mcp
+mcp>=1.9,<2
 mlflow
 networkx
 numpy

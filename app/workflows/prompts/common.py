@@ -9,7 +9,7 @@ CHAT_HISTORY_DESC = (
     "Prior turns in this chat session, oldest first. Each turn is "
     "labelled 'User:' / 'Assistant:'. Use them to resolve follow-up "
     "references like 'that profile', 'the instance I just created', "
-    "or 'add it to the deployment from earlier'. The current request "
+    "or 'add it to the adversary from earlier'. The current request "
     "still arrives in adversary_emulation_task; chat_history is "
     "context for interpreting it. Empty string on the first turn."
 )

@@ -70,14 +70,27 @@ def apply_litellm_ssl_verify(value):
 
 
 def dspy_lm_kwargs_from_settings(settings: dict) -> dict:
-    """Translate resolved MCP LLM settings into DSPy/LiteLLM kwargs."""
+    """Translate resolved MCP LLM settings into DSPy/LiteLLM kwargs.
+
+    Raises ValueError without an api_base. Every dspy.LM() in the plugin is
+    built from these kwargs, so this is the one place that can guarantee
+    LiteLLM never falls back to https://api.openai.com/v1.
+    """
     settings = settings or {}
+    model = settings.get("model") or _DEFAULTS["model"]
+    api_base = str(settings.get("api_base") or "").strip()
+    if not api_base:
+        raise ValueError(
+            f"Refusing to build an LM for {model} with no api_base: LiteLLM "
+            "would route it to the built-in https://api.openai.com/v1 and "
+            "send the prompt and api_key to a provider this deployment "
+            "never chose. Set MCP_LLM_API_BASE in plugins/mcp/.env."
+        )
     lm_kwargs = {
-        "model": settings.get("model") or _DEFAULTS["model"],
+        "model": model,
         "api_key": settings.get("api_key") or "",
+        "api_base": api_base,
     }
-    if settings.get("api_base"):
-        lm_kwargs["api_base"] = settings.get("api_base")
     if settings.get("temperature") is not None:
         lm_kwargs["temperature"] = settings.get("temperature")
     if settings.get("max_tokens") is not None:
@@ -86,7 +99,7 @@ def dspy_lm_kwargs_from_settings(settings: dict) -> dict:
         lm_kwargs["timeout"] = settings.get("timeout")
 
     provider = settings.get("provider") or "openai_compatible"
-    if provider == "openai_compatible" and settings.get("api_base"):
+    if provider == "openai_compatible":
         lm_kwargs["custom_llm_provider"] = "custom_openai"
 
     apply_litellm_ssl_verify(settings.get("ssl_verify"))

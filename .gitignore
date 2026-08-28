@@ -25,7 +25,7 @@ data/clean/
 data/raw/
 data/outputs_ir/
 data/outputs_stix/
-data/outputs_topology/
+data/stix_cti/
 data/outputs_cad/
 data/stix_bundle.json
 

@@ -37,5 +37,7 @@ Recommended (the measuring stick fills these):
 - `infrastructure_types` — from STIX open vocab `infrastructure-type-ov`: `amplification | anonymization | botnet | command-and-control | control-system | exfiltration | firewall | hosting-malware | hosting-target-lists | phishing | reconnaissance | routers-switches | staging | unknown | workstation`
 - `description`, `aliases`, `kill_chain_phases`, `first_seen`, `last_seen`
 
-For per-host topology (custom — not in STIX core):
-- `x-cti-range-topology` custom object (extension definition included in the bundle) listing `hosts: [{name, role, os, services[], member_of[]}]` — the **deployable** shape the range plugin needs.
+Topology inference was removed: the pipeline no longer emits a per-host
+topology object, and the expected bundles intentionally have none. Extracted
+hosts, accounts and domains become CALDERA facts instead, see
+app/utilities/cti_caldera_facts.py.

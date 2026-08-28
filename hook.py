@@ -178,7 +178,7 @@ async def enable(services):
 
     # AE end-to-end orchestration. Replaces the shell driver as the
     # canonical entry point for the full vision pipeline. See
-    # plugins/mcp/app/workflows/ae_e2e.py for the 12-stage state machine.
+    # plugins/mcp/app/workflows/ae_e2e.py for the stage list.
     app.router.add_route(
         'POST', '/plugin/mcp/workflows/run-ae-end-to-end',
         mcp_api.run_ae_end_to_end,

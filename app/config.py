@@ -1,43 +1,51 @@
 """Parent-side configuration resolver.
 
-Two credentials, three tiers, one resolver:
+Three env-resolved values, three tiers, one resolver:
 
-  CORE_CALDERA_API_KEY   env only. Authenticates the caldera_core MCP
-                         subprocess to the running Caldera REST API.
-  MCP_LLM_API_KEY        env default plus per-session UI override.
-                         Authenticates DSPy / signatures / embeddings to
+  CORE_CALDERA_API_KEY   Authenticates the caldera_core MCP subprocess to
+                         the running Caldera REST API.
+  MCP_LLM_API_KEY        Authenticates DSPy / signatures / embeddings to
                          the LLM provider.
+  MCP_LLM_API_BASE       The OpenAI-compatible endpoint they reach. No
+                         default ships; an unresolved value is refused
+                         rather than falling back to public OpenAI.
 
 Storage tiers:
 
-  conf/default.yml carries non-secret defaults and names of env vars to
-  consult. It never holds credential values.
+  conf/default.yml carries non-secret defaults and the names of env vars
+  to consult. conf/local.yml is overlaid onto it key by key. Neither holds
+  credential values: set_config strips secrets before writing local.yml.
 
   .env carries credential values. It is gitignored. The plugin's hook.py
   loads it once in the parent process; subprocesses inherit.
 
-  The UI submits per-session overrides on each /execute request and never
-  writes back to disk.
+  The UI submits per-session overrides on each /execute request.
 
 Resolution order for an LLM request:
 
   1. yaml defaults (model, api_base, temperature, ...)
-  2. env-resolved api_key (read from the env var named in api_key_env)
-  3. UI overrides (only non-empty fields, only fields not declared
+  2. env indirection, per llm_client.ENV_INDIRECT_FIELDS. Secrets resolve
+     env-first so rotating .env takes effect; endpoints resolve yaml-first
+     so a deployment can pin one on disk.
+  3. UI overrides (non-empty fields only, and only fields not declared
      fields_locked: true in yaml)
 """
 import os
 
 from app.utility.base_world import BaseWorld
 from plugins.mcp.app.dspy_env import coerce_optional_bool
-from plugins.mcp.app.utilities.llm_client import load_config, normalize_openai_api_base
+from plugins.mcp.app.utilities.llm_client import (
+    load_config,
+    normalize_openai_api_base,
+    resolve_env_indirection,
+)
 
 
 _YAML_PATH = 'plugins/mcp/conf/default.yml'
 
 # max_tokens is the per-completion budget DSPy passes to the LM. Each
 # ReAct iteration consumes one completion, and a verbose model on a
-# multi-server tool surface (caldera_core + range = 27 tools) routinely
+# multi-server tool surface (caldera_core + cti_pipeline) routinely
 # produces a long `next_thought` per iteration. With the previous 10k
 # default, those iterations would truncate, the closing parser marker
 # never got emitted, and DSPy's ChatAdapter would fail the whole run.
@@ -89,18 +97,13 @@ def mlflow_settings() -> dict:
     }
 
 
-def llm_defaults() -> dict:
-    """Resolve the LLM block: yaml shape plus api_key from its env var.
+def profile_defaults(profile: str = 'llm') -> dict:
+    """Resolve one LLM profile: yaml shape plus env-resolved credentials.
 
-    api_key is empty string when the env var is unset; the caller decides
+    api_key and api_base are empty when unresolved; the caller decides
     whether that is fatal.
     """
-    cfg = dict(_load_defaults().get('llm') or {})
-    env_var = cfg.pop('api_key_env', None)
-    cfg['api_key'] = os.environ.get(env_var, '') if env_var else cfg.get('api_key', '') or ''
-    if cfg.get('provider', 'openai_compatible') == 'openai_compatible':
-        cfg['api_base'] = normalize_openai_api_base(cfg.get('api_base'))
-    cfg.setdefault('provider', 'openai_compatible')
+    cfg = resolve_env_indirection(_load_defaults().get(profile) or {})
     cfg.setdefault('fields_locked', {})
     for key, fallback in _NUMERIC_FALLBACKS.items():
         cfg.setdefault(key, fallback)
@@ -108,6 +111,11 @@ def llm_defaults() -> dict:
         value = coerce_optional_bool(cfg.get(key))
         cfg[key] = fallback if value is None else value
     return cfg
+
+
+def llm_defaults() -> dict:
+    """The `llm` profile: the default for chat and workflow execution."""
+    return profile_defaults('llm')
 
 
 def _normalise_api_url(url: str) -> str:
@@ -199,22 +207,30 @@ def caldera_connection() -> dict:
 def resolve_llm_config(ui_overrides: dict | None) -> dict:
     """Merge yaml defaults, .env credential, and UI overrides.
 
-    Empty / None UI fields do not override defaults (clearing the UI field
-    is the natural way for a user to fall back to the server default).
+    Empty, whitespace-only and None UI fields do not override defaults
+    (clearing the UI field is the natural way for a user to fall back to
+    the server default).
     Fields declared fields_locked: true in yaml ignore UI overrides
     entirely; the UI also disables those inputs client-side via the
     /defaults endpoint.
 
-    Raises ValueError when no api_key can be resolved from any tier so
-    callers fail loudly instead of attempting an unauthenticated LLM call.
+    Raises ValueError when no api_key or api_base can be resolved from any
+    tier so callers fail loudly instead of attempting an unauthenticated
+    LLM call or silently reaching a provider the deployment never chose.
+    Both checks apply to every provider, including ones this plugin does
+    not recognize.
     """
     base = llm_defaults()
     locked = base.get('fields_locked') or {}
-    overrides = {
-        key: value
-        for key, value in (ui_overrides or {}).items()
-        if value not in ("", None) and not locked.get(key, False)
-    }
+    # Strip first: an api_base of "   " is truthy and normalizes to the
+    # relative path "/v1", which would satisfy the guard below.
+    overrides = {}
+    for key, value in (ui_overrides or {}).items():
+        if isinstance(value, str):
+            value = value.strip()
+        if value in ("", None) or locked.get(key, False):
+            continue
+        overrides[key] = value
     merged = {**base, **overrides}
     for key in _BOOLEAN_FALLBACKS:
         if key in merged:
@@ -226,6 +242,16 @@ def resolve_llm_config(ui_overrides: dict | None) -> dict:
             "No LLM API key. Set MCP_LLM_API_KEY in plugins/mcp/.env or "
             "enter one in the UI's Global Model Configuration."
         )
-    if merged.get('provider', 'openai_compatible') == 'openai_compatible':
-        merged['api_base'] = normalize_openai_api_base(merged.get('api_base'))
+    # provider is unvalidated request input, so normalize before branching.
+    # Only normalization is provider-specific; every provider needs a base.
+    provider = merged.get('provider') or 'openai_compatible'
+    merged['provider'] = provider
+    if provider == 'openai_compatible':
+        merged['api_base'] = normalize_openai_api_base(merged.get('api_base')) or ''
+    if not merged.get('api_base'):
+        raise ValueError(
+            "No LLM api_base. Set MCP_LLM_API_BASE in plugins/mcp/.env, "
+            "pin llm.api_base in conf/local.yml, or enter one in the UI's "
+            "Global Model Configuration."
+        )
     return merged

@@ -15,8 +15,7 @@ services:
 
 The CTID alphv_blackcat plan calls these out explicitly (`Active
 Directory`, `Linux KVM server`, `NetBNMBackup server`, `SQL Server
-Management Studio`, `RDP`) and they drive provisioning decisions on
-the range plugin side. They are *also* mentioned all over the
+Management Studio`, `RDP`). They are *also* mentioned all over the
 Microsoft DART BlackCat blog (`Exchange server`, `Active Directory
 (AD) environment`, `RDP access`, `SMB`, `Outlook Web Access`, `VPN`).
 
