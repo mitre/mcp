@@ -77,10 +77,7 @@ class RAGService:
         adv_step = {}
         
         for obj in stix_bundle.get("objects", []):
-            if obj.get("type") in [
-                "attack-pattern", "malware", "tool", "threat-actor", 
-                "intrusion-set", "identity", "indicator", "report"
-            ]:
+            if obj.get("type") in ["attack-pattern", "threat-actor"]:
                 name = obj.get("name", "")
                 description = obj.get("description", "")
                 

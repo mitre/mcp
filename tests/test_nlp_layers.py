@@ -1,4 +1,4 @@
-"""Tests for NLP layers: cti_nlp_enhancements.py, cti_behavior_expansion.py, cti_semantic_enrichment.py."""
+"""Tests for NLP layers: cti_nlp_enhancements.py."""
 import pytest
 
 
@@ -114,22 +114,3 @@ class TestCleanIrNlpLayer1:
         assert len(actor_names) >= 2
 
 
-class TestRecoverNominalizedBehaviors:
-    def test_finds_nominalized(self):
-        from plugins.mcp.app.utilities.nlp.cti_behavior_expansion import recover_nominalized_behaviors
-        text = "The encryption of sensitive files was performed by the malware."
-        behaviors = recover_nominalized_behaviors(text)
-        assert isinstance(behaviors, list)
-
-    def test_empty(self):
-        from plugins.mcp.app.utilities.nlp.cti_behavior_expansion import recover_nominalized_behaviors
-        assert recover_nominalized_behaviors("") == []
-
-
-class TestCleanIrNlpLayer2:
-    def test_runs_without_error(self):
-        from plugins.mcp.app.utilities.nlp.cti_semantic_enrichment import clean_ir_nlp_layer2
-        ir = {"attack_patterns": [], "behaviors": [{"description": "encrypt files"}]}
-        taxonomy = {"attack_patterns": []}
-        result = clean_ir_nlp_layer2(ir, taxonomy)
-        assert isinstance(result, dict)

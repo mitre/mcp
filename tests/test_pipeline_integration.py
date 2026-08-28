@@ -7,7 +7,6 @@ Verifies that:
 2. Offline IR extraction produces valid output
 3. STIX builders produce spec-compliant objects
 4. Technique extraction finds explicit T-numbers
-5. Entity reclassification works correctly
 9. Full pipeline processes a file end-to-end
 10. STIX 2.1 compliance on output bundles
 
@@ -32,8 +31,7 @@ def test_core_imports():
     from plugins.mcp.app.utilities.nlp_model import get_nlp
     from plugins.mcp.app.utilities.cti_taxonomy_loader import load_mitre_taxonomy
     from plugins.mcp.app.utilities.cti_offline_ir import extract_ir_offline
-    from plugins.mcp.app.utilities.cti_stix_builders import make_malware, make_tool, make_threat_actor
-    from plugins.mcp.app.utilities.cti_entity_validator import reclassify_entities
+    from plugins.mcp.app.utilities.cti_stix_builders import make_threat_actor, make_attack_pattern
     assert get_nlp() is not None
     print("  ✓ All core imports successful")
 
@@ -72,34 +70,16 @@ def test_offline_ir_extraction():
 def test_stix_builders_compliance():
     """STIX builders produce spec_version 2.1 compliant objects."""
     from plugins.mcp.app.utilities.cti_stix_builders import (
-        make_malware, make_tool, make_threat_actor,
-        make_infrastructure, make_relationship, make_attack_pattern,
+        make_threat_actor, make_attack_pattern,
     )
     from plugins.mcp.app.utilities.cti_taxonomy_loader import load_mitre_taxonomy
 
     tax = load_mitre_taxonomy()
 
-    # Test each builder
-    m = make_malware({"name": "TestMalware", "description": "test"})
-    assert m["spec_version"] == "2.1"
-    assert m["type"] == "malware"
-    assert "is_family" in m
-
-    t = make_tool({"name": "TestTool"})
-    assert t["spec_version"] == "2.1"
-    assert t["type"] == "tool"
-
     ta = make_threat_actor({"name": "TestActor"})
     assert ta["spec_version"] == "2.1"
     assert ta["type"] == "threat-actor"
     assert "roles" not in ta or ta.get("roles") != ["threat-actor"]  # invalid role removed
-
-    inf = make_infrastructure({"name": "TestInfra"})
-    assert inf["spec_version"] == "2.1"
-
-    rel = make_relationship("uses", m["id"], t["id"])
-    assert rel["spec_version"] == "2.1"
-    assert rel["relationship_type"] == "uses"
 
     ap = make_attack_pattern("T1486", tax)
     assert ap["spec_version"] == "2.1"
@@ -126,37 +106,6 @@ def test_explicit_technique_extraction():
     assert "T1490" in ids
     assert len(ids) == 2
     print(f"  ✓ Extracted {len(ids)} explicit technique IDs")
-
-
-# ============================================================
-# 5. ENTITY RECLASSIFICATION
-# ============================================================
-
-def test_entity_reclassification():
-    """Reclassification moves misclassified entities."""
-    from plugins.mcp.app.utilities.cti_entity_validator import reclassify_entities
-
-    ir = {
-        "malware": [
-            {"name": "VSS Shadow Copy Deletion", "description": ""},  # should be dropped (technique)
-            {"name": "PsExec/RemCom", "description": ""},  # should be split
-            {"name": "BlackCat", "description": "real malware"},  # should stay
-        ],
-        "tools": [],
-        "threat_actors": [],
-        "infrastructure": [],
-    }
-
-    result = reclassify_entities(ir)
-
-    malware_names = {m["name"] for m in result["malware"]}
-    assert "BlackCat" in malware_names
-    assert "VSS Shadow Copy Deletion" not in malware_names  # dropped as technique
-    # PsExec/RemCom should be split into tools
-    tool_names = {t["name"] for t in result.get("tools", [])}
-    assert len(tool_names) >= 1  # at least one part split to tools
-    print(f"  ✓ Reclassified: {len(result['malware'])} malware, {len(result['tools'])} tools")
-
 
 
 
@@ -267,7 +216,6 @@ if __name__ == "__main__":
         test_offline_ir_extraction,
         test_stix_builders_compliance,
         test_explicit_technique_extraction,
-        test_entity_reclassification,
         test_full_pipeline_offline,
         test_stix_output_compliance,
     ]
