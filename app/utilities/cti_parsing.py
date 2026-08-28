@@ -69,6 +69,8 @@ def build_ir_prompt(cti_text: str) -> str:
 # ---------------------------------------------------------
 
 def clean_raw_to_json(raw: str):
+    if not raw:
+        return None
     raw = raw.strip()
     raw = raw.replace("```json", "").replace("```", "").strip()
 
@@ -170,6 +172,11 @@ def enforce_ir_schema(ir: dict) -> dict:
 async def extract_ir(cti_text: str, debug_path: Path = None) -> dict:
     prompt = build_ir_prompt(cti_text)
     raw = await llm_generate(prompt, profile="cti")
+    if not raw:
+        # Offline or unconfigured: fall back to deterministic extraction rather
+        # than emitting an empty IR the rest of Stage 1 cannot use.
+        from plugins.mcp.app.utilities.cti_offline_ir import extract_ir_offline
+        return enforce_ir_schema(extract_ir_offline(cti_text))
 
     if debug_path:
         with debug_path.open("a", encoding="utf-8") as f:

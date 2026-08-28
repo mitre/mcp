@@ -20,8 +20,8 @@ TAXONOMY_PATH = MCP_ROOT / "app" / "utilities" / "cti_taxonomy" / "enterprise_at
 @pytest.fixture(scope="session")
 def nlp():
     """Shared spaCy model (loaded once per test session)."""
-    from plugins.mcp.app.utilities.nlp_model import nlp
-    return nlp
+    from plugins.mcp.app.utilities.nlp_model import get_nlp
+    return get_nlp()
 
 
 @pytest.fixture(scope="session")
