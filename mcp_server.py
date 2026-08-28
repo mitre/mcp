@@ -337,21 +337,38 @@ def _bundle_actor_name(bundle: dict) -> Optional[str]:
     return None
 
 
-# ATT&CK Enterprise tactic order. atomic_ordering is executed top to bottom,
-# so sorting by technique id would encrypt the estate before collecting
-# credentials from it.
-_TACTIC_ORDER = (
-    "initial-access", "execution", "persistence", "privilege-escalation",
-    "defense-evasion", "credential-access", "discovery", "lateral-movement",
-    "collection", "command-and-control", "exfiltration", "impact",
+# atomic_ordering is executed top to bottom, so an unordered list encrypts the
+# estate before it persists on it. Rank by the ability's ATT&CK technique
+# rather than its CALDERA tactic: CALDERA's vocabulary is its own, and its
+# three most common values (multiple, stealth, defense-impairment) have no
+# ATT&CK counterpart, so 43 percent of the stockpile would tie for last.
+# ATT&CK STIX names the kill-chain phases but not their sequence, so the
+# sequence itself has to be stated.
+_KILL_CHAIN = (
+    "reconnaissance", "resource-development", "initial-access", "execution",
+    "persistence", "privilege-escalation", "defense-evasion",
+    "credential-access", "discovery", "lateral-movement", "collection",
+    "command-and-control", "exfiltration", "impact",
 )
 
 
-def _tactic_rank(tactic: str) -> int:
-    try:
-        return _TACTIC_ORDER.index((tactic or "").lower().strip())
-    except ValueError:
-        return len(_TACTIC_ORDER)
+def _technique_rank(technique_id: str, taxonomy: dict) -> int:
+    """Earliest kill-chain phase this technique belongs to.
+
+    A technique can span phases (T1547.001 is persistence and
+    privilege-escalation); the earliest is the one that has to run first.
+    """
+    entry = (taxonomy.get("attack_id_index") or {}).get((technique_id or "").strip())
+    if not entry:
+        parent = (technique_id or "").split(".")[0]
+        entry = (taxonomy.get("attack_id_index") or {}).get(parent)
+    ranks = [
+        _KILL_CHAIN.index(p["phase_name"])
+        for p in (entry or {}).get("kill_chain_phases") or []
+        if p.get("kill_chain_name") == "mitre-attack"
+        and p.get("phase_name") in _KILL_CHAIN
+    ]
+    return min(ranks) if ranks else len(_KILL_CHAIN)
 
 
 def _technique_matches(report_id: str, ability_id: str) -> bool:
@@ -448,7 +465,7 @@ async def build_adversary(stix_path: str, platforms: Optional[list] = None,
         return {"error": f"could not read abilities: {e}"}
 
     by_technique: dict[str, list[str]] = {}
-    tactic_of: dict[str, str] = {}
+    technique_of: dict[str, str] = {}
     covered: set[str] = set()
     excluded_techniques: set[str] = set()
     available = 0
@@ -467,7 +484,7 @@ async def build_adversary(stix_path: str, platforms: Optional[list] = None,
             continue
         available += 1
         covered.update(hits)
-        tactic_of[ability_id] = ab.get("tactic") or ""
+        technique_of[ability_id] = tid
         # Bucket under every technique the ability covers, not just the first.
         # A bundle naming both a parent and its sub-techniques otherwise puts
         # them all in one bucket, so the cap starves every technique but one.
@@ -479,8 +496,14 @@ async def build_adversary(stix_path: str, platforms: Optional[list] = None,
     matched = list(dict.fromkeys(
         aid for tid in sorted(by_technique) for aid in by_technique[tid]
     ))
-    # Stable within a tactic so the selection stays reproducible.
-    matched.sort(key=lambda aid: (_tactic_rank(tactic_of.get(aid, "")), aid))
+    try:
+        from plugins.mcp.app.utilities.cti_taxonomy_loader import load_mitre_taxonomy
+        taxonomy = load_mitre_taxonomy()
+    except Exception as e:
+        log.warning("kill-chain ordering unavailable: %r", e)
+        taxonomy = {}
+    # Stable within a phase so the selection stays reproducible.
+    matched.sort(key=lambda aid: (_technique_rank(technique_of.get(aid, ""), taxonomy), aid))
     unmatched = sorted(set(techniques) - covered - excluded_techniques)
     platform_excluded = sorted(excluded_techniques - covered)
 

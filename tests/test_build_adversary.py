@@ -224,6 +224,57 @@ async def test_selection_is_deterministic(stub_caldera, tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_sub_technique_in_report_matches_parent_ability(stub_caldera, tmp_path):
+    # Modern CTI cites sub-techniques while much of the stockpile is tagged
+    # with the bare parent. Losing this direction reports the stockpile as
+    # having no coverage when it does.
+    stub_caldera["abilities"] = [_ability("ab-1", "T1059")]
+    path = _write(tmp_path, _bundle(["T1059.001"]))
+
+    r = await srv.build_adversary(path, platforms=["windows"])
+
+    assert r["matched"] == ["ab-1"]
+    assert r["unmatched_techniques"] == []
+
+
+@pytest.mark.asyncio
+async def test_abilities_run_in_kill_chain_order(stub_caldera, tmp_path):
+    # atomic_ordering is executed top to bottom. Impact must not precede the
+    # persistence and credential access it depends on.
+    stub_caldera["abilities"] = [
+        _ability("z-impact", "T1486"),       # impact
+        _ability("a-persist", "T1547.001"),  # persistence
+        _ability("m-creds", "T1003.001"),    # credential-access
+    ]
+    path = _write(tmp_path, _bundle(["T1486", "T1547.001", "T1003.001"]))
+
+    r = await srv.build_adversary(path, platforms=["windows"])
+
+    assert r["matched"] == ["a-persist", "m-creds", "z-impact"], (
+        "ordering must come from the ATT&CK kill chain, not ability id"
+    )
+
+
+@pytest.mark.asyncio
+async def test_ordering_survives_calderas_own_tactic_vocabulary(stub_caldera, tmp_path):
+    # CALDERA's three most common tactic values (multiple, stealth,
+    # defense-impairment) have no ATT&CK counterpart, so ranking on `tactic`
+    # dropped 43 percent of the stockpile into an unordered tail.
+    impact = _ability("a-impact", "T1486")
+    impact["tactic"] = "impact"
+    stealth = _ability("z-stealth", "T1070.001")
+    stealth["tactic"] = "stealth"
+    stub_caldera["abilities"] = [impact, stealth]
+    path = _write(tmp_path, _bundle(["T1486", "T1070.001"]))
+
+    r = await srv.build_adversary(path, platforms=["windows"])
+
+    assert r["matched"] == ["z-stealth", "a-impact"], (
+        "defense-evasion must precede impact regardless of CALDERA tactic names"
+    )
+
+
+@pytest.mark.asyncio
 async def test_sibling_sub_techniques_do_not_match(stub_caldera, tmp_path):
     # T1059.001 is PowerShell and T1059.003 is the Windows command shell.
     # Folding them together would run the wrong technique.
