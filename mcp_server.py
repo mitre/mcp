@@ -335,11 +335,14 @@ def _technique_matches(report_id: str, ability_id: str) -> bool:
     """A report naming T1059 should reach T1059.001 abilities and vice versa.
 
     Reports and the stockpile disagree on granularity often enough that an
-    exact match alone reports coverage the operator actually has.
+    exact match alone understates the coverage the operator has. Only
+    parent-to-child counts: T1059.001 and T1059.003 are siblings, and
+    treating them as equivalent would run the wrong technique.
     """
     if report_id == ability_id:
         return True
-    return report_id.split(".")[0] == ability_id.split(".")[0]
+    return (report_id == ability_id.split(".")[0]
+            or ability_id == report_id.split(".")[0])
 
 
 @mcp.tool(name="cti_pipeline_build_adversary")
@@ -433,9 +436,13 @@ async def build_adversary(stix_path: str, platforms: Optional[list] = None,
             continue
         available += 1
         covered.update(hits)
-        bucket = by_technique.setdefault(hits[0], [])
-        if len(bucket) < max(1, max_per_technique):
-            bucket.append(ability_id)
+        # Bucket under every technique the ability covers, not just the first.
+        # A bundle naming both a parent and its sub-techniques otherwise puts
+        # them all in one bucket, so the cap starves every technique but one.
+        for hit in hits:
+            bucket = by_technique.setdefault(hit, [])
+            if len(bucket) < max(1, max_per_technique):
+                bucket.append(ability_id)
 
     matched = list(dict.fromkeys(
         aid for tid in sorted(by_technique) for aid in by_technique[tid]
