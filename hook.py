@@ -204,11 +204,3 @@ async def enable(services):
     app.router.add_route('GET',  '/plugin/mcp/cti/raw',        mcp_api.list_cti_raw)
     app.router.add_route('POST', '/plugin/mcp/cti/raw/delete', mcp_api.delete_cti_raw)
     app.router.add_route('POST', '/plugin/mcp/cti/run',        mcp_api.cti_run)
-
-    # AE end-to-end orchestration. Replaces the shell driver as the
-    # canonical entry point for the full vision pipeline. See
-    # plugins/mcp/app/workflows/ae_e2e.py for the stage list.
-    app.router.add_route(
-        'POST', '/plugin/mcp/workflows/run-ae-end-to-end',
-        mcp_api.run_ae_end_to_end,
-    )

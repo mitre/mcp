@@ -872,59 +872,6 @@ class McpAPI:
             self.log.error(f"[MCP] Failed to save config: {e}")
             return web.json_response({"error": str(e)}, status=500)
 
-    # ===== AE end-to-end workflow runner =====
-
-    async def run_ae_end_to_end(self, request):
-        """POST /plugin/mcp/workflows/run-ae-end-to-end.
-
-        Invokes the in-process ``ae-e2e`` workflow directly (bypassing the
-        DSPy / LM pipeline used by /plugin/mcp/execute). Runs every stage to
-        completion in the request handler and returns the final state dict so
-        callers can show stage statuses without polling /status.
-
-        Request body (all optional except cti_source for fresh runs):
-            {
-              "cti_source": "raw/uploads/report.pdf",
-              "dry_run": false,
-              "start_stage": "cti",
-              "only_stage": null,
-              "checkpoint_path": "/tmp/e2e_full_vision_state.json",
-              "elk_url": "http://192.168.66.1:9200",
-              "kibana_url": "http://192.168.66.1:5601",
-              "adversary_slug": "alphv_blackcat",
-              "agents_timeout": 600,
-              "operation_timeout": 1800,
-              "cti_timeout": 900
-            }
-        """
-        try:
-            data = await request.json() if request.body_exists else {}
-        except Exception as e:
-            return web.json_response(
-                {"error": f"invalid JSON body: {e}"}, status=400,
-            )
-        if not isinstance(data, dict):
-            return web.json_response(
-                {"error": "request body must be a JSON object"}, status=400,
-            )
-
-        # ae-e2e is intentionally not registered in the workflow registry —
-        # it duplicates plan_execute's card in the UI. The endpoint bypasses
-        # the registry and instantiates AEEndToEndWorkflow directly with our
-        # services dict (workflow.run requires it).
-        try:
-            from plugins.mcp.app.workflows.ae_e2e import AEEndToEndWorkflow
-            workflow = AEEndToEndWorkflow(self.services)
-            result = await workflow.run(**data)
-            return web.json_response(result)
-        except TypeError as e:
-            return web.json_response(
-                {"error": f"bad workflow arguments: {e}"}, status=400,
-            )
-        except Exception as e:
-            self.log.exception("[MCP] ae-e2e workflow failed")
-            return web.json_response({"error": str(e)}, status=500)
-
     async def download_stix_cti(self, request):
         try:
             data = await request.json()
