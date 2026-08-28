@@ -1,20 +1,32 @@
+# Declared here only when this plugin imports it directly.
+#
+# Packages CALDERA core pins with == take a >= floor here, never a pin, so
+# a plugin never contests a core-owned version. Everything below is either
+# core-owned (floor) or plugin-only (unpinned).
+#
+# Two things pip cannot do, both needed for a working install:
+#   python -m spacy download en_core_web_lg
+#   npm --prefix plugins/magma install && npm --prefix plugins/magma run build
+
+# Core-owned: floors only.
+aiohttp>=3.14.1
+aiohttp-jinja2>=1.5.1
+jinja2>=3.1.6
+lxml>=6.1.0
+PyYAML>=6.0
+requests>=2.32.0
+
+# Plugin-only.
 aiofiles
-aiohttp
-aiohttp-jinja2
 beautifulsoup4
-defusedxml
 dspy
-jinja2
-lxml
+litellm
 mcp>=1.9,<2
 mlflow
-networkx
 numpy
-pandas
 psutil
+pydantic
 python-dotenv
-PyYAML
-requests
+rapidfuzz
 spacy
-stix2
 trafilatura
