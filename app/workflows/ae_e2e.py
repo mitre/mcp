@@ -124,7 +124,7 @@ class AEEndToEndWorkflow:
         cti_timeout: int = 900,
         **_extra,
     ) -> dict:
-        """Run the 12-stage pipeline end-to-end.
+        """Run the pipeline end-to-end.
 
         cti_source: path (absolute or repo-relative) to a CTI document to
             upload. Required unless start_stage > 'cti' or a previous run's
@@ -156,6 +156,8 @@ class AEEndToEndWorkflow:
         if only_stage:
             order = [only_stage]
         else:
+            if start_stage and start_stage not in STAGES:
+                raise ValueError(f"unknown start_stage {start_stage!r}; valid: {STAGES}")
             start_idx = STAGES.index(start_stage) if start_stage else 0
             order = STAGES[start_idx:]
 
@@ -539,12 +541,6 @@ class AEEndToEndWorkflow:
         _DEFAULT_REPORT.write_text("\n".join(lines), encoding="utf-8")
         return {"report_path": str(_DEFAULT_REPORT), "dry_run": ctx["dry_run"]}
 
-
-# ----------------------------------------------------------------------
-# Inventory helper. Lifted verbatim from scripts/e2e_full_vision_lib.py
-# so the inventory the workflow generates matches what the timestone
-# connection plugin expects.
-# ----------------------------------------------------------------------
 
 
 # ----------------------------------------------------------------------

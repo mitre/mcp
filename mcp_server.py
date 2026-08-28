@@ -28,6 +28,7 @@ import json
 import logging
 import os
 import sys
+import uuid
 from pathlib import Path
 from typing import Any, Optional
 
@@ -349,7 +350,8 @@ async def fuse_cti_bundles(stix_paths: list[str]) -> dict:
 
 @mcp.tool(name="cti_pipeline_build_source")
 @_stdout_safe
-async def build_source(stix_path: str, source_name: Optional[str] = None) -> dict:
+async def build_source(stix_path: str, source_name: Optional[str] = None,
+                       commit: bool = False) -> dict:
     """Turn a STIX bundle into a CALDERA fact source.
 
     Seeds an operation with the hosts, accounts and domains the report
@@ -357,14 +359,22 @@ async def build_source(stix_path: str, source_name: Optional[str] = None) -> dic
     placeholder values. Nothing is invented; a bundle that names none of
     these yields no facts.
 
+    Previews by default. remote.host.ip is a live target (stockpile nmaps and
+    SMB-mounts it) and a report names the attacker's C2 and other victims
+    beside the estate, so review the facts before committing.
+
     Args:
         stix_path: path to a stage 2 STIX bundle.
         source_name: name for the created source. Defaults to the bundle stem.
+        commit: create the source. Leave false to preview the facts.
 
     Returns:
-        {source_id, name, fact_count, facts, response}
+        {facts, fact_count, routable_addresses, committed, source_id, name}
     """
-    from plugins.mcp.app.utilities.cti_caldera_facts import bundle_to_facts
+    from plugins.mcp.app.utilities.cti_caldera_facts import (
+        bundle_to_facts,
+        routable_addresses,
+    )
 
     if not stix_path:
         return {"error": "stix_path is required"}
@@ -388,7 +398,24 @@ async def build_source(stix_path: str, source_name: Optional[str] = None) -> dic
         }
 
     name = (source_name or "").strip() or f"cti-{p.stem}"
-    body = {"name": name, "facts": facts}
+    routable = routable_addresses(facts)
+
+    if not commit:
+        return {
+            "committed": False,
+            "name": name,
+            "fact_count": len(facts),
+            "facts": facts,
+            "routable_addresses": routable,
+            "stix_path": str(p),
+            "note": ("preview only, call again with commit=true to create. "
+                     "Routable addresses become live scan and mount targets."),
+        }
+
+    # SourceSchema's pre_load stamps every fact with input_data["id"], so a
+    # body without one raises KeyError before validation and returns a 500.
+    source_id = str(uuid.uuid4())
+    body = {"id": source_id, "name": name, "facts": facts}
 
     import aiohttp
     url = _caldera_base_url() + "sources"
@@ -411,10 +438,12 @@ async def build_source(stix_path: str, source_name: Optional[str] = None) -> dic
         return {"error": f"source creation request failed: {e}", "url": url}
 
     return {
-        "source_id": (payload or {}).get("id"),
+        "committed": True,
+        "source_id": source_id,
         "name": name,
         "fact_count": len(facts),
         "facts": facts,
+        "routable_addresses": routable,
         "stix_path": str(p),
     }
 

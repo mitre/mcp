@@ -10,6 +10,7 @@ synthesized to fill a gap.
 """
 from __future__ import annotations
 
+import ipaddress
 import re
 from typing import Iterable, Optional
 
@@ -88,6 +89,27 @@ def _domain_facts(obj: dict) -> Iterable[tuple]:
     name = _clean(obj.get("name"))
     if name and _is_hostname(name):
         yield TRAIT_ORG_DOMAIN, name
+
+
+def is_routable(value: str) -> bool:
+    """True for a publicly routable address.
+
+    remote.host.ip is a live target: stockpile nmaps it and SMB-mounts it.
+    A report names the attacker's C2 and other victims alongside the estate,
+    so these are surfaced for review rather than seeded silently.
+
+    is_global excludes private, loopback, link-local, CGNAT and reserved space
+    in one predicate, and covers IPv6.
+    """
+    try:
+        return ipaddress.ip_address(value).is_global
+    except ValueError:
+        return False
+
+
+def routable_addresses(facts: list[dict]) -> list[str]:
+    return [f["value"] for f in facts
+            if f["trait"] == TRAIT_HOST_IP and is_routable(f["value"])]
 
 
 def bundle_to_facts(bundle: dict) -> list[dict]:

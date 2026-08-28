@@ -861,26 +861,22 @@ class McpAPI:
         """POST /plugin/mcp/workflows/run-ae-end-to-end.
 
         Invokes the in-process ``ae-e2e`` workflow directly (bypassing the
-        DSPy / LM pipeline used by /plugin/mcp/execute). The whole 12-stage
-        state machine runs to completion in the request handler and returns
-        the final state dict so callers can show stage statuses immediately
-        without polling /status.
+        DSPy / LM pipeline used by /plugin/mcp/execute). Runs every stage to
+        completion in the request handler and returns the final state dict so
+        callers can show stage statuses without polling /status.
 
         Request body (all optional except cti_source for fresh runs):
             {
-              "cti_source": "mcpBKP/.../blackcat.pdf",
-              "profile_name": "blackcat-e2e",
+              "cti_source": "raw/uploads/report.pdf",
               "dry_run": false,
-              "start_stage": "deploy",
+              "start_stage": "cti",
               "only_stage": null,
               "checkpoint_path": "/tmp/e2e_full_vision_state.json",
               "elk_url": "http://192.168.66.1:9200",
               "kibana_url": "http://192.168.66.1:5601",
-              "microvm_base": "/tmp/timestone-microvms",
               "adversary_slug": "alphv_blackcat",
               "agents_timeout": 600,
               "operation_timeout": 1800,
-              "deploy_timeout": 1200,
               "cti_timeout": 900
             }
         """

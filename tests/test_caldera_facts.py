@@ -105,3 +105,56 @@ def test_usernames_stay_case_sensitive():
         {"type": "user-account", "id": "user-account--2", "user_id": "administrator"},
     ))
     assert len(facts) == 2
+
+
+def test_source_body_loads_through_calderas_own_schema():
+    """SourceSchema's pre_load stamps facts with input_data["id"], so a body
+    without one raises KeyError before validation and returns a 500."""
+    import uuid
+    from app.objects.c_source import SourceSchema
+
+    facts = bundle_to_facts(_bundle(
+        {"type": "infrastructure", "id": "infrastructure--1", "name": "DC01"},
+        {"type": "user-account", "id": "user-account--1", "user_id": "svc",
+         "x_cti_domain": "CONTOSO"},
+    ))
+    body = {"id": str(uuid.uuid4()), "name": "cti-test", "facts": facts}
+
+    source = SourceSchema().load(body)
+    assert len(source.facts) == len(facts)
+    assert all(f.source == body["id"] for f in source.facts)
+
+
+def test_a_body_without_an_id_is_rejected():
+    """Pins the failure mode so the id can never be dropped again."""
+    import pytest
+    from app.objects.c_source import SourceSchema
+
+    with pytest.raises(KeyError):
+        SourceSchema().load({
+            "name": "cti-test",
+            "facts": [{"trait": "remote.host.name", "value": "dc01"}],
+        })
+
+
+def test_routable_addresses_are_isolated_from_private_estate():
+    """remote.host.ip is a live target: stockpile nmaps and SMB-mounts it."""
+    from plugins.mcp.app.utilities.cti_caldera_facts import routable_addresses
+
+    facts = bundle_to_facts(_bundle(
+        {"type": "infrastructure", "id": "infrastructure--1",
+         "name": "dc01", "x_cti_ip": "10.20.10.4"},
+        {"type": "infrastructure", "id": "infrastructure--2",
+         "name": "c2", "x_cti_ip": "176.59.1.18"},
+    ))
+    assert routable_addresses(facts) == ["176.59.1.18"]
+
+
+def test_loopback_and_link_local_are_not_treated_as_routable():
+    from plugins.mcp.app.utilities.cti_caldera_facts import is_routable
+
+    for value in ("127.0.0.1", "169.254.1.1", "10.0.0.1", "192.168.1.1",
+                  "172.16.0.1", "100.64.0.1", "not-an-ip", ""):
+        assert not is_routable(value), value
+    for value in ("8.8.8.8", "176.59.1.18"):
+        assert is_routable(value), value
