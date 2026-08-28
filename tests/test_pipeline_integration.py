@@ -8,7 +8,6 @@ Verifies that:
 3. STIX builders produce spec-compliant objects
 4. Technique extraction finds explicit T-numbers
 5. Entity reclassification works correctly
-7. D3FEND validation loads and filters
 9. Full pipeline processes a file end-to-end
 10. STIX 2.1 compliance on output bundles
 
@@ -34,8 +33,6 @@ def test_core_imports():
     from plugins.mcp.app.utilities.cti_taxonomy_loader import load_mitre_taxonomy
     from plugins.mcp.app.utilities.cti_offline_ir import extract_ir_offline
     from plugins.mcp.app.utilities.cti_stix_builders import make_malware, make_tool, make_threat_actor
-    from plugins.mcp.app.utilities.cti_defend_validation import validate_techniques_by_tactic
-    from plugins.mcp.app.utilities.cti_ontology_inference import infer_techniques_from_entities
     from plugins.mcp.app.utilities.cti_entity_validator import reclassify_entities
     assert get_nlp() is not None
     print("  ✓ All core imports successful")
@@ -162,32 +159,6 @@ def test_entity_reclassification():
 
 
 
-# ============================================================
-# 7. D3FEND TACTIC VALIDATION
-# ============================================================
-
-def test_defend_tactic_validation():
-    """D3FEND validation loads ontology and filters techniques."""
-    from plugins.mcp.app.utilities.cti_defend_validation import (
-        validate_techniques_by_tactic, extract_tactic_signals,
-    )
-
-    text = "The ransomware encrypts files and deletes shadow copies."
-    tactics = extract_tactic_signals(text)
-    assert "Impact" in tactics
-
-    techniques = [
-        {"id": "T1486", "name": "Data Encrypted for Impact", "source": "ontology-inference"},
-        {"id": "T1056.001", "name": "Keylogging", "source": "ontology-inference"},  # Collection tactic
-    ]
-
-    filtered = validate_techniques_by_tactic(techniques, text, strict=True)
-    # T1486 should survive (Impact is in text), T1056.001 might be filtered (Collection not in text)
-    assert len(filtered) >= 1
-    assert any(t["id"] == "T1486" for t in filtered)
-    print(f"  ✓ D3FEND validation: {len(techniques)} → {len(filtered)} techniques")
-
-
 
 # ============================================================
 # 9. FULL PIPELINE END-TO-END (OFFLINE)
@@ -297,9 +268,6 @@ if __name__ == "__main__":
         test_stix_builders_compliance,
         test_explicit_technique_extraction,
         test_entity_reclassification,
-        test_relationship_extractor,
-        test_defend_tactic_validation,
-        test_precision_gate_edge_cases,
         test_full_pipeline_offline,
         test_stix_output_compliance,
     ]

@@ -14,7 +14,6 @@ pandas
 psutil
 python-dotenv
 PyYAML
-rdflib
 requests
 spacy
 stix2

@@ -1,3 +1,0 @@
-ERROR	file:./src/queries/missing-def-tech-definition.rq
-ERROR	file:./src/queries/missing-dao-comment.rq
-ERROR	file:./src/queries/missing-d3fend-property-comment.rq
