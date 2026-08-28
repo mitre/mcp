@@ -29,6 +29,9 @@ Resolution order for an LLM request:
      so a deployment can pin one on disk.
   3. UI overrides (non-empty fields only, and only fields not declared
      fields_locked: true in yaml)
+
+The Caldera REST connection auto-resolves from caldera's own main config, so
+a stock deployment configures nothing. See caldera_connection().
 """
 import os
 
@@ -159,46 +162,110 @@ def _read_caldera_main_config_from_disk() -> dict:
     return {}
 
 
-def _caldera_url_from_server_config() -> str:
+def _caldera_main_config() -> dict:
+    """Caldera's `main` config, from the running server or parsed from disk.
+
+    get_config() raises KeyError in a subprocess, which never ran server.py.
+    """
     try:
         main = BaseWorld.get_config() or {}
     except Exception:
         main = {}
+    return main or _read_caldera_main_config_from_disk()
 
-    # If BaseWorld is empty (we're running as a subprocess outside the
-    # caldera server process), fall back to parsing the main config
-    # files from disk so the URL still picks up the operator's port
-    # override (e.g. -E local with port: 8788) instead of defaulting
-    # to 8888.
-    if not main:
-        main = _read_caldera_main_config_from_disk()
 
-    # For MCP's local REST calls, always target localhost on the port
-    # from caldera's main config. We deliberately DON'T use
-    # `app.contact.http` here even though it carries a fully-formed URL:
-    # that field is the URL the operator wants *sandcat agents* (running
-    # inside the bridge network) to call home on — typically the
-    # bridge-side IP (e.g. http://10.10.0.1:8788). MCP and caldera run on
-    # the same host, so localhost:<port> is always reachable, never
-    # blocked by an iptables forward rule, and removes one source of
-    # config drift between sandcat callbacks and MCP API calls.
-    port = main.get('port') or 8888
-    return _normalise_api_url(f'http://localhost:{port}')
+def _dialable_host(host) -> str:
+    """Turn caldera's bind address into one we can connect to.
+
+    A wildcard bind means "every interface" and is not routable.
+    """
+    host = str(host or '').strip()
+    if host in ('', '0.0.0.0', '*'):
+        return '127.0.0.1'
+    if host in ('::', '[::]'):
+        return '[::1]'
+    if ':' in host and not host.startswith('['):
+        return f'[{host}]'  # bare IPv6 literal; unbracketed it cannot carry a port
+    return host
+
+
+def _caldera_url_from_server_config() -> str:
+    """Build the REST base url from the host and port caldera binds to.
+
+    Not `app.contact.http`: that is the callback url for sandcat agents,
+    usually a bridge-side IP, and it is mutable at runtime. host and port are
+    what server.py hands to web.TCPSite, and caldera refuses to change either.
+    """
+    main = _caldera_main_config()
+    return _normalise_api_url(
+        f"http://{_dialable_host(main.get('host'))}:{main.get('port') or 8888}"
+    )
+
+
+_STOCK_API_KEY = 'ADMIN123'
+
+# argon2 verify costs ~33ms and the config never changes mid-process.
+_key_verdicts: dict = {}
+
+
+def _verify_key_against_core(candidate: str):
+    """Would the running caldera accept `candidate`? None if we cannot tell.
+
+    Caldera stores api_key_red/blue argon2-hashed and verifies the submitted
+    plaintext against the hash, so the stored value is never itself a usable
+    key. Ask its own hasher, in-process. Caldera <= 5.3.0 stored plaintext.
+    """
+    if not candidate:
+        return None
+    if candidate in _key_verdicts:
+        return _key_verdicts[candidate]
+
+    main = _caldera_main_config()
+    stored = [s for s in (main.get('api_key_red'), main.get('api_key_blue'))
+              if isinstance(s, str) and s]
+    if not stored:
+        return None
+
+    hashed = [s for s in stored if s.startswith('$argon2id$')]
+    if hashed:
+        try:
+            from app.utility.config_util import verify_hash
+        except Exception:
+            return None
+        verdict = any(verify_hash(s, candidate) for s in hashed)
+    else:
+        verdict = candidate in stored
+
+    _key_verdicts[candidate] = verdict
+    return verdict
 
 
 def caldera_connection() -> dict:
-    """Resolve the Caldera REST connection: {url, api_key}.
+    """Resolve the Caldera REST connection from caldera's own config.
 
-    Both come from env vars whose names are declared in yaml's caldera
-    block. Falls back to local-dev values when the env vars are unset
-    so a fresh checkout works without configuration.
+    Returns {url, api_key, key_valid, url_env, api_key_env}.
+
+    key_valid is diagnostic only: True/False/None for unchecked. The key is
+    returned either way and hook.py reports a mismatch, rather than swapping
+    in one the operator never configured. Both env vars keep top precedence.
     """
     cfg = dict(_load_defaults().get('caldera') or {})
     url_var = cfg.get('url_env', 'CALDERA_URL')
     key_var = cfg.get('api_key_env', 'CORE_CALDERA_API_KEY')
+
+    # Normalise the override too: raw, a missing /api/v2/ suffix hits the
+    # login page and returns HTML with a 200.
+    url_override = os.environ.get(url_var)
+    url = _normalise_api_url(url_override) or _caldera_url_from_server_config()
+
+    api_key = os.environ.get(key_var) or _STOCK_API_KEY
+    # An override may point at another caldera, whose keys are not ours to check.
+    key_valid = None if url_override else _verify_key_against_core(api_key)
+
     return {
-        'url': os.environ.get(url_var) or _caldera_url_from_server_config(),
-        'api_key': os.environ.get(key_var, 'ADMIN123'),
+        'url': url,
+        'api_key': api_key,
+        'key_valid': key_valid,
         'url_env': url_var,
         'api_key_env': key_var,
     }

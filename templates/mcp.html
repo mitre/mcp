@@ -26,8 +26,17 @@
                 </li>
                 <li class="mt-2">
                     <strong>Caldera REST:</strong>
-                    <code>{{ caldera_url }}</code>
-                    &middot; key from <code>{{ caldera_api_key_env }}</code>
+                    {% if caldera_key_rejected %}
+                        <span class="tag is-warning is-light">key rejected</span>
+                        &nbsp;<code>{{ caldera_url }}</code> does not accept the
+                        configured key. Set <code>{{ caldera_api_key_env }}</code>
+                        in <code>plugins/mcp/.env</code> to this server's API_TOKEN,
+                        printed once in the caldera log when
+                        <code>conf/local.yml</code> was generated.
+                    {% else %}
+                        <span class="tag is-success is-light">resolved</span>
+                        &nbsp;<code>{{ caldera_url }}</code>
+                    {% endif %}
                 </li>
                 <li class="mt-2">
                     <strong>MCP servers discovered:</strong> {{ server_count }}

@@ -116,14 +116,20 @@ Forwarded by the parent (see
 
 | Env var | Meaning |
 |---|---|
-| `CALDERA_URL` | Base URL of the Caldera REST API (`http://localhost:8888/api/v2/` for local dev) |
-| `CORE_CALDERA_API_KEY` | Admin key for Caldera REST (`ADMIN123` default) |
+| `CALDERA_URL` | Base URL of the Caldera REST API, always suffixed `/api/v2/`. Resolved from the host and port Caldera binds to |
+| `CORE_CALDERA_API_KEY` | Key for Caldera REST, resolved to whichever value Caldera's own `api_key_red` / `api_key_blue` accepts |
 | `DSPY_MODEL`, `DSPY_API_KEY`, `DSPY_API_BASE`, `DSPY_TEMPERATURE`, `DSPY_MAX_TOKENS` | LLM credentials, only if your tools call back into DSPy (e.g. for command synthesis) |
 | `PYTHONPATH` | Includes the venv's `site-packages` |
 
 **Do not** call `dotenv.load_dotenv()` inside the subprocess. The parent
 loads `.env` once at plugin enable; the subprocess inherits the
 environment. Re-loading masks parent overrides.
+
+Both Caldera variables are resolved by the parent from Caldera's own
+config, so read them and do not substitute defaults of your own. In
+particular, never fall back to `ADMIN123`: Caldera hashes its API keys at
+startup, and any server whose `conf/local.yml` was generated has a key
+that literal will never match.
 
 If your server needs DSPy itself (rare — only when your tools generate
 content with the LLM), import the lazy bootstrap from the MCP plugin's
@@ -145,9 +151,12 @@ import requests
 
 class CalderaClient:
     def __init__(self):
-        self.url = os.environ.get("CALDERA_URL", "http://localhost:8888/api/v2/")
+        # Both are resolved by the parent from Caldera's own config. A
+        # hardcoded default here would silently 401 on any server whose
+        # conf/local.yml was generated, so fail loudly instead.
+        self.url = os.environ["CALDERA_URL"]
         self.headers = {
-            "KEY": os.environ.get("CORE_CALDERA_API_KEY", "ADMIN123"),
+            "KEY": os.environ["CORE_CALDERA_API_KEY"],
             "Content-Type": "application/json",
         }
     def get(self, endpoint):
@@ -533,9 +542,13 @@ SERVER  = Path(__file__).resolve().parents[1] / "mcp_server.py"
 
 @pytest.mark.asyncio
 async def test_my_server_spawns_and_lists_tools():
+    # Resolve the same way the parent does rather than hardcoding, so this
+    # test spawns against whatever Caldera the checkout is configured for.
+    from plugins.mcp.app.config import caldera_connection
+    caldera = caldera_connection()
     env = os.environ.copy()
-    env.setdefault("CALDERA_URL", "http://localhost:8888/api/v2/")
-    env.setdefault("CORE_CALDERA_API_KEY", "ADMIN123")
+    env.setdefault("CALDERA_URL", caldera["url"])
+    env.setdefault("CORE_CALDERA_API_KEY", caldera["api_key"])
     params = StdioServerParameters(command=VENV_PY, args=[str(SERVER)], env=env)
     async with stdio_client(params) as (r, w):
         async with ClientSession(r, w) as session:

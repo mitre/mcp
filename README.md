@@ -123,6 +123,8 @@ cp plugins/mcp/.env.example plugins/mcp/.env
 
 Both may instead be supplied per-session through the UI's Global Model Configuration. Avoid committing secrets.
 
+Nothing needs setting for the Caldera connection. The plugin builds the REST URL from the host and port CALDERA binds to, and picks the API key CALDERA's own `api_key_red` or `api_key_blue` accepts. Set `CALDERA_URL` only when MCP runs somewhere that cannot reach the address CALDERA binds to, such as a separate container or host; running behind the `ssl` plugin is not such a case, since haproxy forwards to the same local address. Set `CORE_CALDERA_API_KEY` on any server whose `conf/local.yml` was generated. A rejected key is reported on the plugin's splash page and in the CALDERA log at startup.
+
 ## Quick Start
 
 1. Start CALDERA from the repository root:
@@ -309,6 +311,7 @@ Use `--build` after changing Vue, CSS, or other Magma-loaded UI assets.
 - **MCP page does not appear**: Confirm `mcp` is listed in `conf/local.yml` and restart CALDERA.
 - **UI changes are missing**: Restart with `--build` so Magma rebuilds plugin UI bundles.
 - **Model calls fail**: Check the endpoint profile, API base, API key, and model name. The API base often needs a `/v1` suffix for OpenAI-compatible servers.
+- **Caldera tools return 401 or the splash reports a rejected key**: CALDERA hashes its API keys at startup, so a generated `conf/local.yml` has a key the plugin cannot guess. Set `CORE_CALDERA_API_KEY` in `plugins/mcp/.env` to the `API_TOKEN` printed once in the CALDERA log when that file was created.
 - **CTI/RAG does not run**: Select at least one generated STIX bundle in Plan and Execute. CTI selection automatically enables RAG for that workflow.
 - **Deploy spec has review gaps**: The CTI did not provide enough grounded evidence. Add richer CTI, select more STIX bundles, or review the gaps before deployment.
 

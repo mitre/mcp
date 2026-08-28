@@ -82,8 +82,12 @@ def health_check():
     """
     Returns the health of the Caldera API.
     """
-    if isinstance(caldera_request.make_get_request("health"), dict):
-        return "Caldera API is UP!"
+    # The error object make_get_request returns on a non-200 is itself a dict,
+    # so an isinstance check reported "UP" on a 401.
+    result = caldera_request.make_get_request("health")
+    if isinstance(result, dict) and "error" in result:
+        return f"Caldera API at {caldera_request.caldera_url} is not usable: {result['error']}"
+    return "Caldera API is UP!"
 
 
 def filter_abilities(req, tactic: str, atomic: bool):
