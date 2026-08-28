@@ -1,5 +1,7 @@
 import os
 from mcp.server.fastmcp import FastMCP
+from typing import Optional
+
 from pydantic import BaseModel
 import requests
 from datetime import datetime
@@ -169,7 +171,7 @@ def get_adversaries():
 
 
 @mcp.tool(name="core_get_adversary_by_ability_id")
-def get_adversary_by_ability_id(ability_id: str, ability_name: str = None):
+def get_adversary_by_ability_id(ability_id: str, ability_name: Optional[str] = None):
     """
     Filters all Caldera adversaries by the specifies ability id or ability name.
     """
@@ -407,8 +409,8 @@ def create_windows_ability(
     command_description: str,
     tactic: str,
     technique_name: str,
-    technique_id: str = None,
-    payloads: list = None,
+    technique_id: Optional[str] = None,
+    payloads: Optional[list] = None,
 ):
     """
     Create a new windows ability with the specified parameters.
@@ -473,8 +475,8 @@ def create_linux_ability(
     command_description: str,
     tactic: str,
     technique_name: str,
-    technique_id: str = None,
-    payloads: list = None,
+    technique_id: Optional[str] = None,
+    payloads: Optional[list] = None,
 ):
     """
     Create a new linux ability with the specified parameters.
