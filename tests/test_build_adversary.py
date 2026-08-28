@@ -221,3 +221,34 @@ async def test_selection_is_deterministic(stub_caldera, tmp_path):
     second = await srv.build_adversary(path, platforms=["windows"], max_per_technique=3)
 
     assert first["matched"] == second["matched"]
+
+
+@pytest.mark.asyncio
+async def test_sibling_sub_techniques_do_not_match(stub_caldera, tmp_path):
+    # T1059.001 is PowerShell and T1059.003 is the Windows command shell.
+    # Folding them together would run the wrong technique.
+    stub_caldera["abilities"] = [_ability("ab-cmd", "T1059.003")]
+    path = _write(tmp_path, _bundle(["T1059.001"]))
+
+    r = await srv.build_adversary(path, platforms=["windows"])
+
+    assert r["matched"] == []
+    assert r["unmatched_techniques"] == ["T1059.001"]
+
+
+@pytest.mark.asyncio
+async def test_cap_is_per_technique_not_per_first_match(stub_caldera, tmp_path):
+    # A bundle naming a parent and two of its children must not let one child
+    # consume the whole budget and starve the other.
+    stub_caldera["abilities"] = [
+        _ability(f"{tid}-{i}", tid)
+        for tid in ("T1059.001", "T1059.003")
+        for i in range(5)
+    ]
+    path = _write(tmp_path, _bundle(["T1059", "T1059.001", "T1059.003"]))
+
+    r = await srv.build_adversary(path, platforms=["windows"], max_per_technique=3)
+
+    assert any(a.startswith("T1059.001") for a in r["matched"])
+    assert any(a.startswith("T1059.003") for a in r["matched"])
+    assert r["unmatched_techniques"] == []
