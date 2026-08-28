@@ -12,7 +12,11 @@ from pathlib import Path
 from datetime import datetime
 
 from plugins.mcp.app.config import llm_defaults
-from plugins.mcp.app.utilities.llm_client import load_config, reload_config
+from plugins.mcp.app.utilities.llm_client import (
+    load_config,
+    reload_config,
+    unwrap_config_envelope,
+)
 from plugins.mcp.app.utilities.paths import get_mcp_data_dir, get_mcp_root
 from plugins.mcp.app.cti_ingest_svc import CTIIngestService
 
@@ -836,13 +840,15 @@ class McpAPI:
             # 1️⃣ Load existing local.yml if present
             if local_path.exists():
                 with local_path.open("r", encoding="utf-8") as f:
-                    existing = yaml.safe_load(f) or {}
+                    existing = unwrap_config_envelope(yaml.safe_load(f) or {})
             else:
                 existing = {}
 
             # 2️⃣ Update only provided top-level keys
             # Example payload: { "cti": {...} } or { "llm": {...} }
-            for section, cfg in data.items():
+            # get_config hands back {"config": cfg}, so a client that edits
+            # what it read posts that envelope straight back.
+            for section, cfg in unwrap_config_envelope(data).items():
                 if isinstance(cfg, dict):
                     existing[section] = cfg
 

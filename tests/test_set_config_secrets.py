@@ -69,15 +69,26 @@ async def test_save_scrubs_a_key_an_earlier_build_wrote(api, tmp_path):
 
 @pytest.mark.asyncio
 async def test_strips_nested_secrets(api, tmp_path):
-    # set_config accepts arbitrary top-level keys, so callers have produced
-    # nested shapes like {"config": {"cti": {...}}}. A one-level scrub
-    # walked straight past those.
+    # get_config hands back {"config": cfg}, so a client editing what it read
+    # posts that envelope back. It is unwrapped, and the scrub still recurses.
     await api.set_config(_FakeRequest({
         "config": {"cti": {"model": "m", "api_key": "sk-nested"}},
     }))
     text = (tmp_path / "conf" / "local.yml").read_text()
     assert "sk-nested" not in text
-    assert _saved(tmp_path)["config"]["cti"] == {"model": "m"}
+    assert _saved(tmp_path)["cti"] == {"model": "m"}
+    assert "config" not in _saved(tmp_path)
+
+
+@pytest.mark.asyncio
+async def test_envelope_round_trip_does_not_nest(api, tmp_path):
+    # The failure this guards: an enveloped save wrote a `config:` root that
+    # the overlay ignored, so the operator's endpoint silently never loaded.
+    await api.set_config(_FakeRequest({"cti": {"model": "first"}}))
+    await api.set_config(_FakeRequest({"config": {"cti": {"model": "second"}}}))
+    saved = _saved(tmp_path)
+    assert saved["cti"]["model"] == "second"
+    assert "config" not in saved
 
 
 @pytest.mark.asyncio

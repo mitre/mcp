@@ -71,6 +71,15 @@ def _deep_merge(base: dict, override: dict) -> dict:
     return merged
 
 
+def unwrap_config_envelope(local: dict) -> dict:
+    """get_config returns {"config": cfg}, so a GET-edit-POST round trip used
+    to persist that envelope as a literal `config:` root the overlay ignored."""
+    inner = local.get("config")
+    if isinstance(inner, dict) and set(local) == {"config"}:
+        return inner
+    return local
+
+
 @lru_cache(maxsize=1)
 def load_config() -> dict:
     """conf/default.yml overlaid with conf/local.yml, key by key.
@@ -91,7 +100,7 @@ def load_config() -> dict:
             config = yaml.safe_load(f) or {}
     if local_path.exists():
         with local_path.open("r", encoding="utf-8") as f:
-            config = _deep_merge(config, yaml.safe_load(f) or {})
+            config = _deep_merge(config, unwrap_config_envelope(yaml.safe_load(f) or {}))
 
     if not config:
         raise FileNotFoundError("No config found (default.yml or local.yml)")
