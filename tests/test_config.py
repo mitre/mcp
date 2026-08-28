@@ -326,3 +326,229 @@ class TestLocalYmlMerge:
     def test_missing_both_raises(self, tmp_path, loader):
         with pytest.raises(FileNotFoundError):
             loader()
+
+
+class TestCalderaConnection:
+    """Resolution from caldera's own main config. No network: the key check is
+    a pure in-process call to caldera's hasher."""
+
+    @pytest.fixture
+    def core(self, monkeypatch):
+        """Stub caldera's main config; yields it so a test can reshape it."""
+        from plugins.mcp.app import config
+
+        main = {"host": "0.0.0.0", "port": 8888}
+        monkeypatch.setattr(config, "_caldera_main_config", lambda: main)
+        monkeypatch.setattr(
+            config, "_load_defaults",
+            lambda: {"caldera": {"url_env": "CALDERA_URL",
+                                 "api_key_env": "CORE_CALDERA_API_KEY"}},
+        )
+        monkeypatch.delenv("CALDERA_URL", raising=False)
+        monkeypatch.delenv("CORE_CALDERA_API_KEY", raising=False)
+        config._key_verdicts.clear()
+        yield main
+        config._key_verdicts.clear()
+
+    @staticmethod
+    def _hash(plaintext):
+        from argon2 import PasswordHasher
+        return PasswordHasher().hash(plaintext)
+
+    # --- url -------------------------------------------------------------
+
+    def test_wildcard_bind_dials_loopback(self, core):
+        # 0.0.0.0 is a wildcard bind, not a routable destination.
+        from plugins.mcp.app.config import caldera_connection
+        assert caldera_connection()["url"] == "http://127.0.0.1:8888/api/v2/"
+
+    def test_empty_host_dials_loopback(self, core):
+        from plugins.mcp.app.config import caldera_connection
+        core["host"] = ""
+        assert caldera_connection()["url"] == "http://127.0.0.1:8888/api/v2/"
+
+    def test_narrowed_bind_is_used_verbatim(self, core):
+        # Binding one NIC leaves loopback unbound, so 127.0.0.1 would refuse.
+        from plugins.mcp.app.config import caldera_connection
+        core["host"] = "10.0.0.5"
+        assert caldera_connection()["url"] == "http://10.0.0.5:8888/api/v2/"
+
+    def test_bare_ipv6_host_is_bracketed(self, core):
+        # Unbracketed, requests raises InvalidURL before anything is sent.
+        from plugins.mcp.app.config import caldera_connection
+        core["host"] = "fe80::1"
+        assert caldera_connection()["url"] == "http://[fe80::1]:8888/api/v2/"
+
+    def test_ipv6_wildcard_dials_loopback(self, core):
+        from plugins.mcp.app.config import caldera_connection
+        core["host"] = "::"
+        assert caldera_connection()["url"] == "http://[::1]:8888/api/v2/"
+
+    def test_port_override_is_honoured(self, core):
+        from plugins.mcp.app.config import caldera_connection
+        core["port"] = 8788
+        assert caldera_connection()["url"] == "http://127.0.0.1:8788/api/v2/"
+
+    def test_env_override_wins_and_is_normalised(self, core, monkeypatch):
+        # Raw, a suffixless override hits /health instead of /api/v2/health.
+        from plugins.mcp.app.config import caldera_connection
+        monkeypatch.setenv("CALDERA_URL", "http://caldera.example.com:9000")
+        assert caldera_connection()["url"] == "http://caldera.example.com:9000/api/v2/"
+
+    def test_empty_core_config_keeps_the_historical_default(self, monkeypatch):
+        from plugins.mcp.app import config
+        monkeypatch.setattr(config, "_caldera_main_config", lambda: {})
+        monkeypatch.setattr(config, "_load_defaults", lambda: {})
+        monkeypatch.delenv("CALDERA_URL", raising=False)
+        assert config.caldera_connection()["url"] == "http://127.0.0.1:8888/api/v2/"
+
+    # --- credential ------------------------------------------------------
+
+    def test_stock_key_is_used_when_caldera_accepts_it(self, core):
+        # --insecure hashes the shipped ADMIN123 in place, so it still verifies.
+        from plugins.mcp.app.config import caldera_connection
+        core["api_key_red"] = self._hash("ADMIN123")
+        conn = caldera_connection()
+        assert conn["api_key"] == "ADMIN123"
+        assert conn["key_valid"] is True
+
+    def test_blue_key_also_counts(self, core):
+        from plugins.mcp.app.config import caldera_connection
+        core["api_key_red"] = self._hash("something-else")
+        core["api_key_blue"] = self._hash("ADMIN123")
+        assert caldera_connection()["key_valid"] is True
+
+    def test_env_key_wins_when_it_verifies(self, core, monkeypatch):
+        from plugins.mcp.app.config import caldera_connection
+        core["api_key_red"] = self._hash("generated-token")
+        monkeypatch.setenv("CORE_CALDERA_API_KEY", "generated-token")
+        conn = caldera_connection()
+        assert conn["api_key"] == "generated-token"
+        assert conn["key_valid"] is True
+
+    def test_rejected_key_is_still_returned_but_flagged(self, core, monkeypatch):
+        # A generated conf/local.yml destroys the plaintext; report, don't swap.
+        from plugins.mcp.app.config import caldera_connection
+        core["api_key_red"] = self._hash("generated-token")
+        monkeypatch.setenv("CORE_CALDERA_API_KEY", "stale")
+        conn = caldera_connection()
+        assert conn["api_key"] == "stale"
+        assert conn["key_valid"] is False
+
+    def test_stock_key_is_not_flagged_valid_on_a_generated_config(self, core):
+        from plugins.mcp.app.config import caldera_connection
+        core["api_key_red"] = self._hash("generated-token")
+        conn = caldera_connection()
+        assert conn["api_key"] == "ADMIN123"
+        assert conn["key_valid"] is False
+
+    def test_explicit_key_is_never_swapped_for_the_stock_one(self, core, monkeypatch):
+        # Swapping in ADMIN123 would grant red access the operator never chose.
+        from plugins.mcp.app.config import caldera_connection
+        core["api_key_red"] = self._hash("ADMIN123")
+        core["api_key_blue"] = self._hash("BLUEADMIN123")
+        monkeypatch.setenv("CORE_CALDERA_API_KEY", "BLUEADMIN123x")
+        conn = caldera_connection()
+        assert conn["api_key"] == "BLUEADMIN123x"
+        assert conn["key_valid"] is False
+
+    def test_url_override_skips_verification(self, core, monkeypatch):
+        # A cross-host url points at a caldera whose keys we cannot check.
+        from plugins.mcp.app.config import caldera_connection
+        core["api_key_red"] = self._hash("ADMIN123")
+        monkeypatch.setenv("CALDERA_URL", "http://remote:8888")
+        monkeypatch.setenv("CORE_CALDERA_API_KEY", "remote-key")
+        conn = caldera_connection()
+        assert conn["api_key"] == "remote-key"
+        assert conn["key_valid"] is None
+
+    def test_unreadable_core_config_leaves_the_verdict_unknown(self, core):
+        # The subprocess shape; must match the pre-fix resolver.
+        from plugins.mcp.app.config import caldera_connection
+        conn = caldera_connection()
+        assert conn["api_key"] == "ADMIN123"
+        assert conn["key_valid"] is None
+
+    def test_plaintext_config_rejects_a_mismatched_key(self, core):
+        # Caldera <= 5.3.0 stored the key in the clear.
+        from plugins.mcp.app.config import caldera_connection
+        core["api_key_red"] = "plain-key"
+        conn = caldera_connection()
+        assert conn["api_key"] == "ADMIN123"
+        assert conn["key_valid"] is False
+
+    def test_plaintext_config_accepts_a_matching_env_key(self, core, monkeypatch):
+        from plugins.mcp.app.config import caldera_connection
+        core["api_key_red"] = "plain-key"
+        monkeypatch.setenv("CORE_CALDERA_API_KEY", "plain-key")
+        conn = caldera_connection()
+        assert conn["api_key"] == "plain-key"
+        assert conn["key_valid"] is True
+
+    def test_never_returns_a_password_hash_as_the_credential(self, core):
+        # Verification is hash-vs-plaintext, so a hash is never a usable key.
+        from plugins.mcp.app.config import caldera_connection
+        core["api_key_red"] = self._hash("ADMIN123")
+        core["api_key_blue"] = self._hash("BLUEADMIN123")
+        assert not caldera_connection()["api_key"].startswith("$argon2id$")
+
+    def test_verdict_is_cached_per_candidate(self, core):
+        from plugins.mcp.app import config
+        core["api_key_red"] = self._hash("ADMIN123")
+        config.caldera_connection()
+        assert config._key_verdicts["ADMIN123"] is True
+
+
+class TestCalderaReadinessPayload:
+    """The splash reports a rejected key, and only a genuinely rejected one."""
+
+    def _context(self, monkeypatch, connection):
+        from plugins.mcp.app import mcp_gui
+        monkeypatch.setattr(
+            mcp_gui, "llm_defaults",
+            lambda: {"api_key": "sk", "api_base": "https://gw/v1", "model": "m"},
+        )
+        monkeypatch.setattr(mcp_gui, "caldera_connection", lambda: connection)
+        return mcp_gui.McpGUI({}, "mcp", "desc")._bootstrap_context()
+
+    def test_rejected_key_is_flagged(self, monkeypatch):
+        ctx = self._context(monkeypatch, {"url": "http://127.0.0.1:8888/api/v2/",
+                                          "key_valid": False})
+        assert ctx["caldera_key_rejected"] is True
+
+    def test_accepted_key_is_not_flagged(self, monkeypatch):
+        ctx = self._context(monkeypatch, {"url": "u", "key_valid": True})
+        assert ctx["caldera_key_rejected"] is False
+
+    def test_unknown_verdict_is_not_flagged(self, monkeypatch):
+        # A subprocess cannot check, and "unknown" is not a failure to report.
+        ctx = self._context(monkeypatch, {"url": "u", "key_valid": None})
+        assert ctx["caldera_key_rejected"] is False
+
+    def test_payload_never_carries_the_key(self, monkeypatch):
+        ctx = self._context(monkeypatch, {"url": "u", "api_key": "super-secret",
+                                          "key_valid": True})
+        assert "super-secret" not in str(ctx)
+
+
+class TestSubprocessEnv:
+    """Whatever the parent resolves is what the MCP subprocess must receive."""
+
+    @pytest.fixture(params=["plan_execute", "author"])
+    def get_env(self, request, monkeypatch):
+        # Both workflows carry the same get_env(); neither may drift.
+        mod = pytest.importorskip(f"plugins.mcp.app.workflows.{request.param}")
+        monkeypatch.setattr(
+            mod, "caldera_connection",
+            lambda: {"url": "http://127.0.0.1:8788/api/v2/", "api_key": "resolved-key"},
+        )
+        return mod.get_env
+
+    def test_pushes_the_resolved_url(self, get_env, monkeypatch):
+        # A raw env value skips normalisation and the child only appends to it.
+        monkeypatch.setenv("CALDERA_URL", "http://127.0.0.1:8788")
+        assert get_env()["CALDERA_URL"] == "http://127.0.0.1:8788/api/v2/"
+
+    def test_pushes_the_resolved_key(self, get_env, monkeypatch):
+        monkeypatch.setenv("CORE_CALDERA_API_KEY", "stale")
+        assert get_env()["CORE_CALDERA_API_KEY"] == "resolved-key"
