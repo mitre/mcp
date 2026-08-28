@@ -179,8 +179,7 @@ async def ingest_cti(file_path: str) -> dict:
 
     Returns:
         {stix_path, counts} where counts breaks down the bundle by SDO
-        type (malware, infrastructure, identities, attack_patterns, tools,
-        relationships, user_accounts).
+        type (attack_patterns, threat_actors).
     """
     from plugins.mcp.app.cti_ingest_svc import CTIIngestService
     from plugins.mcp.app.utilities.paths import get_mcp_data_dir
@@ -233,39 +232,18 @@ async def ingest_cti(file_path: str) -> dict:
                 break
 
     counts = {
-        "malware": 0,
-        "infrastructure": 0,
-        "user_accounts": 0,
-        "identities": 0,
         "attack_patterns": 0,
-        "tools": 0,
-        "relationships": 0,
         "threat_actors": 0,
-        "intrusion_sets": 0,
     }
     if stix_path and stix_path.is_file():
         try:
             bundle = json.loads(stix_path.read_text(encoding="utf-8"))
             for obj in bundle.get("objects", []):
                 t = obj.get("type", "")
-                if t == "malware":
-                    counts["malware"] += 1
-                elif t == "infrastructure":
-                    counts["infrastructure"] += 1
-                elif t == "identity":
-                    counts["identities"] += 1
-                elif t == "user-account":
-                    counts["user_accounts"] += 1
-                elif t == "attack-pattern":
+                if t == "attack-pattern":
                     counts["attack_patterns"] += 1
-                elif t == "tool":
-                    counts["tools"] += 1
-                elif t == "relationship":
-                    counts["relationships"] += 1
                 elif t == "threat-actor":
                     counts["threat_actors"] += 1
-                elif t == "intrusion-set":
-                    counts["intrusion_sets"] += 1
         except Exception as e:
             log.warning(f"counts assembly failed: {e}")
 

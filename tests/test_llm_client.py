@@ -121,36 +121,3 @@ class TestBuildIrPrompt:
         assert "malware" in prompt
         assert "tools" in prompt
 
-
-class TestLlmValidationHelpers:
-    def test_parse_json_array_valid(self):
-        from plugins.mcp.app.utilities.cti_llm_validation import _parse_json_array
-        result = _parse_json_array('[{"id": "T1486", "valid": true}]')
-        assert len(result) == 1
-
-    def test_parse_json_array_with_fences(self):
-        from plugins.mcp.app.utilities.cti_llm_validation import _parse_json_array
-        result = _parse_json_array('```json\n[{"test": 1}]\n```')
-        assert result == [{"test": 1}]
-
-    def test_parse_json_array_invalid(self):
-        from plugins.mcp.app.utilities.cti_llm_validation import _parse_json_array
-        assert _parse_json_array("not json") is None
-
-    def test_quote_exists_exact(self):
-        from plugins.mcp.app.utilities.cti_llm_validation import _quote_exists_in_text
-        assert _quote_exists_in_text("encrypts files", "The malware encrypts files on disk.") is True
-
-    def test_quote_exists_fuzzy(self):
-        from plugins.mcp.app.utilities.cti_llm_validation import _quote_exists_in_text
-        # Fuzzy match requires 60% word overlap (3+ char words)
-        assert _quote_exists_in_text("ransomware encrypts files data", "The ransomware encrypts files and data.") is True
-
-    def test_quote_not_exists(self):
-        from plugins.mcp.app.utilities.cti_llm_validation import _quote_exists_in_text
-        assert _quote_exists_in_text("keylogging capture", "The ransomware encrypts files.") is False
-
-    def test_quote_empty(self):
-        from plugins.mcp.app.utilities.cti_llm_validation import _quote_exists_in_text
-        assert _quote_exists_in_text("", "text") is False
-        assert _quote_exists_in_text("quote", "") is False

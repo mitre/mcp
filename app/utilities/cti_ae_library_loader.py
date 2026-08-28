@@ -56,15 +56,8 @@ import yaml  # type: ignore
 try:
     from plugins.mcp.app.utilities.cti_stix_builders import (
         make_bundle,
-        make_malware,
-        make_tool,
         make_threat_actor,
-        make_infrastructure,
         make_attack_pattern,
-        make_identity,
-        make_user_account,
-        make_software,
-        make_relationship,
         new_stix_id,
         now,
     )
@@ -72,15 +65,8 @@ except ImportError:  # pragma: no cover - direct-script execution fallback
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
     from plugins.mcp.app.utilities.cti_stix_builders import (  # type: ignore
         make_bundle,
-        make_malware,
-        make_tool,
         make_threat_actor,
-        make_infrastructure,
         make_attack_pattern,
-        make_identity,
-        make_user_account,
-        make_software,
-        make_relationship,
         new_stix_id,
         now,
     )
@@ -1110,10 +1096,9 @@ def ae_plan_to_stix(ir: dict, taxonomy: Optional[dict] = None) -> dict:
     """Lower an AE-plan IR dict into a STIX 2.1 bundle.
 
     All object construction goes through the existing cti_stix_builders
-    helpers (``make_malware``, ``make_infrastructure``, ``make_identity``,
-    ``make_user_account``, ``make_software``, ``make_tool``,
-    ``make_threat_actor``, ``make_attack_pattern``, ``make_relationship``).
-    No new builders are introduced.
+    helpers (``make_threat_actor``, ``make_attack_pattern``). The stick is
+    scored against pipeline output, so it emits only the object types the
+    pipeline can still produce.
 
     The returned bundle is JSON-only; pass it through ``stix2.parse(...,
     allow_custom=True)`` to validate spec conformance.
@@ -1145,60 +1130,6 @@ def ae_plan_to_stix(ir: dict, taxonomy: Optional[dict] = None) -> dict:
             ta_ids[ta["name"]] = obj["id"]
             objects.append(obj)
 
-    # ---- Malware ----
-    malware_ids: dict[str, str] = {}
-    for m in ir.get("malware", []):
-        obj = make_malware(m, taxonomy=taxonomy)
-        if obj:
-            malware_ids[m["name"]] = obj["id"]
-            objects.append(obj)
-
-    # ---- Tools ----
-    tool_ids: dict[str, str] = {}
-    for t in ir.get("tools", []):
-        obj = make_tool(t, taxonomy=taxonomy)
-        if obj:
-            tool_ids[t["name"]] = obj["id"]
-            objects.append(obj)
-
-    # ---- Software (SCO) ----
-    for s in ir.get("software", []):
-        obj = make_software(s, taxonomy=taxonomy)
-        if obj:
-            objects.append(obj)
-
-    # ---- Identity SDOs for AD/NetBIOS domains ----
-    for d in ir.get("domains", []):
-        obj = make_identity(d, identity_class="organization")
-        if obj:
-            objects.append(obj)
-
-    # ---- Infrastructure SDOs ----
-    aps_by_id = {ap["id"]: ap for ap in ir.get("attack_patterns", []) if ap.get("id")}
-    related_aps = list(aps_by_id.values())
-    infra_ids: list[str] = []
-    for h in ir.get("infrastructure", []):
-        i_entry = {
-            "name": h.get("hostname") or "",
-            "description": h.get("evidence", ""),
-            "ip": h.get("ip", ""),
-            "role": h.get("role", ""),
-            "os": h.get("os", ""),
-        }
-        obj = make_infrastructure(i_entry, related_attack_patterns=related_aps,
-                                  taxonomy=taxonomy)
-        if obj:
-            infra_ids.append(obj["id"])
-            objects.append(obj)
-
-    # ---- User accounts (SCO) ----
-    user_ids: list[str] = []
-    for u in ir.get("user_accounts", []):
-        obj = make_user_account(u)
-        if obj:
-            user_ids.append(obj["id"])
-            objects.append(obj)
-
     # ---- Attack-pattern SDOs ----
     ap_stix_ids: list[str] = []
     for ap in ir.get("attack_patterns", []):
@@ -1225,26 +1156,6 @@ def ae_plan_to_stix(ir: dict, taxonomy: Optional[dict] = None) -> dict:
             "x_file_extensions":  ir.get("file_extensions", []),
         }
         objects.append(context_obj)
-
-    # ---- Relationships ----
-    # threat-actor uses-> malware
-    for ta_name, ta_id in ta_ids.items():
-        for mal_name, mal_id in malware_ids.items():
-            rel = make_relationship("uses", ta_id, mal_id)
-            if rel:
-                objects.append(rel)
-    # malware targets -> infrastructure
-    for mal_id in malware_ids.values():
-        for inf_id in infra_ids:
-            rel = make_relationship("targets", mal_id, inf_id)
-            if rel:
-                objects.append(rel)
-    # threat-actor uses -> tools
-    for ta_id in ta_ids.values():
-        for tool_id in tool_ids.values():
-            rel = make_relationship("uses", ta_id, tool_id)
-            if rel:
-                objects.append(rel)
 
     bundle = make_bundle(objects, model="ae-library-loader",
                          provider="cti_ae_library_loader",

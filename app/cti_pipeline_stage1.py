@@ -42,26 +42,8 @@ from plugins.mcp.app.utilities.cti_raw_cleaner import clean_raw_directory
 from plugins.mcp.app.utilities.cti_parsing import extract_ir, render_ir_summary
 from plugins.mcp.app.utilities.cti_mitre_extract import extract_mitre_techniques, convert_sets
 from plugins.mcp.app.utilities.cti_taxonomy_loader import build_normalized_attack_patterns
-from plugins.mcp.app.utilities.cti_entity_validator import validate_entities, repair_entities
-
-from plugins.mcp.app.utilities.cti_relationships import (
-    normalize_and_qualify_behaviors,
-    extract_all_relationships,
-    REL_REJECTIONS,
-)
 
 from plugins.mcp.app.utilities.cti_linguistics import extract_dynamic_techniques, extract_commands, extract_hashes
-from plugins.mcp.app.utilities.cti_extract_users import extract_users
-from plugins.mcp.app.utilities.cti_extract_hosts import (
-    extract_hosts,
-    hosts_to_infrastructure_entries,
-)
-from plugins.mcp.app.utilities.cti_extract_domains import extract_domains
-from plugins.mcp.app.utilities.cti_extract_software import extract_software
-from plugins.mcp.app.utilities.cti_extract_services import (
-    extract_services,
-    services_to_infrastructure_entries,
-)
 from plugins.mcp.app.utilities.cti_ae_library_loader import (
     _extract_file_paths as extract_file_paths,
     _extract_registry as extract_registry_keys,
@@ -81,8 +63,6 @@ from plugins.mcp.app.utilities.llm_client import get_llm_provenance
 # =============================================================
 
 from plugins.mcp.app.utilities.nlp.cti_nlp_enhancements import clean_ir_nlp_layer1
-from plugins.mcp.app.utilities.nlp.cti_semantic_enrichment import clean_ir_nlp_layer2
-from plugins.mcp.app.utilities.nlp.cti_behavior_expansion import recover_nominalized_behaviors
 
 # =============================================================
 # Directory Constants
@@ -267,13 +247,9 @@ async def process_file(
     Steps:
         1. IR extraction / resume
         2. NLP Layer 1 cleanup
-        3. Behavior normalization & qualification
-        4. Relationship extraction
-        5. Entity validation
-        6. MITRE ATT&CK mapping
-        7. Final JSON + analyst summary output
+        3. MITRE ATT&CK mapping
+        4. Final JSON + analyst summary output
     """
-    REL_REJECTIONS.clear()
     print(f"\n[*] Processing {path.name}")
 
     text = path.read_text(errors="ignore")
@@ -291,36 +267,8 @@ async def process_file(
     pre_beh = len(ir.get("behaviors", []))
     ir = clean_ir_nlp_layer1(ir, text)
 
-    recovered = recover_nominalized_behaviors(text)
-    if recovered:
-        seen = {(b.get("verb"), b.get("object")) for b in ir["behaviors"]}
-        for b in recovered:
-            key = (b.get("verb"), b.get("object"))
-            if key not in seen:
-                ir["behaviors"].append(b)
-                seen.add(key)
-
     if len(ir["behaviors"]) < pre_beh:
         raise RuntimeError("NLP Layer 1 removed behaviors (forbidden)")
-
-    # ---------------------------------------------------------
-    # 3. Behavior qualification
-    # ---------------------------------------------------------
-    normalized, qualified = normalize_and_qualify_behaviors(ir)
-    ir["behaviors"] = normalized
-    ir["qualified_behaviors"] = qualified
-
-    high_conf = [b for b in qualified if b.get("confidence", 0) >= 0.5]
-    low_conf  = [b for b in qualified if b.get("confidence", 0) < 0.5]
-
-    # ---------------------------------------------------------
-    # 4. Relationships
-    # ---------------------------------------------------------
-    raw_relationships = await extract_all_relationships(
-        text, ir, high_conf
-    ) or []
-    ir["relationships"] = rag_safe_relationships(raw_relationships)
-    ir["low_confidence_behaviors"] = low_conf
 
     # ---------------------------------------------------------
     # Commands Extraction (Linguistic)
@@ -349,166 +297,11 @@ async def process_file(
                 if key not in seen:
                     ir["hashes"].append(h)
 
-    # ---------------------------------------------------------
-    # User-account Extraction (AE-plan tables + inline prose)
-    # ---------------------------------------------------------
-    ir.setdefault("user_accounts", [])
-    users = extract_users(text)
-    if users:
-        seen_users = {(u["username"].lower(), (u.get("domain") or "").lower())
-                      for u in ir["user_accounts"]}
-        for u in users:
-            key = (u["username"].lower(), (u.get("domain") or "").lower())
-            if key not in seen_users:
-                ir["user_accounts"].append(u)
-                seen_users.add(key)
 
     # ---------------------------------------------------------
-    # Software + Version Extraction (AE-plan tooling tables +
-    # filename-with-extension hits + ATT&CK-gated bare tokens)
-    #
-    # Distinct from ir["tools"]: ir["tools"] stays scoped to
-    # ATT&CK-known offensive software, while ir["software"] is the
-    # broader observed-software list -- INCLUDING versions and
-    # non-ATT&CK entries -- so consumers can match concrete binaries.
-    #
-    # Pure ontology-driven: ATT&CK name_index for admission, OSV.dev
-    # + nvdlib for optional external validation (gated behind
-    # use_external_apis=False here; CI/unit tests stay offline).
-    # ---------------------------------------------------------
-    ir.setdefault("software", [])
-    try:
-        # Load the ATT&CK taxonomy lazily so software classification can
-        # tag each candidate with attack_id / software_kind. The full
-        # taxonomy is loaded again below for the MITRE technique pass
-        # (step 6); both calls share the same on-disk bundle but the
-        # extra parse is cheap relative to the rest of Stage 1.
-        try:
-            from plugins.mcp.app.utilities.cti_taxonomy_loader import load_mitre_taxonomy as _ldtax
-            _sw_taxonomy = _ldtax()
-        except Exception as _e:
-            print(f"[SOFTWARE-EXTRACT][WARN] taxonomy unavailable: {_e}")
-            _sw_taxonomy = None
-        sw_entries = extract_software(text, taxonomy=_sw_taxonomy,
-                                      use_external_apis=False)
-    except Exception as e:
-        print(f"[SOFTWARE-EXTRACT][WARN] {e}")
-        sw_entries = []
-    if sw_entries:
-        seen_sw = {
-            (s.get("name", "").lower(), (s.get("version") or "").lower())
-            for s in ir["software"]
-        }
-        for s in sw_entries:
-            key = (s["name"].lower(), (s.get("version") or "").lower())
-            if key in seen_sw:
-                continue
-            ir["software"].append(s)
-            seen_sw.add(key)
-        print(f"[SOFTWARE-EXTRACT] added {len(sw_entries)} software entries")
-
-    # ---------------------------------------------------------
-    # Named-Host + IP Extraction (AE-plan tables + freeform prose)
-    #
-    # Recovers structured named hosts -- hostname/IP/role/OS -- which
-    # the LLM IR step routinely flattens to generic "Internet-facing
-    # RDP server" infrastructure entries. Pure ontology-driven: spaCy
-    # NER, IPv4 regex, RFC 1123 hostnames, STIX infra-type-ov role
-    # vocab + ATT&CK technique-name hints. No hostname->role tables.
-    # ---------------------------------------------------------
-    ir.setdefault("infrastructure", [])
-    try:
-        # Reuse the spaCy pipeline already loaded by cti_linguistics
-        # (loaded once per worker process) for PROPN-aware hostname
-        # candidate ranking. Fall back to regex-only if unavailable.
-        try:
-            from plugins.mcp.app.utilities.cti_linguistics import nlp as _nlp
-        except Exception:
-            _nlp = None
-        named_hosts = extract_hosts(text, nlp=_nlp)
-    except Exception as e:
-        print(f"[HOST-EXTRACT][WARN] {e}")
-        named_hosts = []
-    if named_hosts:
-        new_entries = hosts_to_infrastructure_entries(named_hosts)
-        # Dedup by (hostname-lower, ip) against any existing infra entries.
-        seen_infra = set()
-        for inf in ir["infrastructure"]:
-            if isinstance(inf, dict):
-                key = (
-                    (inf.get("name") or "").strip().lower(),
-                    (inf.get("ip") or "").strip(),
-                )
-                seen_infra.add(key)
-        for e in new_entries:
-            key = (e["name"].lower(), e.get("ip", ""))
-            if key in seen_infra:
-                continue
-            ir["infrastructure"].append(e)
-            seen_infra.add(key)
-        print(f"[HOST-EXTRACT] added {len(new_entries)} named hosts")
-
-    # ---------------------------------------------------------
-    # Service / Application Extraction (NEW: cti_extract_services)
-    #
-    # CTI reports name application-level services (Active Directory,
-    # RDP, SMB, SQL Server, Exchange, KVM, NetBNMBackup, ...). The
-    # extractor admits each candidate ONLY when one of these
-    # ontology sources backs it:
-    #   * IANA service registry (Python stdlib socket / /etc/services)
-    #   * MITRE ATT&CK data-source vocabulary + technique-name
-    #     phrase harvesting (Server Message Block, Remote Desktop
-    #     Protocol, ...)
-    # Each service is added to ir["services"] AND mirrored into
-    # ir["infrastructure"] so stage2 emits a STIX infrastructure SDO.
-    # ---------------------------------------------------------
-    ir.setdefault("services", [])
-    try:
-        # Reuse taxonomy loaded above for the software pass.
-        services = extract_services(text, taxonomy=_sw_taxonomy)
-    except Exception as e:
-        print(f"[SERVICE-EXTRACT][WARN] {e}")
-        services = []
-    if services:
-        seen_services = {
-            (s.get("name") or "").strip().lower()
-            for s in ir["services"]
-        }
-        for s in services:
-            key = (s.get("name") or "").strip().lower()
-            if key in seen_services:
-                continue
-            ir["services"].append(s)
-            seen_services.add(key)
-        # Mirror into infrastructure[] so the stage2 builder
-        # produces STIX `infrastructure` SDOs.
-        svc_infra_entries = services_to_infrastructure_entries(services)
-        seen_infra = {
-            ((inf.get("name") or "").strip().lower(),
-             (inf.get("ip") or "").strip())
-            for inf in ir.get("infrastructure", [])
-            if isinstance(inf, dict)
-        }
-        for e in svc_infra_entries:
-            key = (e["name"].lower(), e.get("ip", ""))
-            if key in seen_infra:
-                continue
-            ir["infrastructure"].append(e)
-            seen_infra.add(key)
-        print(f"[SERVICE-EXTRACT] added {len(services)} services "
-              f"({len(svc_infra_entries)} infra entries)")
-
-    # ---------------------------------------------------------
-    # 5. Entity validation
-    # ---------------------------------------------------------
-    ir = await validate_entities(ir, destructive=False)
-    ir = repair_entities(ir)
-
-    # ---------------------------------------------------------
-    # 6. MITRE ATT&CK
+    # 3. MITRE ATT&CK
     # ---------------------------------------------------------
     techniques, lookup = build_normalized_attack_patterns()
-    ir = clean_ir_nlp_layer2(ir, {"attack_patterns": techniques})
 
     ling = await extract_dynamic_techniques(
         text,
@@ -525,7 +318,7 @@ async def process_file(
     )
 
     # ---------------------------------------------------------
-    # 6.5 Explicit-anchor technique grounding (NEW)
+    # 3.5 Explicit-anchor technique grounding
     #
     # Walk a set of STRUCTURAL ANCHORS (binary names, system
     # commands, narrative phrases) and resolve each to an ATT&CK
@@ -554,7 +347,7 @@ async def process_file(
             merged.append(t)
 
     # ---------------------------------------------------------
-    # 6.6 Platform-attestation filter
+    # 3.6 Platform-attestation filter
     #
     # Drop techniques whose `x_mitre_platforms` doesn't overlap
     # the platform set attested in the source text. Stops
@@ -586,41 +379,7 @@ async def process_file(
     ir["attack_patterns"] = merged
 
     # ---------------------------------------------------------
-    # 6b. Domain Extraction (AD signal)
-    #
-    # Pulls Windows AD / DNS domain names out of the cleaned prose.
-    # Ontology-grounded: regex + spaCy ORG NER, gated by ATT&CK
-    # technique IDs whose canonical names imply AD (T1003.006, T1558.*,
-    # T1078.002, T1069.002, T1087.002, T1018, T1482, T1484, T1098.007,
-    # T1207, T1556.001, T1550.002/3). No hardcoded CTI->domain map.
-    # ---------------------------------------------------------
-    ir.setdefault("domains", [])
-    try:
-        ap_ids = [
-            ap.get("id") for ap in ir.get("attack_patterns", [])
-            if isinstance(ap, dict) and ap.get("id")
-        ]
-        domains = extract_domains(text, attack_pattern_ids=ap_ids, nlp=None)
-    except Exception as e:
-        print(f"[DOMAIN-EXTRACT][WARN] {e}")
-        domains = []
-    if domains:
-        seen_domains = {
-            (d.get("name") or "").lower() for d in ir["domains"]
-        }
-        for d in domains:
-            key = (d.get("name") or "").lower()
-            # Allow multiple synthetic entries only if they have non-empty
-            # signal sets that differ (defensive — shouldn't happen).
-            if key and key in seen_domains:
-                continue
-            ir["domains"].append(d)
-            if key:
-                seen_domains.add(key)
-        print(f"[DOMAIN-EXTRACT] added {len(domains)} domain entries")
-
-    # ---------------------------------------------------------
-    # 6c. Observable Surface Extraction
+    # 3c. Observable Surface Extraction
     #
     # Reuse the generic AE-library parsers for first-class observables
     # that matter as operation facts: filesystem paths,
@@ -658,7 +417,7 @@ async def process_file(
             print(f"[OBSERVABLE-EXTRACT] added {added} {field}")
 
     # ---------------------------------------------------------
-    # 7. Output
+    # 4. Output
     # ---------------------------------------------------------
     final = convert_sets(ir)
     final["provenance"] = ir.get("provenance")

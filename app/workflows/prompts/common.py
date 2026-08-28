@@ -16,10 +16,11 @@ CHAT_HISTORY_DESC = (
 
 
 CTI_CONTEXT_DESC = (
-    "Relevant CTI information supplied by enabled capabilities. This may "
-    "include selected STIX bundles, attack patterns, infrastructure, "
-    "software, user/account context, identities, and report excerpts. Use "
-    "this as grounding, not as permission to invent missing facts."
+    "ATT&CK technique descriptions retrieved from the selected STIX "
+    "bundles, and the named threat actor when the report identifies one. "
+    "Technique-level only: it never contains hosts, accounts, domains, "
+    "software or infrastructure. Use this as grounding, not as permission "
+    "to invent missing facts."
 )
 
 

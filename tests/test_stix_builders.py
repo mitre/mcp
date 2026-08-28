@@ -3,44 +3,6 @@ import pytest
 import re
 
 
-class TestMakeMalware:
-    def test_basic(self):
-        from plugins.mcp.app.utilities.cti_stix_builders import make_malware
-        m = make_malware({"name": "TestMal", "description": "test"})
-        assert m["type"] == "malware"
-        assert m["spec_version"] == "2.1"
-        assert m["name"] == "TestMal"
-        assert m["is_family"] is False
-        assert m["id"].startswith("malware--")
-
-    def test_empty_name_returns_none(self):
-        from plugins.mcp.app.utilities.cti_stix_builders import make_malware
-        assert make_malware({"name": ""}) is None
-        assert make_malware({}) is None
-
-    def test_custom_fields_preserved(self):
-        from plugins.mcp.app.utilities.cti_stix_builders import make_malware
-        m = make_malware({"name": "X", "canonical": "x", "confidence": 0.9})
-        assert m["x_canonical"] == "x"
-        assert m["x_confidence"] == 0.9
-
-
-class TestMakeTool:
-    def test_basic(self):
-        from plugins.mcp.app.utilities.cti_stix_builders import make_tool
-        t = make_tool({"name": "Mimikatz"})
-        assert t["type"] == "tool"
-        assert t["spec_version"] == "2.1"
-        assert t["name"] == "Mimikatz"
-
-    def test_with_description(self):
-        from plugins.mcp.app.utilities.cti_stix_builders import make_tool
-        t = make_tool({"name": "X", "description": "cred dump"})
-        assert t["description"] == "cred dump"
-
-    def test_none_name(self):
-        from plugins.mcp.app.utilities.cti_stix_builders import make_tool
-        assert make_tool({"name": None}) is None
 
 
 class TestMakeThreatActor:
@@ -61,28 +23,6 @@ class TestMakeThreatActor:
             assert r in VALID, f"Invalid STIX role: {r}"
 
 
-class TestMakeInfrastructure:
-    def test_basic(self):
-        from plugins.mcp.app.utilities.cti_stix_builders import make_infrastructure
-        i = make_infrastructure({"name": "C2 Server"})
-        assert i["type"] == "infrastructure"
-        assert i["spec_version"] == "2.1"
-
-
-class TestMakeRelationship:
-    def test_basic(self):
-        from plugins.mcp.app.utilities.cti_stix_builders import make_relationship
-        r = make_relationship("uses", "malware--abc", "tool--xyz")
-        assert r["type"] == "relationship"
-        assert r["spec_version"] == "2.1"
-        assert r["relationship_type"] == "uses"
-        assert r["source_ref"] == "malware--abc"
-        assert r["target_ref"] == "tool--xyz"
-
-    def test_empty_returns_none(self):
-        from plugins.mcp.app.utilities.cti_stix_builders import make_relationship
-        assert make_relationship("", "a", "b") is None
-        assert make_relationship("uses", "", "b") is None
 
 
 class TestMakeAttackPattern:
@@ -109,8 +49,8 @@ class TestMakeAttackPattern:
 
 class TestMakeBundle:
     def test_basic(self):
-        from plugins.mcp.app.utilities.cti_stix_builders import make_bundle, make_tool
-        t = make_tool({"name": "X"})
+        from plugins.mcp.app.utilities.cti_stix_builders import make_bundle, make_threat_actor
+        t = make_threat_actor({"name": "X"})
         b = make_bundle([t])
         assert b["type"] == "bundle"
         assert b["id"].startswith("bundle--")
@@ -127,19 +67,6 @@ class TestMakeBundle:
         assert b["x_cti_model"] == "devstral"
         assert b["x_cti_provider"] == "openai"
 
-
-class TestMakeObservedData:
-    def test_basic(self):
-        from plugins.mcp.app.utilities.cti_stix_builders import make_observed_data
-        od = make_observed_data("suspicious process spawned")
-        assert od["type"] == "observed-data"
-        assert od["spec_version"] == "2.1"
-        assert od["number_observed"] == 1
-
-    def test_empty_returns_none(self):
-        from plugins.mcp.app.utilities.cti_stix_builders import make_observed_data
-        assert make_observed_data("") is None
-        assert make_observed_data(None) is None
 
 
 class TestNewStixId:

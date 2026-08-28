@@ -75,12 +75,12 @@ def sample_ir():
 def sample_stix_bundle():
     """Sample STIX 2.1 bundle for testing."""
     from plugins.mcp.app.utilities.cti_stix_builders import (
-        make_malware, make_tool, make_threat_actor, make_bundle,
+        make_attack_pattern, make_threat_actor, make_bundle,
     )
+    from plugins.mcp.app.utilities.cti_taxonomy_loader import load_mitre_taxonomy
 
     objects = [
-        make_malware({"name": "TestMalware"}),
-        make_tool({"name": "TestTool"}),
         make_threat_actor({"name": "TestActor"}),
+        make_attack_pattern({"id": "T1486"}, load_mitre_taxonomy()),
     ]
     return make_bundle([o for o in objects if o])
