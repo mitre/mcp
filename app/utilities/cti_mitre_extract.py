@@ -14,7 +14,6 @@ This module performs NO orchestration.
 
 import re
 import numpy as np
-import spacy
 
 from plugins.mcp.app.utilities.nlp_model import get_nlp
 from datetime import datetime

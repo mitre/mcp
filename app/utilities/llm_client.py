@@ -14,7 +14,6 @@ import ssl
 import aiohttp
 import yaml
 import dspy
-from pathlib import Path
 from functools import lru_cache
 from urllib.parse import urlsplit, urlunsplit
 

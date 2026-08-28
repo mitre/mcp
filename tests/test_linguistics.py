@@ -1,5 +1,4 @@
 """Tests for cti_linguistics.py — linguistic extraction and matching."""
-import pytest
 import numpy as np
 
 

@@ -1,5 +1,4 @@
 """Tests for llm_client.py and cti_parsing.py — LLM client and IR parsing."""
-import pytest
 
 
 class TestLoadConfig:

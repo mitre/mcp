@@ -1,5 +1,4 @@
 """Tests for NLP layers: cti_nlp_enhancements.py."""
-import pytest
 
 
 class TestIsValidActor:

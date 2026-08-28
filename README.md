@@ -72,8 +72,8 @@ The CTI ingest workflow stages raw CTI files, runs extraction, and displays gene
 
 A threat report tells you **what** to run. Your environment tells you **where**.
 
-The pipeline extracts ATT&CK techniques and the named threat actor, and
-nothing else. It does not extract hosts, accounts, domains, services or
+The pipeline extracts ATT&CK techniques, the named threat actor, and file
+hash observables, and nothing else. It does not extract hosts, accounts, domains, services or
 software, and does not turn them into CALDERA facts. Those describe the
 report's victim, not your estate; CALDERA discovers facts about your hosts
 at runtime, which is why the abilities that use them carry `has_agent_copy`
@@ -93,7 +93,7 @@ upload report(s) -> clean -> IR -> ATT&CK techniques -> STIX bundle
 ### Known limits
 
 - **Extraction quality.** Scored against the committed measuring stick with
-  `tests/test_pipeline_score.py`: precision 0.89, F1 0.93. That fixture names
+  `tests/test_pipeline_score.py`: precision 0.83, F1 0.89. That fixture names
   its technique ids explicitly, so its recall is an upper bound, not a field
   estimate. Recall on prose-only reports is materially lower, and fusing
   several reports on the same actor is the cheapest way to raise it.

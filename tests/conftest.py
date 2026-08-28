@@ -2,8 +2,6 @@
 Pytest configuration and shared fixtures for MCP plugin tests.
 """
 import sys
-import json
-import asyncio
 from pathlib import Path
 
 import pytest

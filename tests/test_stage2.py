@@ -1,5 +1,4 @@
 """Tests for cti_pipeline_stage2.py — IR to STIX conversion."""
-import pytest
 import json
 
 
@@ -28,16 +27,28 @@ class TestLoadIr:
 class TestComputeMetrics:
     def test_counts(self):
         from plugins.mcp.app.cti_pipeline_stage2 import compute_metrics
-        ir = {"malware": [1, 2], "tools": [1], "threat_actors": [],
-              "infrastructure": [], "attack_patterns": [1, 2, 3],
-              "behaviors": [1], "relationships": [1, 2]}
+        ir = {"threat_actors": [1], "attack_patterns": [1, 2, 3],
+              "behaviors": [1], "hashes": [1, 2]}
         bundle = {"objects": [
-            {"type": "attack-pattern"}, {"type": "relationship"},
-            {"type": "malware"},
+            {"type": "attack-pattern"}, {"type": "threat-actor"},
+            {"type": "observed-data"},
         ]}
         metrics = compute_metrics(ir, bundle)
-        assert metrics["input_counts"]["malware"] == 2
+        assert metrics["input_counts"]["attack_patterns"] == 3
+        assert metrics["input_counts"]["hashes"] == 2
         assert metrics["output_counts"]["total_stix_objects"] == 3
+        assert metrics["output_counts"]["attack_patterns"] == 1
+        assert metrics["output_counts"]["threat_actors"] == 1
+
+    def test_counts_only_producible_types(self):
+        """Counting types the pipeline can no longer emit made the metrics
+        file a wall of zeros that read like extraction had failed."""
+        from plugins.mcp.app.cti_pipeline_stage2 import compute_metrics
+        metrics = compute_metrics({}, {"objects": []})
+        dead = {"malware", "tools", "infrastructure", "relationships",
+                "domains", "user_accounts", "software", "identities"}
+        assert not (set(metrics["input_counts"]) & dead)
+        assert not (set(metrics["output_counts"]) & dead)
 
 
 class TestConvertIrToStix:

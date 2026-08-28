@@ -1,5 +1,4 @@
 """Tests for cti_stix_validation.py and cti_stix_report_writer.py."""
-import pytest
 
 
 class TestValidUuid4:
