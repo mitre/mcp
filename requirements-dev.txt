@@ -1,0 +1,4 @@
+# Test-only. Not needed to run the plugin.
+#   pip install -r plugins/mcp/requirements-dev.txt
+pytest
+pytest-asyncio
