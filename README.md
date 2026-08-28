@@ -216,6 +216,41 @@ The plugin exposes MCP workflow APIs through CALDERA's aiohttp server. The UI us
 
 When adding new UI functionality, prefer extending the existing MCP API routes instead of creating separate side channels.
 
+## Architecture
+
+### Reasoning stack
+
+The agent loop is a DSPy [ReAct](https://dspy.ai/) program: signatures define each
+workflow's persona and I/O contract, LiteLLM carries completions to the configured
+OpenAI-compatible endpoint. Three layers support it:
+
+| Layer | Role |
+|---|---|
+| **MCP servers** | The API and tool-calling surface. Every action the agent can take is an MCP tool, so reasoning stays grounded in real CALDERA and plugin state. |
+| **RAG** | Context augmentation. This is where CTI enters the prompt — selected STIX bundles are retrieved and injected as `cti_context` before the loop starts. |
+| **MLflow** | Observability for thoughts and reasoning. Each run's trajectory, tool calls, and final artifacts are logged for later review. |
+
+### Plugin discovery
+
+The MCP plugin is a host for other plugins' capabilities rather than a fixed
+tool set. At CALDERA boot it scans every installed plugin for an `mcp_server.py`,
+spawns the ones a workflow enables as stdio subprocesses, and merges their tools
+into that workflow's ReAct loop. A plugin contributes tools, and optionally
+workflows, capabilities, and Vue UI — without the MCP plugin being modified.
+
+```text
+CALDERA core
+  +-- MCP plugin ---> discovers MCP servers ---> operations / adversaries / abilities
+  +-- Plugin N ------> MCP server ------------> API endpoints with Swagger docs
+                              |
+                              +-- tools + API routes for context and tool calls
+                              +-- powering the ReAct / DSPy reasoning loop
+```
+
+Because discovery is per-plugin and opt-in, the tool surface a given run sees is
+exactly the set of servers that workflow declared and the operator enabled.
+See [PLUGIN_MCP.md](PLUGIN_MCP.md) for the full contribution contract.
+
 ## Project Structure
 
 ```text

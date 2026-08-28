@@ -1,6 +1,6 @@
 # Artifacts and Metadata
 **/__pycache__/
-**/mlruns.db
+mlruns/
 
 # Environment
 .env
@@ -12,12 +12,6 @@ conf/local.yml
 .pytest_cache/
 .coverage
 htmlcov/
-
-# Local planning
-**/z_plans
-
-# Graphify build context (rules for graphify itself live in .graphifyignore)
-graphify-out/
 
 # Claude Code local settings
 .claude/
@@ -33,7 +27,6 @@ data/outputs_ir/
 data/outputs_stix/
 data/outputs_topology/
 data/outputs_cad/
-data/mcp-data-pre-merge/
 data/stix_bundle.json
 
 # Operator-side backup files left by interactive edits
