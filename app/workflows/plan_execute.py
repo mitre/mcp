@@ -11,6 +11,7 @@ import asyncio
 from contextlib import AsyncExitStack
 
 from plugins.mcp.app.config import caldera_connection, llm_defaults, mlflow_settings
+from plugins.mcp.app.mlflow_run import RunTracker
 from plugins.mcp.app.dspy_env import (
     ENV_API_BASE,
     ENV_API_KEY,
@@ -174,17 +175,17 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None,
         lm_instance = _build_lm_from_settings(lm_settings)
         max_tool_calls = lm_settings.get("max_tool_calls") or 5
 
-    # Start or resume MLflow run
-    if run_id:
-        mlflow.end_run()  # Ensure no active run
-        mlflow.start_run(run_id=run_id)
-    else:
-        run = mlflow.start_run(run_name="MCP Planner Run")
-        run_id = run.info.run_id
+    # Every MLflow write below is addressed to run_id. The fluent API
+    # routes through a thread-local active-run stack that concurrent
+    # requests share, so it retagged and terminated each other's runs and
+    # minted phantom ones whenever the stack was empty.
+    created_local_run = not run_id
+    tracker = RunTracker.bind(run_id, _MLFLOW_EXPERIMENT, "MCP Planner Run")
+    run_id = tracker.run_id
 
-    mlflow.set_tag("status", "running")
-    mlflow.set_tag("stage", "initializing")
-    mlflow.log_param("prompt", adversary_emulation_task)
+    tracker.set_tag("status", "running")
+    tracker.set_tag("stage", "initializing")
+    tracker.log_param("prompt", adversary_emulation_task)
 
     # Resolve which MCP servers to spawn
     if not enabled_servers:
@@ -228,12 +229,12 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None,
             "cti_pipeline) in the server registry"
         )
 
-    mlflow.log_param("enabled_servers", ",".join(enabled_servers))
+    tracker.log_param("enabled_servers", ",".join(enabled_servers))
 
     # Bump max iters when non-core servers are in the mix (realistic runs need more)
     if any(name != "caldera_core" for name in enabled_servers) and max_tool_calls < 10:
         max_tool_calls = 10
-    mlflow.log_param("max_tool_calls", max_tool_calls)
+    tracker.log_param("max_tool_calls", max_tool_calls)
 
     try:
         async with AsyncExitStack() as stack:
@@ -247,14 +248,14 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None,
                     args=[str(info["path"])],
                     env=get_env(lm_settings),
                 )
-                mlflow.set_tag("stage", f"initializing MCP session: {server_name}")
+                tracker.set_tag("stage", f"initializing MCP session: {server_name}")
                 read, write = await stack.enter_async_context(stdio_client(params))
                 session = await stack.enter_async_context(ClientSession(read, write))
                 await session.initialize()
                 sessions.append(session)
 
             # Merge tools across all sessions with collision detection
-            mlflow.set_tag("stage", "listing tools")
+            tracker.set_tag("stage", "listing tools")
             seen = {}
             dspy_tools = []
             for server_name, session in zip(enabled_servers, sessions):
@@ -268,11 +269,11 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None,
                         )
                     seen[tool.name] = server_name
                     dspy_tools.append(dspy.Tool.from_mcp_tool(session, tool))
-            mlflow.log_param("tool_count", len(dspy_tools))
+            tracker.log_param("tool_count", len(dspy_tools))
 
             # Use per-call LM context, honoring lm_obj if provided
             with dspy.context(lm=lm_instance):
-                mlflow.set_tag("stage", "creating DSPy ReAct instance")
+                tracker.set_tag("stage", "creating DSPy ReAct instance")
                 # Resolve CTI context: prefer the orchestrator-supplied string,
                 # fall back to formatting the legacy structured dict.
                 resolved_cti = cti_context
@@ -280,20 +281,20 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None,
                     resolved_cti = format_rag_context(rag_context)
                 operation_context = format_plan_execute_context(workflow_context)
                 if operation_context:
-                    mlflow.log_param("operation_context_preview", operation_context[:1000])
-                    mlflow.set_tag("operation_context_length", len(operation_context))
+                    tracker.log_param("operation_context_preview", operation_context[:1000])
+                    tracker.set_tag("operation_context_length", len(operation_context))
 
                 if resolved_cti:
                     signature = DSPyCalderaPlannerClientWithRAG
-                    mlflow.log_param("cti_context_preview", resolved_cti[:1000])
-                    mlflow.set_tag("cti_context_length", len(resolved_cti))
+                    tracker.log_param("cti_context_preview", resolved_cti[:1000])
+                    tracker.set_tag("cti_context_length", len(resolved_cti))
                     if rag_context:
-                        mlflow.set_tag("cti_search_results_count", len(rag_context.get("search_results", [])))
-                        mlflow.set_tag("cti_detailed_context_count", len(rag_context.get("detailed_context", [])))
+                        tracker.set_tag("cti_search_results_count", len(rag_context.get("search_results", [])))
+                        tracker.set_tag("cti_detailed_context_count", len(rag_context.get("detailed_context", [])))
                     print(f"[MCP] Passing CTI context to LLM ({len(resolved_cti)} chars)")
 
                     react = dspy.ReAct(signature, tools=dspy_tools, max_iters=max_tool_calls)
-                    mlflow.set_tag("stage", "executing DSPy ReAct with RAG")
+                    tracker.set_tag("stage", "executing DSPy ReAct with RAG")
                     result = await safe_react_acall(
                         react,
                         adversary_emulation_task=adversary_emulation_task,
@@ -304,7 +305,7 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None,
                 else:
                     signature = DSPyCalderaPlannerClient
                     react = dspy.ReAct(signature, tools=dspy_tools, max_iters=max_tool_calls)
-                    mlflow.set_tag("stage", "executing DSPy ReAct")
+                    tracker.set_tag("stage", "executing DSPy ReAct")
                     result = await safe_react_acall(
                         react,
                         adversary_emulation_task=adversary_emulation_task,
@@ -313,22 +314,25 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None,
                     )
 
             if chat_history:
-                mlflow.set_tag("chat_history_length", len(chat_history))
+                tracker.set_tag("chat_history_length", len(chat_history))
 
             # Log outputs and trajectory. The live /status endpoint reads
             # from mcp_svc's in-memory run cache, not from MLflow; these
             # writes are observability for the MLflow UI and the History
             # tab (which still scrapes tags to reconstruct trajectories
             # for past runs that have aged out of the live cache).
-            mlflow.set_tag("stage", "completed")
-            mlflow.set_tag("status", "complete")
-            mlflow.set_tag("reasoning", result.reasoning)
-            mlflow.set_tag("process_result", result.process_result)
+            tracker.set_tag("stage", "completed")
+            tracker.set_tag("status", "complete")
+            tracker.set_tag("reasoning", result.reasoning)
+            tracker.set_tag("process_result", result.process_result)
             for k, v in result.trajectory.items():
-                mlflow.set_tag(k, json.dumps(v) if isinstance(v, (dict, list)) else str(v))
+                tracker.set_tag(k, json.dumps(v) if isinstance(v, (dict, list)) else str(v))
 
-            mlflow.log_param("result_summary", result.process_result)
-            mlflow.end_run()
+            tracker.log_param("result_summary", result.process_result)
+            # The orchestrator terminates the run it handed us; a run we
+            # minted here is ours to close.
+            if created_local_run:
+                tracker.terminate("FINISHED")
             print(json.dumps(result.toDict(), indent=4))
             return {
                 "process_result": result.process_result,
@@ -340,11 +344,12 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None,
         tb = traceback.format_exc()
         print("[MCP] Exception occurred:")
         print(tb)
-        mlflow.set_tag("status", "failed")
-        mlflow.set_tag("stage", "error")
-        mlflow.log_param("error", str(e))
-        mlflow.log_param("traceback", tb)
-        mlflow.end_run()
+        tracker.set_tag("status", "failed")
+        tracker.set_tag("stage", "error")
+        tracker.log_param("error", str(e))
+        tracker.log_param("traceback", tb)
+        if created_local_run:
+            tracker.terminate("FAILED")
         raise
 
     # Optional streaming updates (if desired for parity)

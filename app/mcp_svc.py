@@ -6,10 +6,13 @@ import re
 import tempfile
 from pathlib import Path
 from app.utility.base_service import BaseService
-import mlflow
 import asyncio
 
 from plugins.mcp.app.config import resolve_llm_config
+from plugins.mcp.app.mlflow_run import (
+    RunTracker,
+    reconcile_orphaned_runs as _reconcile_orphaned_runs,
+)
 
 
 # Where chat session history lives on disk. Co-located with RAG uploads
@@ -140,6 +143,40 @@ class MCPService(BaseService):
         self._runs.move_to_end(run_id)
         while len(self._runs) > _RUN_CACHE_LIMIT:
             self._runs.popitem(last=False)
+
+    async def reconcile_orphaned_runs(self) -> list:
+        """Terminate MLflow runs left RUNNING by a process that died.
+
+        Only the task that owns a run writes its terminal status, so a
+        `kill -9` mid-flight strands the run as RUNNING with a null
+        end_time and History shows it as running forever. Called once at
+        plugin enable(), where the live cache is empty and every RUNNING
+        run in a workflow experiment is residue from a previous process.
+        Runs still in the cache are skipped, so this is also safe to call
+        while requests are in flight.
+        """
+        experiments = {
+            wf.mlflow_experiment for wf in self.workflow_registry.values()
+            if getattr(wf, "mlflow_experiment", None)
+        }
+        if not experiments:
+            return []
+        live = {
+            run_id for run_id, snapshot in self._runs.items()
+            if snapshot.get("status") == "RUNNING"
+        }
+        try:
+            reconciled = await asyncio.to_thread(
+                _reconcile_orphaned_runs, sorted(experiments), live
+            )
+        except Exception as e:
+            self.log.warning(f"[MCP] Orphaned run reconciliation failed: {e}")
+            return []
+        if reconciled:
+            self.log.info(
+                f"[MCP] Reconciled {len(reconciled)} orphaned MLflow run(s) to KILLED"
+            )
+        return reconciled
 
     def _session_turns(self, session_id: str) -> list[dict]:
         """Return the recorded turns for a session, or [] if unknown."""
@@ -365,35 +402,14 @@ class MCPService(BaseService):
                 rag_cfg["ssl_verify"] = resolved_lm.get("ssl_verify")
             cap_settings["rag"] = rag_cfg
 
-        # mlflow keeps a single "active run" per Python process; firing
-        # two concurrent /plugin/mcp/execute requests would collide on
-        # the second one with "Run X is already active". Use the
-        # MlflowClient to mint a run record WITHOUT making it the
-        # process-wide active run — the actual work in _run_execution
-        # below uses `mlflow.start_run(run_id=...)` in its own context
-        # manager, which is per-task and doesn't conflict.
-        from mlflow.tracking import MlflowClient as _Mlc
-        # Mint into the workflow's own experiment. Hardcoding one name here
-        # broke every run after the first: mlflow.start_run(run_id=...) raises
-        # when the process-wide active experiment differs from the run's, and
-        # a workflow that set_experiment a different name flipped it.
-        # create_experiment not set_experiment: the latter would mutate the
-        # process-wide active experiment this block avoids.
-        _exp_name = workflow.mlflow_experiment
-        _exp = mlflow.get_experiment_by_name(_exp_name)
-        if _exp is not None:
-            _exp_id = _exp.experiment_id
-        else:
-            try:
-                _exp_id = _Mlc().create_experiment(_exp_name)
-            except Exception:
-                _exp = mlflow.get_experiment_by_name(_exp_name)
-                _exp_id = _exp.experiment_id if _exp else "0"
-        run = _Mlc().create_run(
-            experiment_id=_exp_id,
-            tags={"mlflow.runName": f"MCP {workflow.display_name}"},
-        )
-        run_id = run.info.run_id
+        # Mint the run record without activating it. Every write against it
+        # goes through a RunTracker bound to this id, so concurrent requests
+        # never share mlflow's thread-local active-run stack. Minting into
+        # the workflow's own experiment also keeps History grouped the way
+        # each workflow declares it.
+        run_id = RunTracker.start(
+            workflow.mlflow_experiment, f"MCP {workflow.display_name}"
+        ).run_id
 
         # Resolve the session this run belongs to. The first turn auto-starts
         # a session keyed by its own run_id; follow-up turns echo the same
@@ -436,6 +452,9 @@ class MCPService(BaseService):
         self._runs as the run progresses. MLflow keeps logging tags and
         params for the History tab and the MLflow UI; it is no longer the
         source of truth for active runs.
+
+        The run reaches its terminal status exactly once, in the finally
+        below, written against its own run id.
         """
         self._record_run(run_id, {
             "status": "RUNNING",
@@ -464,108 +483,117 @@ class MCPService(BaseService):
             self._format_session_history(effective_session_id) if supports_history else ""
         )
 
+        # Every MLflow write below names run_id explicitly. The fluent API
+        # would route them through a thread-local active-run stack that all
+        # concurrent tasks share, so an overlapping request could steal the
+        # terminal status or the tags of this one.
+        tracker = RunTracker(run_id)
+        terminal_status = "FAILED"
         try:
-            mlflow.end_run()
-            with mlflow.start_run(run_id=run_id):
-                mlflow.set_tag("stage", "initializing")
-                mlflow.set_tag("workflow_id", workflow.id)
-                mlflow.set_tag("mcp.session_id", effective_session_id)
-                mlflow.set_tag("mcp.turn_index", prior_turn_count)
-                if workflow_opts_in and disable_history:
-                    mlflow.set_tag("mcp.history_disabled", "true")
-                if supports_history:
-                    mlflow.set_tag("mcp.session_history_chars", len(chat_history))
-                mlflow.log_param("workflow", workflow.id)
-                mlflow.log_param("prompt", prompt)
-                mlflow.log_param("enabled_servers", ",".join(enabled_servers))
-                mlflow.log_param("enabled_capabilities", ",".join(enabled_capabilities))
-                if isinstance(workflow_context, dict) and workflow_context:
-                    mlflow.log_param(
-                        "workflow_context_keys",
-                        ",".join(sorted(workflow_context.keys())),
+            tracker.set_tag("stage", "initializing")
+            tracker.set_tag("workflow_id", workflow.id)
+            tracker.set_tag("mcp.session_id", effective_session_id)
+            tracker.set_tag("mcp.turn_index", prior_turn_count)
+            if workflow_opts_in and disable_history:
+                tracker.set_tag("mcp.history_disabled", "true")
+            if supports_history:
+                tracker.set_tag("mcp.session_history_chars", len(chat_history))
+            tracker.log_param("workflow", workflow.id)
+            tracker.log_param("prompt", prompt)
+            tracker.log_param("enabled_servers", ",".join(enabled_servers))
+            tracker.log_param("enabled_capabilities", ",".join(enabled_capabilities))
+            # History's Model column reads params.model; nothing wrote it
+            # before, so every row rendered as '-'.
+            if isinstance(lm_obj, dict) and lm_obj.get("model"):
+                tracker.log_param("model", lm_obj["model"])
+            if isinstance(workflow_context, dict) and workflow_context:
+                tracker.log_param(
+                    "workflow_context_keys",
+                    ",".join(sorted(workflow_context.keys())),
+                )
+
+            capability_context = {}
+            for cap_id in enabled_capabilities:
+                cap = self.capability_registry[cap_id]
+                if cap.enrich is None:
+                    continue
+                settings = capability_settings.get(cap_id, {})
+                tracker.set_tag(f"capability_{cap_id}_stage", "running")
+                try:
+                    self.log.info(f"[MCP] Running capability '{cap_id}' enrich()")
+                    contrib = await cap.enrich(prompt, settings) or {}
+                    capability_context.update(contrib)
+                    tracker.set_tag(f"capability_{cap_id}_stage", "complete")
+                    tracker.set_tag(
+                        f"capability_{cap_id}_fields",
+                        ",".join(sorted(contrib.keys())),
                     )
+                except Exception as e:
+                    tracker.set_tag(f"capability_{cap_id}_stage", "error")
+                    self.log.warning(f"[MCP] Capability '{cap_id}' enrich failed: {e}")
 
-                capability_context = {}
-                for cap_id in enabled_capabilities:
-                    cap = self.capability_registry[cap_id]
-                    if cap.enrich is None:
-                        continue
-                    settings = capability_settings.get(cap_id, {})
-                    mlflow.set_tag(f"capability_{cap_id}_stage", "running")
-                    try:
-                        self.log.info(f"[MCP] Running capability '{cap_id}' enrich()")
-                        contrib = await cap.enrich(prompt, settings) or {}
-                        capability_context.update(contrib)
-                        mlflow.set_tag(f"capability_{cap_id}_stage", "complete")
-                        mlflow.set_tag(
-                            f"capability_{cap_id}_fields",
-                            ",".join(sorted(contrib.keys())),
-                        )
-                    except Exception as e:
-                        mlflow.set_tag(f"capability_{cap_id}_stage", "error")
-                        self.log.warning(f"[MCP] Capability '{cap_id}' enrich failed: {e}")
+            if workflow.run is None:
+                raise RuntimeError(f"Workflow {workflow.id} has no run() function")
 
-                if workflow.run is None:
-                    raise RuntimeError(f"Workflow {workflow.id} has no run() function")
+            self.log.info(
+                f"[MCP] Executing workflow '{workflow.id}' with prompt={prompt!r}"
+            )
+            tracker.set_tag("stage", "executing workflow")
+            run_kwargs = dict(capability_context)
+            if supports_history:
+                # Workflows that opt in receive accumulated session history
+                # as a labelled transcript. Workflows that don't opt in
+                # never see the kwarg, so their signatures stay unchanged.
+                run_kwargs["chat_history"] = chat_history
+            if isinstance(workflow_context, dict) and workflow_context:
+                run_kwargs["workflow_context"] = workflow_context
+            result = await workflow.run(
+                prompt,
+                lm_obj,
+                run_id=run_id,
+                enabled_servers=enabled_servers,
+                server_registry=self.server_registry,
+                **run_kwargs,
+            )
 
-                self.log.info(
-                    f"[MCP] Executing workflow '{workflow.id}' with prompt={prompt!r}"
+            tracker.set_tag("stage", "complete")
+            tracker.set_tag("status", "success")
+            terminal_status = "FINISHED"
+            result_dict = result or {}
+            process_result = _strip_dspy_markers(
+                str(result_dict.get("process_result", ""))
+            )
+            reasoning = _strip_dspy_markers(
+                str(result_dict.get("reasoning", ""))
+            )
+            if process_result:
+                tracker.set_tag("process_result_summary", process_result[:250])
+
+            self._record_run(run_id, {
+                "status": "FINISHED",
+                "stage": "complete",
+                "workflow_id": workflow.id,
+                "session_id": effective_session_id,
+                "prompt": prompt,
+                "process_result": process_result,
+                "reasoning": reasoning,
+                "trajectory": result_dict.get("trajectory") or {},
+            })
+
+            # Append this turn to the session bucket only on success and
+            # only for opt-in workflows. Failed runs and single-shot
+            # workflows leave the session store untouched.
+            if supports_history and process_result:
+                self._record_session_turn(
+                    effective_session_id, prompt, process_result
                 )
-                mlflow.set_tag("stage", "executing workflow")
-                run_kwargs = dict(capability_context)
-                if supports_history:
-                    # Workflows that opt in receive accumulated session history
-                    # as a labelled transcript. Workflows that don't opt in
-                    # never see the kwarg, so their signatures stay unchanged.
-                    run_kwargs["chat_history"] = chat_history
-                if isinstance(workflow_context, dict) and workflow_context:
-                    run_kwargs["workflow_context"] = workflow_context
-                result = await workflow.run(
-                    prompt,
-                    lm_obj,
-                    run_id=run_id,
-                    enabled_servers=enabled_servers,
-                    server_registry=self.server_registry,
-                    **run_kwargs,
-                )
-
-                mlflow.set_tag("stage", "complete")
-                mlflow.set_tag("status", "success")
-                result_dict = result or {}
-                process_result = _strip_dspy_markers(
-                    str(result_dict.get("process_result", ""))
-                )
-                reasoning = _strip_dspy_markers(
-                    str(result_dict.get("reasoning", ""))
-                )
-                if process_result:
-                    mlflow.set_tag("process_result_summary", process_result[:250])
-
-                self._record_run(run_id, {
-                    "status": "FINISHED",
-                    "stage": "complete",
-                    "workflow_id": workflow.id,
-                    "session_id": effective_session_id,
-                    "prompt": prompt,
-                    "process_result": process_result,
-                    "reasoning": reasoning,
-                    "trajectory": result_dict.get("trajectory") or {},
-                })
-
-                # Append this turn to the session bucket only on success and
-                # only for opt-in workflows. Failed runs and single-shot
-                # workflows leave the session store untouched.
-                if supports_history and process_result:
-                    self._record_session_turn(
-                        effective_session_id, prompt, process_result
-                    )
 
         except Exception as e:
             error_summary = _summarize_exception(e)
             self.log.error(f"[MCP] Execution failed: {error_summary}")
-            mlflow.set_tag("stage", "error")
-            mlflow.set_tag("status", "error")
-            mlflow.log_param("error", error_summary)
+            tracker.set_tag("stage", "error")
+            tracker.set_tag("status", "error")
+            tracker.log_param("error", error_summary)
             self._record_run(run_id, {
                 "status": "FAILED",
                 "stage": "error",
@@ -579,4 +607,4 @@ class MCPService(BaseService):
             })
 
         finally:
-            mlflow.end_run()
+            tracker.terminate(terminal_status)

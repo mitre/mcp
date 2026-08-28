@@ -411,7 +411,12 @@ class McpAPI:
                         "prompt": run_data.params.get("prompt", ""),
                         "stage": run_data.tags.get("stage", ""),
                         "model": run_data.params.get("model", ""),
-                        "process_result": run_data.params.get("process_result", ""),
+                        # The result is written as a tag, never as a param,
+                        # so params.process_result was always empty.
+                        "process_result": (
+                            run_data.tags.get("process_result_summary")
+                            or run_data.tags.get("process_result", "")
+                        ),
                     }
                     all_runs.append(run_record)
 
@@ -462,7 +467,13 @@ class McpAPI:
                 "stage": run.data.tags.get("stage"),
                 "reasoning": run.data.tags.get("reasoning"),
                 "prompt": run.data.params.get("prompt"),
-                "process_result": run.data.params.get("process_result"),
+                # Workflows tag the full result and log it as the
+                # result_summary param; params.process_result never exists,
+                # so the detail view's Result box never rendered.
+                "process_result": (
+                    run.data.tags.get("process_result")
+                    or run.data.params.get("result_summary", "")
+                ),
             }
 
             return web.json_response(response)
