@@ -301,36 +301,11 @@ def extract_ir_offline(text: str) -> dict:
             unique_beh.append(b)
     ir["behaviors"] = unique_beh[:20]  # Cap at 20
 
-    # ---------------------------------------------------------
-    # 6. Attack pattern extraction from text
-    # ---------------------------------------------------------
-    # These are attack descriptions, not MITRE IDs (those come later)
-    attack_indicators = [
-        (r"(?:exploit|leverage)\w*\s+(?:vulnerabilit|CVE|flaw)\w*[^.]*", "vulnerability exploitation"),
-        (r"(?:lateral\s+movement|move\s+laterally)[^.]*", "lateral movement"),
-        (r"(?:exfiltrat|steal|theft)[^.]*data[^.]*", "data exfiltration"),
-        (r"(?:encrypt|ransom)\w*[^.]*files?[^.]*", "file encryption"),
-        (r"(?:credential|password)\s+(?:dump|harvest|steal|extract)[^.]*", "credential access"),
-        (r"(?:disable|tamper|bypass)\w*\s+(?:security|defender|antivirus|av)[^.]*", "defense evasion"),
-        (r"(?:shadow\s+cop(?:y|ies)|vssadmin)[^.]*(?:delet|remov)[^.]*", "recovery inhibition"),
-        (r"(?:registry|reg\.exe)\s+(?:modif|set|add|change)[^.]*", "registry modification"),
-        (r"(?:scheduled?\s+task|cron|at\s+job)[^.]*", "scheduled execution"),
-    ]
-
-    for pattern, label in attack_indicators:
-        matches = re.finditer(pattern, text, re.IGNORECASE)
-        for m in matches:
-            ir["attack_patterns"].append({
-                "description": m.group(0).strip()[:200],
-                "source": "regex-pattern",
-            })
-            break  # One match per pattern
-
     total = sum(len(ir[k]) for k in ir if isinstance(ir[k], list))
     print(f"[OFFLINE-IR] Total entities: {total} "
           f"(actors={len(ir['threat_actors'])} malware={len(ir['malware'])} "
           f"tools={len(ir['tools'])} infra={len(ir['infrastructure'])} "
-          f"behaviors={len(ir['behaviors'])} patterns={len(ir['attack_patterns'])})")
+          f"behaviors={len(ir['behaviors'])})")
 
     return ir
 

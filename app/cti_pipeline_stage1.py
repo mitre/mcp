@@ -32,7 +32,7 @@ import os
 import shutil
 import traceback
 from pathlib import Path
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import as_completed
 
 # =============================================================
 # Core Utilities
@@ -47,11 +47,6 @@ from plugins.mcp.app.utilities.cti_taxonomy_loader import (
 )
 
 from plugins.mcp.app.utilities.cti_linguistics import extract_commands, extract_hashes
-from plugins.mcp.app.utilities.cti_text_extract import (
-    extract_file_paths,
-    extract_registry_keys,
-    extract_network_subnets,
-)
 from plugins.mcp.app.utilities.cti_technique_grounding import (
     ground_techniques,
     detect_platforms,
@@ -134,7 +129,7 @@ def move_raw_to_processed(raw_path: Path, processed_dir: Path):
 
 def step_parse_to_ir(base_dir: Path, stop_after: str | None = None):
     """
-    Process all cleaned TXT files into IR + relationships + MITRE.
+    Process all cleaned TXT files into IR + MITRE techniques.
 
     Parallelism:
         • One OS process per file
@@ -375,48 +370,15 @@ async def process_file(
     ir["attack_patterns"] = merged
 
     # ---------------------------------------------------------
-    # 3c. Observable Surface Extraction
-    #
-    # Reuse the generic AE-library parsers for first-class observables
-    # that matter as operation facts: filesystem paths,
-    # and Windows registry keys/values. These helpers are structural
-    # regex extractors, not scenario-specific lists; Stage 2 turns the
-    # resulting IR fields into STIX SCOs.
-    # ---------------------------------------------------------
-    observable_extractors = (
-        ("network_subnets", extract_network_subnets),
-        ("file_paths", extract_file_paths),
-        ("registry_keys", extract_registry_keys),
-    )
-    for field, extractor in observable_extractors:
-        ir.setdefault(field, [])
-        try:
-            values = extractor(text)
-        except Exception as e:
-            print(f"[OBSERVABLE-EXTRACT][WARN] {field}: {e}")
-            values = []
-        if not values:
-            continue
-        seen = {str(v).strip().lower() for v in ir[field] if str(v).strip()}
-        added = 0
-        for value in values:
-            sval = str(value).strip()
-            if not sval:
-                continue
-            key = sval.lower()
-            if key in seen:
-                continue
-            ir[field].append(sval)
-            seen.add(key)
-            added += 1
-        if added:
-            print(f"[OBSERVABLE-EXTRACT] added {added} {field}")
-
-    # ---------------------------------------------------------
     # 4. Output
     # ---------------------------------------------------------
     final = convert_sets(ir)
-    final["provenance"] = ir.get("provenance")
+    provenance = dict(ir.get("provenance") or {})
+    # Which extractor actually produced the IR. The model can be configured and
+    # still return nothing, in which case the deterministic extractor ran and
+    # crediting the model would be wrong.
+    provenance["extractor"] = ir.get("extractor", "unknown")
+    final["provenance"] = provenance
     (final_dir / f"{path.stem}.json").write_text(
         json.dumps(final, indent=2),
         encoding="utf-8",
@@ -493,19 +455,6 @@ def _merge_commands(entity, commands):
         if c["command"] not in existing:
             entity.setdefault("x_cti_commands", []).append(c)
 
-def rag_safe_relationships(rels: list[dict], min_conf: float = 0.55) -> list[dict]:
-    """
-    Filter relationships for RAG suitability.
-
-    Constraints:
-      • confidence ≥ min_conf
-      • source_context ∈ {behavior, sentence}
-    """
-    return [
-        r for r in rels
-        if r.get("confidence", 0.0) >= min_conf
-        and r.get("source_context") in {"behavior", "sentence"}
-    ]
 
 def prepare_raw_uploads(base_dir: Path, selected: list[dict]):
     uploads = base_dir / "raw" / "uploads"

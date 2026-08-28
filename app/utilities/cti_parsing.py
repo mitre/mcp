@@ -46,9 +46,7 @@ def build_ir_prompt(cti_text: str) -> str:
         "attack_patterns": [],
         "behaviors": [
             {{"description": ""}}
-        ],
-        "relationships": []
-
+        ]
         }}
 
         STRICT RULES:
@@ -108,7 +106,7 @@ def enforce_ir_schema(ir: dict) -> dict:
     fields = [
         "threat_actors", "malware", "tools",
         "infrastructure", "attack_patterns",
-        "behaviors", "relationships"
+        "behaviors",
     ]
 
     clean = {}
@@ -174,9 +172,12 @@ async def extract_ir(cti_text: str, debug_path: Path = None) -> dict:
     raw = await llm_generate(prompt, profile="cti")
     if not raw:
         # Offline or unconfigured: fall back to deterministic extraction rather
-        # than emitting an empty IR the rest of Stage 1 cannot use.
+        # than emitting an empty IR the rest of Stage 1 cannot use. Recorded so
+        # provenance does not credit a model that produced nothing.
         from plugins.mcp.app.utilities.cti_offline_ir import extract_ir_offline
-        return enforce_ir_schema(extract_ir_offline(cti_text))
+        ir = enforce_ir_schema(extract_ir_offline(cti_text))
+        ir["extractor"] = "offline"
+        return ir
 
     if debug_path:
         with debug_path.open("a", encoding="utf-8") as f:
@@ -187,7 +188,9 @@ async def extract_ir(cti_text: str, debug_path: Path = None) -> dict:
 
     # If valid → enforce schema and return
     if ir is not None:
-        return enforce_ir_schema(ir)
+        ir = enforce_ir_schema(ir)
+        ir["extractor"] = "llm"
+        return ir
 
     # Empty or invalid JSON
     print("[LLM][WARN] Empty or malformed IR returned, attempting repair…")
@@ -218,8 +221,7 @@ async def extract_ir(cti_text: str, debug_path: Path = None) -> dict:
         "tools": [],
         "infrastructure": [],
         "attack_patterns": [],
-        "behaviors": [],
-        "relationships": []
+        "behaviors": []
         }}
 
         Bad JSON:
@@ -229,10 +231,14 @@ async def extract_ir(cti_text: str, debug_path: Path = None) -> dict:
         ir = clean_raw_to_json(raw)
 
         if ir is not None:
-            return enforce_ir_schema(ir)
+            ir = enforce_ir_schema(ir)
+            ir["extractor"] = "llm"
+            return ir
 
     # Total failure → return empty schema
-    return enforce_ir_schema({})
+    ir = enforce_ir_schema({})
+    ir["extractor"] = "none"
+    return ir
 
 # ---------------------------------------------------------
 # Summary (for human-readable debug)
@@ -263,7 +269,6 @@ def render_ir_summary(ir: dict) -> str:
     section("Infrastructure", ir.get("infrastructure", []))
     section("Attack Patterns", ir.get("attack_patterns", []))
     section("Behaviors", ir.get("behaviors", []))
-    section("Relationships", ir.get("relationships", []))
 
     print(
         f"[IR][PARSED] actors={len(ir['threat_actors'])}  "
@@ -271,8 +276,7 @@ def render_ir_summary(ir: dict) -> str:
         f"tools={len(ir['tools'])}  "
         f"infra={len(ir['infrastructure'])}  "
         f"patterns={len(ir['attack_patterns'])}  "
-        f"behaviors={len(ir['behaviors'])}  "
-        f"relationships={len(ir['relationships'])}"
+        f"behaviors={len(ir['behaviors'])}"
     )
 
     return "\n".join(lines)
