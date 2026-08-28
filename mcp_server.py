@@ -111,7 +111,7 @@ from mcp.server.fastmcp import FastMCP
 MCP_METADATA = {
     "id": "cti_pipeline",
     "display_name": "CTI Pipeline",
-    "default_enabled": True,
+    "default_enabled": False,
     "description": (
         "End-to-end CTI ingest tools: PDF/HTML -> STIX 2.1 bundle -> "
         "adversary -> operation "
