@@ -58,7 +58,6 @@ from plugins.mcp.app.utilities.cti_taxonomy_loader import (
 
 from plugins.mcp.app.utilities.cti_stix_validation import validate_bundle
 from plugins.mcp.app.utilities.cti_stix_report_writer import render_stix_report
-from plugins.mcp.app.utilities.cti_defend_enricher import enrich_stix_bundle_with_defend
 from plugins.mcp.app.utilities.cti_mitre_extract import hashes_to_stix_observed_data
 from plugins.mcp.app.utilities.llm_client import get_llm_provenance
 
@@ -75,12 +74,7 @@ root_dir = get_mcp_root()
 OUTPUTS_IR_DIR   = "outputs_ir/complete"
 OUTPUTS_STIX_DIR = "outputs_stix"
 DEBUG_DIR        = "debug"
-OUTPUTS_CAD_DIR  = "outputs_cad"
 
-
-def get_d3fend_root(mcp_root: Path | None = None) -> Path:
-    """Return the existing D3FEND CAD asset directory."""
-    return (mcp_root or root_dir) / "app" / "utilities" / "D3fend_CAD"
 
 
 def log(msg):
@@ -597,11 +591,9 @@ def convert_ir_to_stix(ir: dict, debug: dict, taxonomy: dict) -> dict:
 def run_phase2(base_dir: Path):
     outputs_ir   = base_dir / OUTPUTS_IR_DIR
     outputs_stix = base_dir / OUTPUTS_STIX_DIR
-    outputs_cad  = base_dir / OUTPUTS_CAD_DIR
     debug_dir    = outputs_stix / DEBUG_DIR
 
     outputs_stix.mkdir(parents=True, exist_ok=True)
-    outputs_cad.mkdir(parents=True, exist_ok=True)
 
     # Load MITRE taxonomy once
     taxonomy = load_mitre_taxonomy()
@@ -690,85 +682,8 @@ def run_phase2(base_dir: Path):
         log(f"        → wrote {stem}.stix.txt")
 
 
-        # -------------------------------------------------------
-        # Write CAD Graph Preview for Visualizer Testing
-        # -------------------------------------------------------
-        defense_root = get_d3fend_root()
-        try:
-            enriched_bundle, ontology_info = enrich_stix_bundle_with_defend(bundle, defense_root)
-        except FileNotFoundError as e:
-            log(f"[D3FEND] Skipping enrichment (missing assets): {e}")
-            ontology_info = {}
-        log("        → performed D3FEND enrichment")
-        log("ontology_info keys:")
-        log(", ".join(ontology_info.keys()))
-        if "cad_graph" in ontology_info:
-            cad_out = outputs_cad / f"{stem}.cad.json"
-            with cad_out.open("w", encoding="utf-8") as f:
-                json.dump(ontology_info["cad_graph"], f, indent=2)
-
-            log(f"        → wrote {cad_out.name} (CAD Graph Preview)")
-        else:
-            log("        [!] No CAD graph returned from enrichment.")
-
-        # -------------------------------------------------------
-        # STDOUT log: ontology modules + mappings + schema used
-        # -------------------------------------------------------
-        log("\n===== D3FEND ENRICHMENT DEBUG =====")
-
-        if ontology_info:
-            modules = ontology_info.get("ontology_modules", [])
-            log(f"[Ontology] Loaded {len(modules)} ontology_modules:")
-            for m in modules:
-                log(f"   - {m}")
-
-            log(f"\n[CAD Schema] {ontology_info.get('cad_schema')}")
-
-            log("\n[Dynamic D3FEND Class Mappings]:")
-            for k, v in ontology_info.get("mappings_used", {}).items():
-                log(f"   {k:20s} → {v}")
-        else:
-            log("[D3FEND] Enrichment skipped — ontology assets not available")
-
-        log("===== END D3FEND ENRICHMENT DEBUG =====\n")
 
 
-# -----------------------------------------------------------
-# STIX → CAD Enrichment Only Runner
-# -----------------------------------------------------------
-def run_stix_to_cad_only(base_dir: Path):
-    outputs_stix = base_dir / OUTPUTS_STIX_DIR
-    outputs_cad  = base_dir / OUTPUTS_CAD_DIR
-
-    outputs_stix.mkdir(parents=True, exist_ok=True)
-    outputs_cad.mkdir(parents=True, exist_ok=True)
-
-    log("[+] Running STIX → CAD enrichment only")
-
-    # Only process raw STIX bundles, not CAD output
-    stix_files = sorted(outputs_stix.glob("*.stix.json"))
-    if not stix_files:
-        log("[!] No .stix.json files found in outputs_stix/.")
-        return
-
-    defense_root = get_d3fend_root()
-
-    for stix_file in stix_files:
-        log(f"    [*] Enriching {stix_file.name}")
-
-        with stix_file.open("r", encoding="utf-8") as f:
-            bundle = json.load(f)
-        enriched_bundle, ontology_info = enrich_stix_bundle_with_defend(bundle, defense_root)
-
-        stem = stix_file.name.replace(".stix.json", "")
-        # Write CAD graph
-        if "cad_graph" in ontology_info:
-            cad_out = outputs_cad / f"{stem}.cad.json"
-            with cad_out.open("w", encoding="utf-8") as f:
-                json.dump(ontology_info["cad_graph"], f, indent=2)
-            log(f"        → wrote {cad_out.name} (CAD Graph)")
-        else:
-            log("        [!] No CAD graph returned.")
 
 def is_physical_or_protocol(noun: str) -> bool:
     synsets = wn.synsets(noun, pos=wn.NOUN)
