@@ -46,7 +46,7 @@ from plugins.mcp.app.utilities.cti_taxonomy_loader import (
     load_mitre_taxonomy,
 )
 
-from plugins.mcp.app.utilities.cti_linguistics import extract_dynamic_techniques, extract_commands, extract_hashes
+from plugins.mcp.app.utilities.cti_linguistics import extract_commands, extract_hashes
 from plugins.mcp.app.utilities.cti_text_extract import (
     extract_file_paths,
     extract_registry_keys,
@@ -302,13 +302,6 @@ async def process_file(
         print(f"[TAXONOMY][WARN] {e}")
         taxonomy = None
 
-    ling = await extract_dynamic_techniques(
-        text,
-        techniques,
-        ir.get("behaviors", []),
-        limit=25,
-    )
-
     mitre = extract_mitre_techniques(
         text,
         ir.get("behaviors", []),
@@ -340,10 +333,10 @@ async def process_file(
 
     seen = set()
     merged = []
-    # ling is excluded: measured on the committed BlackCat stick it
-    # contributed 21 false positives and zero true positives, including
-    # three revoked ATT&CK ids, because it emits techniques with no
-    # platforms key that the platform filter then keeps unconditionally.
+    # The linguistic source is deliberately absent: measured on the committed
+    # BlackCat stick it contributed 21 false positives and zero true
+    # positives, including three revoked ATT&CK ids, because it emits
+    # techniques with no platforms key that the filter then keeps.
     for t in ir.get("attack_patterns", []) + mitre + grounded:
         if isinstance(t, dict) and t.get("id") and t["id"] not in seen:
             seen.add(t["id"])

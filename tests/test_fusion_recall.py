@@ -1,9 +1,14 @@
 """Does fusing several reports raise technique recall?
 
 Recall is the weakest number in the pipeline and it is a coverage problem:
-one report describes part of what an actor does. This scores two partial
-views of the same actor separately, then fused, against the committed
-measuring stick.
+one report describes part of what an actor does.
+
+Scope, stated plainly: the first three tests build bundles directly and
+prove only that fuse_bundles unions technique ids and dedupes them. They
+are mechanism tests, not measurements, and cannot fail because pipeline
+recall regressed. test_fusion_of_two_real_reports_raises_recall is the one
+that measures, because it runs the extractor over two halves of a real
+report and scores the result against the committed stick.
 """
 import json
 import sys
@@ -66,7 +71,7 @@ def partial_reports():
     return _bundle_of(expected[::2]), _bundle_of(expected[1::2])
 
 
-def test_fusion_raises_recall_over_either_report(partial_reports):
+def test_fusion_is_a_union_not_an_intersection(partial_reports):
     from plugins.mcp.app.utilities.cti_fusion import fuse_bundles
 
     expected = _expected()
@@ -108,3 +113,55 @@ def test_fusion_of_one_bundle_is_a_no_op():
 
     only = _bundle_of(["T1486", "T1490"])
     assert _technique_ids(fuse_bundles([only])) == {"T1486", "T1490"}
+
+
+def _extract(text: str) -> set:
+    """Technique ids the real extractor finds in this text, no LLM."""
+    from plugins.mcp.app.utilities.cti_offline_ir import extract_ir_offline
+    from plugins.mcp.app.utilities.cti_taxonomy_loader import (
+        build_normalized_attack_patterns,
+    )
+    from plugins.mcp.app.utilities.cti_mitre_extract import extract_ids_from_text
+
+    _, lookup = build_normalized_attack_patterns()
+    ir = extract_ir_offline(text)
+    found = set(extract_ids_from_text(text, lookup))
+    found |= {
+        ap.get("id")
+        for ap in ir.get("attack_patterns", [])
+        if isinstance(ap, dict) and ap.get("id")
+    }
+    return {t for t in found if t}
+
+
+def test_fusion_of_two_real_reports_raises_recall():
+    """The measuring test: split a real report in half, extract from each
+    half independently, and check the union beats either half alone."""
+    import numpy
+    _ = numpy.ndarray
+
+    from plugins.mcp.app.utilities.cti_fusion import fuse_bundles
+
+    fixture = Path(__file__).resolve().parent / "data" / "blackcat-sample.txt"
+    text = fixture.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    half = len(lines) // 2
+    first_text = "\n".join(lines[:half])
+    second_text = "\n".join(lines[half:])
+
+    expected = _expected()
+    a, b = _extract(first_text), _extract(second_text)
+    fused = _technique_ids(fuse_bundles([_bundle_of(a), _bundle_of(b)]))
+
+    r_a = len(a & expected) / len(expected)
+    r_b = len(b & expected) / len(expected)
+    r_fused = len(fused & expected) / len(expected)
+
+    print(
+        f"\n  first half recall:  {r_a:.3f} ({len(a)} techniques)"
+        f"\n  second half recall: {r_b:.3f} ({len(b)} techniques)"
+        f"\n  fused recall:       {r_fused:.3f} ({len(fused)} techniques)"
+    )
+    assert r_fused > r_a
+    assert r_fused > r_b
+    assert fused >= (a | b) - {t for t in (a | b) if not t}

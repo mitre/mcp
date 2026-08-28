@@ -312,8 +312,10 @@ def _bundle_technique_ids(bundle: dict) -> list[str]:
     STIX object ids regenerate every run, so external_id is the only stable key.
     """
     out = []
+    if not isinstance(bundle, dict):
+        return out
     for o in bundle.get("objects", []) or []:
-        if o.get("type") != "attack-pattern":
+        if not isinstance(o, dict) or o.get("type") != "attack-pattern":
             continue
         for ref in o.get("external_references", []) or []:
             if (ref.get("source_name") or "").lower() != "mitre-attack":
@@ -325,10 +327,31 @@ def _bundle_technique_ids(bundle: dict) -> list[str]:
 
 
 def _bundle_actor_name(bundle: dict) -> Optional[str]:
+    if not isinstance(bundle, dict):
+        return None
     for o in bundle.get("objects", []) or []:
+        if not isinstance(o, dict):
+            continue
         if o.get("type") in ("threat-actor", "intrusion-set") and o.get("name"):
             return str(o["name"])
     return None
+
+
+# ATT&CK Enterprise tactic order. atomic_ordering is executed top to bottom,
+# so sorting by technique id would encrypt the estate before collecting
+# credentials from it.
+_TACTIC_ORDER = (
+    "initial-access", "execution", "persistence", "privilege-escalation",
+    "defense-evasion", "credential-access", "discovery", "lateral-movement",
+    "collection", "command-and-control", "exfiltration", "impact",
+)
+
+
+def _tactic_rank(tactic: str) -> int:
+    try:
+        return _TACTIC_ORDER.index((tactic or "").lower().strip())
+    except ValueError:
+        return len(_TACTIC_ORDER)
 
 
 def _technique_matches(report_id: str, ability_id: str) -> bool:
@@ -401,7 +424,10 @@ async def build_adversary(stix_path: str, platforms: Optional[list] = None,
         try:
             async with aiohttp.ClientSession(headers=_caldera_headers()) as session:
                 async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
-                    agents = json.loads(await resp.text() or "[]") if resp.status == 200 else []
+                    if resp.status != 200:
+                        return {"error": f"reading agents returned {resp.status}; "
+                                         f"cannot determine platforms"}
+                    agents = json.loads(await resp.text() or "[]")
         except Exception as e:
             return {"error": f"could not read agents to determine platforms: {e}"}
         wanted = {(a.get("platform") or "").lower() for a in agents if a.get("platform")}
@@ -413,11 +439,16 @@ async def build_adversary(stix_path: str, platforms: Optional[list] = None,
     try:
         async with aiohttp.ClientSession(headers=_caldera_headers()) as session:
             async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
-                abilities = json.loads(await resp.text() or "[]") if resp.status == 200 else []
+                if resp.status != 200:
+                    # Collapsing this to an empty list reports a broken API
+                    # key as "the stockpile covers none of this report".
+                    return {"error": f"reading abilities returned {resp.status}"}
+                abilities = json.loads(await resp.text() or "[]")
     except Exception as e:
         return {"error": f"could not read abilities: {e}"}
 
     by_technique: dict[str, list[str]] = {}
+    tactic_of: dict[str, str] = {}
     covered: set[str] = set()
     excluded_techniques: set[str] = set()
     available = 0
@@ -436,6 +467,7 @@ async def build_adversary(stix_path: str, platforms: Optional[list] = None,
             continue
         available += 1
         covered.update(hits)
+        tactic_of[ability_id] = ab.get("tactic") or ""
         # Bucket under every technique the ability covers, not just the first.
         # A bundle naming both a parent and its sub-techniques otherwise puts
         # them all in one bucket, so the cap starves every technique but one.
@@ -447,6 +479,8 @@ async def build_adversary(stix_path: str, platforms: Optional[list] = None,
     matched = list(dict.fromkeys(
         aid for tid in sorted(by_technique) for aid in by_technique[tid]
     ))
+    # Stable within a tactic so the selection stays reproducible.
+    matched.sort(key=lambda aid: (_tactic_rank(tactic_of.get(aid, "")), aid))
     unmatched = sorted(set(techniques) - covered - excluded_techniques)
     platform_excluded = sorted(excluded_techniques - covered)
 
