@@ -69,9 +69,15 @@ class TestEnforceIrSchema:
         from plugins.mcp.app.utilities.cti_parsing import enforce_ir_schema
         result = enforce_ir_schema({})
         for key in ("threat_actors", "malware", "tools", "infrastructure",
-                    "attack_patterns", "behaviors", "relationships"):
+                    "attack_patterns", "behaviors"):
             assert key in result
             assert isinstance(result[key], list)
+
+    def test_does_not_enforce_keys_without_a_producer(self):
+        """relationships had no producer and no consumer after the
+        relationship extractor and builders went."""
+        from plugins.mcp.app.utilities.cti_parsing import enforce_ir_schema
+        assert "relationships" not in enforce_ir_schema({})
 
     def test_preserves_valid_data(self):
         from plugins.mcp.app.utilities.cti_parsing import enforce_ir_schema
