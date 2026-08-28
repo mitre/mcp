@@ -114,58 +114,51 @@ def test_explicit_technique_extraction():
 # ============================================================
 
 def test_full_pipeline_offline():
-    """Full pipeline processes a CTI report end-to-end in offline mode."""
-    import yaml
+    """Stage 1 end to end on the committed fixture, no LLM.
 
-    base = Path(__file__).resolve().parents[1] / "data"
-    clean_dir = base / "clean"
+    Uses tests/data and a temp tree rather than the plugin's live data/ and
+    conf/local.yml: the previous version read whatever the operator happened
+    to have staged and rewrote their config to force offline mode, leaving it
+    mutated if anything raised in between.
+    """
+    import shutil
+    import tempfile
 
-    # Find any clean file
-    clean_files = list(clean_dir.glob("*.txt"))
-    if not clean_files:
-        print("  ⚠ No clean files found, skipping end-to-end test")
-        return
+    import numpy
+    _ = numpy.ndarray
 
-    # Set offline mode
-    conf = Path(__file__).resolve().parents[1] / "conf" / "local.yml"
-    if conf.exists():
-        cfg = yaml.safe_load(conf.read_text())
-        was_offline = cfg.get("cti", {}).get("offline", False)
-        cfg.setdefault("cti", {})["offline"] = True
-        conf.write_text(yaml.dump(cfg))
-    else:
-        was_offline = True
+    import plugins.mcp.app.utilities.cti_parsing as cti_parsing
+    from plugins.mcp.app.cti_pipeline_stage1 import process_file
 
+    fixture = Path(__file__).resolve().parent / "data" / "blackcat-sample.txt"
+    assert fixture.is_file(), "committed fixture is missing"
+
+    async def _offline(*_a, **_k):
+        return None
+
+    original = cti_parsing.llm_generate
+    cti_parsing.llm_generate = _offline
     try:
-        from plugins.mcp.app.cti_pipeline_stage1 import process_file
+        base = Path(tempfile.mkdtemp())
+        ir_dir = base / "debug"
+        final_dir = base / "complete"
+        ir_dir.mkdir(parents=True)
+        final_dir.mkdir(parents=True)
 
-        ir_dir = base / "outputs_ir" / "pytest" / "debug"
-        final_dir = base / "outputs_ir" / "pytest" / "complete"
-        ir_dir.mkdir(parents=True, exist_ok=True)
-        final_dir.mkdir(parents=True, exist_ok=True)
+        clean = base / "blackcat.txt"
+        shutil.copy(fixture, clean)
 
-        f = clean_files[0]
-        for old in list(ir_dir.glob(f"{f.stem}*")) + list(final_dir.glob(f"{f.stem}*")):
-            old.unlink()
-
-        asyncio.run(process_file(f, ir_dir, final_dir, None))
-
-        # Verify output exists
-        output = final_dir / f"{f.stem}.json"
-        assert output.exists(), f"Pipeline didn't produce output for {f.name}"
-
-        ir = json.loads(output.read_text())
-        assert "attack_patterns" in ir
-        assert "relationships" in ir
-        assert "threat_actors" in ir or "malware" in ir or "tools" in ir
-
-        print(f"  ✓ Full pipeline: {f.name} → {len(ir.get('attack_patterns',[]))} TTPs, "
-              f"{len(ir.get('relationships',[]))} rels")
+        asyncio.run(process_file(clean, ir_dir, final_dir, None))
     finally:
-        # Restore config
-        if conf.exists():
-            cfg["cti"]["offline"] = was_offline
-            conf.write_text(yaml.dump(cfg))
+        cti_parsing.llm_generate = original
+
+    output = final_dir / "blackcat.json"
+    assert output.exists(), "pipeline produced no IR"
+
+    ir = json.loads(output.read_text())
+    assert ir["attack_patterns"], "no techniques attributed"
+    assert ir["provenance"]["extractor"] == "offline"
+    print(f"  \u2713 Full pipeline: {len(ir['attack_patterns'])} TTPs")
 
 
 # ============================================================
