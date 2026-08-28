@@ -348,111 +348,12 @@ async def fuse_cti_bundles(stix_paths: list[str]) -> dict:
     }
 
 
-@mcp.tool(name="cti_pipeline_build_source")
-@_stdout_safe
-async def build_source(stix_path: str, source_name: Optional[str] = None,
-                       commit: bool = False) -> dict:
-    """Turn a STIX bundle into a CALDERA fact source.
-
-    Seeds an operation with the hosts, accounts and domains the report
-    actually named, so a run is grounded in the CTI instead of using
-    placeholder values. Nothing is invented; a bundle that names none of
-    these yields no facts.
-
-    Previews by default. remote.host.ip is a live target (stockpile nmaps and
-    SMB-mounts it) and a report names the attacker's C2 and other victims
-    beside the estate, so review the facts before committing.
-
-    Args:
-        stix_path: path to a stage 2 STIX bundle.
-        source_name: name for the created source. Defaults to the bundle stem.
-        commit: create the source. Leave false to preview the facts.
-
-    Returns:
-        {facts, fact_count, routable_addresses, committed, source_id, name}
-    """
-    from plugins.mcp.app.utilities.cti_caldera_facts import (
-        bundle_to_facts,
-        routable_addresses,
-    )
-
-    if not stix_path:
-        return {"error": "stix_path is required"}
-
-    p = _resolve_pipeline_file(
-        stix_path, data_subdirs=("outputs_stix", "stix_cti", "raw/uploads"),
-    )
-    if not p.is_file():
-        return {"error": f"stix_path not found: {stix_path}"}
-    try:
-        bundle = json.loads(p.read_text(encoding="utf-8"))
-    except Exception as e:
-        return {"error": f"failed to parse STIX bundle: {e}"}
-
-    facts = bundle_to_facts(bundle)
-    if not facts:
-        return {
-            "error": "bundle named no hosts, accounts or domains",
-            "stix_path": str(p),
-            "fact_count": 0,
-        }
-
-    name = (source_name or "").strip() or f"cti-{p.stem}"
-    routable = routable_addresses(facts)
-
-    if not commit:
-        return {
-            "committed": False,
-            "name": name,
-            "fact_count": len(facts),
-            "facts": facts,
-            "routable_addresses": routable,
-            "stix_path": str(p),
-            "note": ("preview only, call again with commit=true to create. "
-                     "Routable addresses become live scan and mount targets."),
-        }
-
-    # SourceSchema's pre_load stamps every fact with input_data["id"], so a
-    # body without one raises KeyError before validation and returns a 500.
-    source_id = str(uuid.uuid4())
-    body = {"id": source_id, "name": name, "facts": facts}
-
-    import aiohttp
-    url = _caldera_base_url() + "sources"
-    try:
-        async with aiohttp.ClientSession(headers=_caldera_headers()) as session:
-            async with session.post(url, json=body,
-                                    timeout=aiohttp.ClientTimeout(total=30)) as resp:
-                text = await resp.text()
-                try:
-                    payload = json.loads(text) if text else {}
-                except json.JSONDecodeError:
-                    payload = {"raw": text}
-                if resp.status >= 400:
-                    return {
-                        "error": f"source creation returned {resp.status}",
-                        "url": url,
-                        "response": payload,
-                    }
-    except Exception as e:
-        return {"error": f"source creation request failed: {e}", "url": url}
-
-    return {
-        "committed": True,
-        "source_id": source_id,
-        "name": name,
-        "fact_count": len(facts),
-        "facts": facts,
-        "routable_addresses": routable,
-        "stix_path": str(p),
-    }
-
-
 @mcp.tool(name="cti_pipeline_run_operation")
 async def run_operation(
     adversary_id: str,
     agent_paws: list,
     operation_name: Optional[str] = None,
+    source_id: Optional[str] = None,
 ) -> dict:
     """Start a Caldera v2 operation against an adversary using listed agents.
 
@@ -466,6 +367,9 @@ async def run_operation(
             When empty, Caldera will run against all agents in the
             'group' (defaults to 'red').
         operation_name: optional name; auto-generated when absent.
+        source_id: optional fact source to seed the operation with. Defaults
+            to Caldera's 'basic' source. Facts about the operator's own
+            estate come from the operator, never from a threat report.
 
     Returns:
         {operation_id, state, name, response}
@@ -483,7 +387,7 @@ async def run_operation(
         "adversary": {"adversary_id": adversary_id},
         "group": "red",
         "planner": {"id": "atomic"},
-        "source": {"id": "basic"},
+        "source": {"id": source_id or "basic"},
         "state": "running",
         "autonomous": 1,
         "auto_close": False,

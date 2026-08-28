@@ -38,6 +38,7 @@ Recommended (the measuring stick fills these):
 - `description`, `aliases`, `kill_chain_phases`, `first_seen`, `last_seen`
 
 Topology inference was removed: the pipeline no longer emits a per-host
-topology object, and the expected bundles intentionally have none. Extracted
-hosts, accounts and domains become CALDERA facts instead, see
-app/utilities/cti_caldera_facts.py.
+topology object, and the expected bundles intentionally have none. Hosts,
+accounts and domains named in a report describe the previous victim, so they
+are not turned into CALDERA facts either. CALDERA discovers facts about the
+operator's own estate at runtime.

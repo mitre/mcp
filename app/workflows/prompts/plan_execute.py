@@ -7,7 +7,7 @@ from typing import Any
 
 PLAN_EXECUTE_DESCRIPTION = (
     "Turn CTI into an adversary-emulation run. Select or upload CTI/STIX, "
-    "extract STIX 2.1 entities, seed a fact source, build an adversary "
+    "extract STIX 2.1 entities, build an adversary "
     "from the observed techniques, run the CALDERA operation against available "
     "agents, and summarize detection coverage."
 )
@@ -47,9 +47,9 @@ Execution contract:
   review instead of inventing a substitute.
 - Run operations against agents that have already checked in. If no agent is
   available, say so rather than assuming one.
-- When the CTI names hosts, accounts or domains, build a fact source from the
-  bundle and run the operation against it, so the run uses values the report
-  stated rather than placeholders.
+- Operations run against Caldera's fact source, not the report. A report
+  describes the previous victim; facts about this estate are discovered at
+  runtime or supplied by the operator.
 
 GROUNDING - non-negotiable: every concrete fact in your output (host names,
 user accounts, technique IDs, ability ids, infrastructure types, file paths,
@@ -95,8 +95,9 @@ Execution contract:
   operator-review gap instead of inventing one.
 - Run operations against agents that have already checked in, or clearly
   report that no suitable agent is available.
-- When cti_context names hosts, accounts or domains, build a fact source from
-  the bundle so the operation runs on report-grounded values.
+- Operations run against Caldera's fact source, not the report. A report
+  describes the previous victim; facts about this estate are discovered at
+  runtime or supplied by the operator.
 
 GROUNDING - non-negotiable: every concrete fact you emit (host names, user
 accounts, technique IDs, software names, infrastructure types, file paths, IP
