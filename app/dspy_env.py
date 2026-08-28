@@ -20,6 +20,14 @@ forward the API key.
 import os
 import dspy
 
+# dspy parks a lazy proxy at sys.modules["numpy"], and thinc's Cython
+# _import_array() cannot see through it, so spaCy fails to import. A bare
+# `import numpy` only rebinds the proxy; the attribute access is what forces
+# the real module. Every path that reaches spaCy imports dspy_env first.
+import numpy as _numpy
+
+_ = _numpy.ndarray
+
 
 ENV_MODEL = "DSPY_MODEL"
 ENV_API_KEY = "DSPY_API_KEY"
