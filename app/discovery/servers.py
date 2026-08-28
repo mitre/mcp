@@ -60,7 +60,7 @@ def discover_mcp_servers(plugins_root: Path) -> dict:
             "default_enabled": False,
             "description": (
                 "CTI ingest -> STIX -> adversary -> "
-                "-> operation -> detection-validation tools."
+                "-> operation tools."
             ),
         }
         registry["cti_pipeline"] = {

@@ -9,12 +9,12 @@ PLAN_EXECUTE_DESCRIPTION = (
     "Turn CTI into an adversary-emulation run. Select or upload CTI/STIX, "
     "extract STIX 2.1 entities, build an adversary "
     "from the observed techniques, run the CALDERA operation against available "
-    "agents, and summarize detection coverage."
+    "agents, and report which techniques it covered."
 )
 
 
 PLAN_EXECUTE_EXAMPLES = [
-    "Create the BlackCat adversary from the selected STIX, run it against my agents, and summarize detections.",
+    "Create the BlackCat adversary from the selected STIX, run it against my agents, and report coverage.",
     "Fuse the selected STIX bundles, infer the victim infrastructure, and tell me which hosts and services it implies.",
     "Convert this raw CTI into STIX 2.1 and identify any operator-review gaps.",
     "Plan an emulation against the Discovery adversary on my available agents.",
