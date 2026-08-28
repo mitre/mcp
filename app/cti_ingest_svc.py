@@ -3,22 +3,16 @@
 Logging is preserved verbatim for debug capture via:
 python3 cti_ingest_svc.py --base-dir data --step all 2>&1 | tee -a debug_mitre.log
 
-| Step          | Description                       |
-| ------------- | -------------------------------------- |
-| Raw → Clean   | Normalize source material              |
-| Clean → IR    | LLM extraction of entities & behaviors |
-| NLP Layers    | Improve IR quality                     |
-| MITRE         | Map behaviors to ATT&CK                |
-| Relationships | Build entity graph                     |
-| Validation    | Ensure graph correctness               |
-| Outputs       | Persist IR + summary                   |
-| Scenario      | (Optional) Narrative generation        |
+| Step         | Description                                    |
+| ------------ | ---------------------------------------------- |
+| raw-to-clean | Normalize source material                      |
+| debug-ir     | Stop after IR extraction                       |
+| stage2       | IR -> STIX bundle only                         |
+| all          | Everything, in order                           |
 
 '''
 
 import argparse
-import asyncio
-import json, re
 import shutil
 from enum import Enum
 from pathlib import Path
@@ -71,12 +65,6 @@ class CTIIngestService:
 
                 case "debug-ir":
                     step_parse_to_ir(base_dir, stop_after="ir")
-
-                case "debug-mitre":
-                    step_parse_to_ir(base_dir, stop_after="mitre")
-
-                case "debug-relationships":
-                    step_parse_to_ir(base_dir, stop_after="relationships")
 
                 case "stage2":
                     self.run_stage2(base_dir)

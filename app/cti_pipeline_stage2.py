@@ -15,13 +15,11 @@ Debug / Observability:
     data/outputs_stix/debug/<stem>.ir.json            (IR copy)
     data/outputs_stix/debug/<stem>.ir.pretty.txt      (IR pretty summary)
     data/outputs_stix/debug/<stem>.conversion.log     (step-by-step log)
-    data/outputs_stix/debug/<stem>.relationships.json (relationship debug)
     data/outputs_stix/debug/<stem>.validation.txt     (validation issues)
     data/outputs_stix/debug/<stem>.metrics.json       (quality metrics)
     data/outputs_stix/debug/<stem>.audit.json         (full audit trail)
 """
 
-import argparse
 import json
 from pathlib import Path
 import uuid
@@ -30,7 +28,6 @@ import datetime
 
 
 # ----------------- Imports from utilities -----------------
-from plugins.mcp.app.utilities.cti_linguistics import normalize_behavior_text
 
 from plugins.mcp.app.utilities.cti_stix_builders import (
     make_bundle,
@@ -38,16 +35,11 @@ from plugins.mcp.app.utilities.cti_stix_builders import (
     make_attack_pattern,
 )
 
-from plugins.mcp.app.utilities.cti_taxonomy_loader import (
-    load_mitre_taxonomy,
-    lookup_name,
-    lookup_attack_id
-)
+from plugins.mcp.app.utilities.cti_taxonomy_loader import load_mitre_taxonomy
 
 from plugins.mcp.app.utilities.cti_stix_validation import validate_bundle
 from plugins.mcp.app.utilities.cti_stix_report_writer import render_stix_report
 from plugins.mcp.app.utilities.cti_mitre_extract import hashes_to_stix_observed_data
-from plugins.mcp.app.utilities.llm_client import get_llm_provenance
 
 
 # -----------------------------------------------------------
@@ -96,38 +88,20 @@ def compute_metrics(ir: dict, bundle: dict) -> dict:
     return {
         "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
         "input_counts": {
-            "malware": len(ir.get("malware", [])),
-            "tools": len(ir.get("tools", [])),
             "threat_actors": len(ir.get("threat_actors", [])),
-            "infrastructure": len(ir.get("infrastructure", [])),
             "attack_patterns": len(ir.get("attack_patterns", [])),
             "behaviors": len(ir.get("behaviors", [])),
-            "relationships": len(ir.get("relationships", [])),
-            "domains": len(ir.get("domains", [])),
-            "user_accounts": len(ir.get("user_accounts", [])),
-            "software": len(ir.get("software", [])),
+            "hashes": len(ir.get("hashes", [])),
         },
         "output_counts": {
             "total_stix_objects": len(bundle.get("objects", [])),
-            "relationships": len([
-                o for o in bundle.get("objects", [])
-                if o.get("type") == "relationship"
-            ]),
             "attack_patterns": len([
                 o for o in bundle.get("objects", [])
                 if o.get("type") == "attack-pattern"
             ]),
-            "identities": len([
+            "threat_actors": len([
                 o for o in bundle.get("objects", [])
-                if o.get("type") == "identity"
-            ]),
-            "user_accounts": len([
-                o for o in bundle.get("objects", [])
-                if o.get("type") == "user-account"
-            ]),
-            "software": len([
-                o for o in bundle.get("objects", [])
-                if o.get("type") == "software"
+                if o.get("type") == "threat-actor"
             ]),
         }
     }
@@ -151,16 +125,12 @@ def convert_ir_to_stix(ir: dict, debug: dict, taxonomy: dict) -> dict:
     """
 
     stix_objects = []
-    name_to_id = {}
     debug["conversion_steps"] = []
-    debug["relationship_debug"] = []
 
     # Helper for logging
     def log(msg):
         debug["conversion_steps"].append(msg)
-    log(f"[DEBUG] Processing {len(ir.get('attack_patterns', []))} TTPs, "
-    f"{len(ir.get('relationships', []))} relationships")
-
+    log(f"[DEBUG] Processing {len(ir.get('attack_patterns', []))} TTPs")
 
     # ------- Threat Actors -------
     for ta in ir.get("threat_actors", []):
@@ -168,9 +138,6 @@ def convert_ir_to_stix(ir: dict, debug: dict, taxonomy: dict) -> dict:
         log(f"Threat Actor → {ta.get('name')} → {obj['id'] if obj else 'SKIPPED'}")
         if obj:
             stix_objects.append(obj)
-            name_to_id[obj["name"].lower()] = obj["id"]
-            for alias in obj.get("aliases", []):
-                name_to_id[alias.lower()] = obj["id"]
 
     # ------- TTPs / ATT&CK -------
     for ttp in ir.get("attack_patterns", []):
@@ -188,7 +155,6 @@ def convert_ir_to_stix(ir: dict, debug: dict, taxonomy: dict) -> dict:
         log(f"TTP → {label} → {obj['id'] if obj else 'SKIPPED'}")
         if obj:
             stix_objects.append(obj)
-            name_to_id[obj["name"].lower()] = obj["id"]
 
     # ------- Hashes (Observed Data) -------
     if ir.get("hashes"):
@@ -275,8 +241,6 @@ def run_phase2(base_dir: Path):
         write_debug_file(debug_dir / f"{stem}.metrics.json", metrics)
 
         # Write relationship debug
-        write_debug_file(debug_dir / f"{stem}.relationships.json",
-                         debug.get("relationship_debug", []))
 
         # Write conversion log
         write_debug_file(debug_dir / f"{stem}.conversion.log",
@@ -289,16 +253,8 @@ def run_phase2(base_dir: Path):
             "metrics": metrics,
             "validation_errors": errors,
             "conversion_log": debug.get("conversion_steps", []),
-            "relationship_debug": debug.get("relationship_debug", []),
         }
-        audit["unresolved_entities"] = [
-            r for r in debug.get("relationship_debug", [])
-            if "unresolved" in r.get("status", "")
-        ]
-
-        audit["object_count_before_bundle"] = len(bundle.get("objects", []))
-        audit["object_count_after_bundle"] = len(bundle.get("objects", []))
-
+        audit["object_count"] = len(bundle.get("objects", []))
 
         write_debug_file(debug_dir / f"{stem}.audit.json", audit)
 

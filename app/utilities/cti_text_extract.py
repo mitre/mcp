@@ -1,9 +1,9 @@
 """
-cti_text_extract.py — structural text extractors shared by the pipeline
+cti_text_extract.py — structural text extractors for the AE-library loader
 
-Regex extractors for first-class observables that Stage 1 records and the
-AE-library loader reuses when it lowers a plan into a measuring stick.
-Structural only: no scenario-specific vocabulary lives here.
+Regex extractors the loader uses when it lowers an AE plan into a measuring
+stick. Kept out of the loader so runtime code never has to reach into a dev
+tool's private names. Structural only: no scenario-specific vocabulary.
 """
 
 import re
