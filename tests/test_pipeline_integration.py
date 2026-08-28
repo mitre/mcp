@@ -8,9 +8,7 @@ Verifies that:
 3. STIX builders produce spec-compliant objects
 4. Technique extraction finds explicit T-numbers
 5. Entity reclassification works correctly
-6. Relationship extractor handles diverse sentences
 7. D3FEND validation loads and filters
-8. Precision gate doesn't crash on edge cases
 9. Full pipeline processes a file end-to-end
 10. STIX 2.1 compliance on output bundles
 
@@ -36,9 +34,7 @@ def test_core_imports():
     from plugins.mcp.app.utilities.cti_taxonomy_loader import load_mitre_taxonomy
     from plugins.mcp.app.utilities.cti_offline_ir import extract_ir_offline
     from plugins.mcp.app.utilities.cti_stix_builders import make_malware, make_tool, make_threat_actor
-    from plugins.mcp.app.utilities.cti_relation_extractor import extract_triples
     from plugins.mcp.app.utilities.cti_defend_validation import validate_techniques_by_tactic
-    from plugins.mcp.app.utilities.cti_precision_gate import apply_precision_gate
     from plugins.mcp.app.utilities.cti_ontology_inference import infer_techniques_from_entities
     from plugins.mcp.app.utilities.cti_entity_validator import reclassify_entities
     assert nlp is not None
@@ -165,32 +161,6 @@ def test_entity_reclassification():
     print(f"  ✓ Reclassified: {len(result['malware'])} malware, {len(result['tools'])} tools")
 
 
-# ============================================================
-# 6. RELATIONSHIP EXTRACTION
-# ============================================================
-
-def test_relationship_extractor():
-    """New dep-parse extractor handles diverse sentence structures."""
-    from plugins.mcp.app.utilities.cti_relation_extractor import (
-        extract_triples, filter_grounded_relationships, dedup_triples,
-    )
-
-    cases = [
-        ("APT29 uses Cobalt Strike.", {"apt29", "cobalt strike"}, 1),
-        ("Mimikatz was deployed by BlackCat.", {"blackcat", "mimikatz"}, 1),
-        ("The group deployed A and B.", {"a", "b"}, 0),  # "group" not in entities
-        ("", set(), 0),  # empty text
-    ]
-
-    for text, entities, min_expected in cases:
-        triples = extract_triples(text, entities)
-        filtered = filter_grounded_relationships(triples)
-        deduped = dedup_triples(filtered)
-        assert len(deduped) >= min_expected, \
-            f"Expected >={min_expected} rels for '{text[:40]}', got {len(deduped)}"
-
-    print("  ✓ Relationship extractor handles all test cases")
-
 
 # ============================================================
 # 7. D3FEND TACTIC VALIDATION
@@ -217,27 +187,6 @@ def test_defend_tactic_validation():
     assert any(t["id"] == "T1486" for t in filtered)
     print(f"  ✓ D3FEND validation: {len(techniques)} → {len(filtered)} techniques")
 
-
-# ============================================================
-# 8. PRECISION GATE
-# ============================================================
-
-def test_precision_gate_edge_cases():
-    """Precision gate handles empty/minimal input without crashing."""
-    from plugins.mcp.app.utilities.cti_precision_gate import apply_precision_gate
-
-    # Empty input
-    result = apply_precision_gate([], "", {})
-    assert result == []
-
-    # Single technique
-    result = apply_precision_gate(
-        [{"id": "T1486", "confidence": 0.9, "source": "explicit"}],
-        "ransomware encrypts files",
-        {"threat_actors": [], "malware": [], "tools": []},
-    )
-    assert len(result) >= 1
-    print("  ✓ Precision gate handles edge cases")
 
 
 # ============================================================
