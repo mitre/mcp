@@ -76,18 +76,6 @@ CLEAN_DIR_NAME  = "clean"
 OUTPUTS_IR_DIR  = "outputs_ir"
 IMAGES_DIR_NAME = "images"
 
-
-def _preload_thread_shared_nlp_resources():
-    """Load lazy NLTK corpora before Stage 1 worker threads touch them."""
-    try:
-        from nltk.corpus import stopwords, wordnet  # type: ignore
-
-        wordnet.ensure_loaded()
-        wordnet.synsets("network")
-        stopwords.words("english")
-    except Exception as e:
-        print(f"[WARN] NLTK pre-load skipped: {e}")
-
 # =============================================================
 # Directory Setup
 # =============================================================
@@ -169,7 +157,6 @@ def step_parse_to_ir(base_dir: Path, stop_after: str | None = None):
         workers = max(1, (os.cpu_count() or 4) - 2)
     else:
         workers = 1
-    _preload_thread_shared_nlp_resources()
 
     # Stage1 work is LLM/IO-bound, not CPU-bound: each file makes
     # remote calls to the LLM gateway, downloads embeddings, reads
@@ -306,13 +293,13 @@ async def process_file(
     ling = await extract_dynamic_techniques(
         text,
         techniques,
-        ir.get("qualified_behaviors", []),
+        ir.get("behaviors", []),
         limit=25,
     )
 
     mitre = extract_mitre_techniques(
         text,
-        qualified,
+        ir.get("behaviors", []),
         techniques,
         lookup,
     )

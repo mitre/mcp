@@ -27,7 +27,6 @@ from pathlib import Path
 import uuid
 
 import datetime
-from nltk.corpus import wordnet as wn
 
 
 # ----------------- Imports from utilities -----------------
@@ -317,10 +316,6 @@ def run_phase2(base_dir: Path):
 
 
 
-
-def is_physical_or_protocol(noun: str) -> bool:
-    synsets = wn.synsets(noun, pos=wn.NOUN)
-    return any(s.lexname() in {"noun.artifact", "noun.communication"} for s in synsets)
 
 def new_stix_id(stix_type: str) -> str:
     """
