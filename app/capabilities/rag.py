@@ -193,7 +193,6 @@ def search_cti_data_by_title(name: str) -> str:
 # capability registry, this declaration is dormant; the legacy code path in
 # mcp_svc still wires RAG into runs directly.
 
-import os
 import asyncio
 from pathlib import Path
 

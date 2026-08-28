@@ -16,7 +16,6 @@ Output conforms to:
 
 from plugins.mcp.app.utilities.nlp_model import get_nlp
 import re
-from rapidfuzz import fuzz
 
 
 def _log(msg: str):

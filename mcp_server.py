@@ -27,9 +27,8 @@ import json
 import logging
 import os
 import sys
-import uuid
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 # This file runs both in-process (when the workflow registry imports it
 # to enumerate tools) and as a stdio subprocess spawned by plan_execute's

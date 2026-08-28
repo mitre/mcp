@@ -1,5 +1,4 @@
 """Tests for cti_offline_ir.py — offline IR extraction."""
-import pytest
 
 
 class TestExtractIrOffline:

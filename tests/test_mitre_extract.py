@@ -1,5 +1,4 @@
 """Tests for cti_mitre_extract.py — MITRE technique extraction."""
-import pytest
 
 
 class TestExtractIdsFromText:

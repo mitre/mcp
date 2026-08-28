@@ -9,6 +9,8 @@ The fixture names its technique ids explicitly, so recall here is an upper
 bound rather than a field estimate. Precision is the number that regresses
 when an extraction source starts emitting noise, and is why this exists.
 """
+import contextlib
+import io
 import json
 import shutil
 import sys
@@ -44,8 +46,13 @@ def _expected_technique_ids() -> set:
 
 
 @pytest.fixture(scope="module")
-def pipeline_technique_ids():
-    """Stage 1 output for the committed fixture, no LLM involved."""
+def stage1_run():
+    """Stage 1 output for the committed fixture, no LLM involved.
+
+    Returns (technique_ids, stdout). The output is captured here rather than
+    with capfd in a test, because this fixture is module-scoped and runs
+    during the first test that uses it, so a later test's capfd sees nothing.
+    """
     import numpy
     _ = numpy.ndarray
 
@@ -67,8 +74,11 @@ def pipeline_technique_ids():
         uploads.mkdir(parents=True)
         shutil.copy(_FIXTURE, uploads / "blackcat.txt")
 
-        step_raw_to_clean(base)
-        step_parse_to_ir(base)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            step_raw_to_clean(base)
+            step_parse_to_ir(base)
+        captured = buf.getvalue()
 
         produced = list((base / "outputs_ir" / "complete").glob("*.json"))
         assert produced, "stage 1 produced no IR"
@@ -76,11 +86,17 @@ def pipeline_technique_ids():
     finally:
         cti_parsing.llm_generate = original
 
-    return {
+    ids = {
         ap["id"]
         for ap in ir.get("attack_patterns", [])
         if isinstance(ap, dict) and ap.get("id")
     }
+    return ids, captured
+
+
+@pytest.fixture(scope="module")
+def pipeline_technique_ids(stage1_run):
+    return stage1_run[0]
 
 
 def _score(got: set, expected: set) -> dict:
@@ -119,11 +135,15 @@ def test_stick_and_pipeline_agree_on_the_key(pipeline_technique_ids):
         assert "--" not in tid, tid
 
 
-def test_grounding_and_platform_filter_actually_run(capfd, pipeline_technique_ids):
+def test_grounding_and_platform_filter_actually_run(stage1_run):
     """Both steps sit inside try/except, so a NameError in them degrades
     silently. A deleted variable once left both dead for every document
     while the scores still passed."""
-    out = capfd.readouterr().out
-    assert "[TECHNIQUE-GROUND][WARN]" not in out
-    assert "[TECHNIQUE-FILTER][WARN]" not in out
-    assert "[TAXONOMY][WARN]" not in out
+    out = stage1_run[1]
+    assert out, "stage 1 produced no output to inspect"
+    for warn in ("[TECHNIQUE-GROUND][WARN]", "[TECHNIQUE-FILTER][WARN]",
+                 "[TAXONOMY][WARN]"):
+        assert warn not in out, f"a pipeline step degraded silently: {warn}"
+    # Positive assertions: absence of a warning is not evidence a step ran.
+    assert "[TECHNIQUE-GROUND] grounded=" in out
+    assert "[TECHNIQUE-FILTER] attested=" in out

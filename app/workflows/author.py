@@ -6,7 +6,6 @@ import json
 import sys
 import mlflow
 import traceback
-import asyncio
 from contextlib import AsyncExitStack
 
 from plugins.mcp.app.config import caldera_connection, llm_defaults, mlflow_settings

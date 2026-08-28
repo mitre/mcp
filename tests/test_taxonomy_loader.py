@@ -1,5 +1,4 @@
 """Tests for cti_taxonomy_loader.py — taxonomy loading and lookup functions."""
-import pytest
 
 
 class TestLoadMitreTaxonomy:

@@ -18,7 +18,6 @@ Requires Caldera running with MCP plugin enabled.
 """
 import pytest
 import requests
-import time
 import json
 
 CALDERA_URL = "http://localhost:8888"

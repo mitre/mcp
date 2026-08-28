@@ -7,7 +7,6 @@ Creates:
         enterprise_attack.json
 """
 
-import os
 import json
 import requests
 from pathlib import Path

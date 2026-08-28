@@ -116,21 +116,32 @@ def test_fusion_of_one_bundle_is_a_no_op():
 
 
 def _extract(text: str) -> set:
-    """Technique ids the real extractor finds in this text, no LLM."""
-    from plugins.mcp.app.utilities.cti_offline_ir import extract_ir_offline
+    """Technique ids stage 1's attribution finds in this text, no LLM.
+
+    Mirrors process_file's merge: the explicit-id regex plus the two sources
+    that survive, so this measures what the pipeline actually attributes
+    rather than the regex alone.
+    """
     from plugins.mcp.app.utilities.cti_taxonomy_loader import (
         build_normalized_attack_patterns,
+        load_mitre_taxonomy,
     )
-    from plugins.mcp.app.utilities.cti_mitre_extract import extract_ids_from_text
+    from plugins.mcp.app.utilities.cti_mitre_extract import (
+        extract_ids_from_text,
+        extract_mitre_techniques,
+    )
+    from plugins.mcp.app.utilities.cti_technique_grounding import ground_techniques
 
-    _, lookup = build_normalized_attack_patterns()
-    ir = extract_ir_offline(text)
+    techniques, lookup = build_normalized_attack_patterns()
+    taxonomy = load_mitre_taxonomy()
+
     found = set(extract_ids_from_text(text, lookup))
-    found |= {
-        ap.get("id")
-        for ap in ir.get("attack_patterns", [])
-        if isinstance(ap, dict) and ap.get("id")
-    }
+    for source in (extract_mitre_techniques(text, [], techniques, lookup),
+                   ground_techniques(text, taxonomy=taxonomy)):
+        found |= {
+            t.get("id") for t in source or []
+            if isinstance(t, dict) and t.get("id")
+        }
     return {t for t in found if t}
 
 

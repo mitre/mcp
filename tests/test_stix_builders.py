@@ -1,6 +1,4 @@
 """Tests for cti_stix_builders.py — every builder function."""
-import pytest
-import re
 
 
 
