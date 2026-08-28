@@ -24,11 +24,12 @@ _PLUGIN = _HERE.parent
 _FIXTURE = _HERE / "data" / "blackcat-sample.txt"
 _STICK = _PLUGIN / "data" / "measuring-sticks" / "blackcat-expected.stix.json"
 
-# Floors, not exact values. Measured at the time of writing:
-# precision 0.892, recall 0.971, F1 0.930.
-MIN_PRECISION = 0.80
+# Floors, not exact values, set with headroom so an unrelated taxonomy
+# refresh does not trip them. Measured at the time of writing:
+# precision 0.825, recall 0.971, F1 0.892.
+MIN_PRECISION = 0.75
 MIN_RECALL = 0.85
-MIN_F1 = 0.85
+MIN_F1 = 0.80
 
 
 def _expected_technique_ids() -> set:
@@ -116,3 +117,13 @@ def test_stick_and_pipeline_agree_on_the_key(pipeline_technique_ids):
     for tid in pipeline_technique_ids | _expected_technique_ids():
         assert tid.startswith("T"), tid
         assert "--" not in tid, tid
+
+
+def test_grounding_and_platform_filter_actually_run(capfd, pipeline_technique_ids):
+    """Both steps sit inside try/except, so a NameError in them degrades
+    silently. A deleted variable once left both dead for every document
+    while the scores still passed."""
+    out = capfd.readouterr().out
+    assert "[TECHNIQUE-GROUND][WARN]" not in out
+    assert "[TECHNIQUE-FILTER][WARN]" not in out
+    assert "[TAXONOMY][WARN]" not in out

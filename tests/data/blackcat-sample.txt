@@ -37,9 +37,10 @@ password stores present on compromised endpoints (T1555).
 
 Lateral movement
 ----------------
-Movement between hosts used Remote Desktop (T1021.001) and administrative
-SMB shares (T1021.004). Tooling was transferred to the targets it was
-needed on (T1570), and additional payloads were ingressed from operator
+Movement between Windows hosts used Remote Desktop (T1021.001). The group
+also operates a Linux and ESXi variant, and on those hosts moved over SSH
+(T1021.004). Tooling was transferred to the targets it was needed on
+(T1570), and additional payloads were ingressed from operator
 infrastructure (T1105).
 
 Defense evasion
