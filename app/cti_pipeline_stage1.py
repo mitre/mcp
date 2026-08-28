@@ -41,7 +41,10 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from plugins.mcp.app.utilities.cti_raw_cleaner import clean_raw_directory
 from plugins.mcp.app.utilities.cti_parsing import extract_ir, render_ir_summary
 from plugins.mcp.app.utilities.cti_mitre_extract import extract_mitre_techniques, convert_sets
-from plugins.mcp.app.utilities.cti_taxonomy_loader import build_normalized_attack_patterns
+from plugins.mcp.app.utilities.cti_taxonomy_loader import (
+    build_normalized_attack_patterns,
+    load_mitre_taxonomy,
+)
 
 from plugins.mcp.app.utilities.cti_linguistics import extract_dynamic_techniques, extract_commands, extract_hashes
 from plugins.mcp.app.utilities.cti_text_extract import (
@@ -290,6 +293,15 @@ async def process_file(
     # ---------------------------------------------------------
     techniques, lookup = build_normalized_attack_patterns()
 
+    # Loaded once here: load_mitre_taxonomy is not cached, and steps 3.5
+    # and 3.6 below both need the full taxonomy rather than the normalized
+    # attack patterns.
+    try:
+        taxonomy = load_mitre_taxonomy()
+    except Exception as e:
+        print(f"[TAXONOMY][WARN] {e}")
+        taxonomy = None
+
     ling = await extract_dynamic_techniques(
         text,
         techniques,
@@ -319,7 +331,7 @@ async def process_file(
     # T1059.001).
     # ---------------------------------------------------------
     try:
-        grounded = ground_techniques(text, taxonomy=_sw_taxonomy)
+        grounded = ground_techniques(text, taxonomy=taxonomy)
     except Exception as e:
         print(f"[TECHNIQUE-GROUND][WARN] {e}")
         grounded = []
@@ -347,7 +359,7 @@ async def process_file(
     # from ATT&CK's `x_mitre_platforms` walks.
     # ---------------------------------------------------------
     try:
-        attested = detect_platforms(text, taxonomy=_sw_taxonomy)
+        attested = detect_platforms(text, taxonomy=taxonomy)
         if attested:
             before = len(merged)
             merged = filter_techniques_by_platform(merged, attested)
