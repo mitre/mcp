@@ -30,6 +30,7 @@ import asyncio
 import time
 import os
 import shutil
+import traceback
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -218,6 +219,8 @@ def step_parse_to_ir(base_dir: Path, stop_after: str | None = None):
             for path in files
         }
         raw_uploads, raw_processed, _, _, _ = ensure_dirs(base_dir)
+        succeeded = 0
+        failures = []
         for fut in as_completed(futures):
             clean_path = futures[fut]
             raw_path = None
@@ -227,6 +230,7 @@ def step_parse_to_ir(base_dir: Path, stop_after: str | None = None):
                     break
             try:
                 fut.result()
+                succeeded += 1
                 print(f"[OK] {clean_path.name}")
 
                 # MOVE RAW INPUT ONLY AFTER SUCCESS
@@ -234,10 +238,18 @@ def step_parse_to_ir(base_dir: Path, stop_after: str | None = None):
                     move_raw_to_processed(raw_path, raw_processed)
 
             except Exception as e:
+                failures.append((clean_path.name, e))
                 print(f"[ERR] {clean_path.name}: {e}")
+                print(traceback.format_exc())
 
     elapsed = time.perf_counter() - start_time
-    print(f"\n[STAGE1] completed in {elapsed:.2f}s")
+    print(f"\n[STAGE1] completed {succeeded}, failed {len(failures)} in {elapsed:.2f}s")
+
+    # Callers keyed off the IR directory being empty, which reported a
+    # missing-IR error rather than the exception that actually stopped the run.
+    if failures and not succeeded:
+        name, exc = failures[0]
+        raise RuntimeError(f"Stage 1 failed for all {len(failures)} files; {name}: {exc}") from exc
 
 # =============================================================
 # Per-File Pipeline
