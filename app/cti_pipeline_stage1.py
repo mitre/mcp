@@ -328,7 +328,11 @@ async def process_file(
 
     seen = set()
     merged = []
-    for t in ir.get("attack_patterns", []) + ling + mitre + grounded:
+    # ling is excluded: measured on the committed BlackCat stick it
+    # contributed 21 false positives and zero true positives, including
+    # three revoked ATT&CK ids, because it emits techniques with no
+    # platforms key that the platform filter then keeps unconditionally.
+    for t in ir.get("attack_patterns", []) + mitre + grounded:
         if isinstance(t, dict) and t.get("id") and t["id"] not in seen:
             seen.add(t["id"])
             merged.append(t)
