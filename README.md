@@ -141,6 +141,12 @@ pip install -r plugins/mcp/requirements.txt
 python -m spacy download en_core_web_lg
 ```
 
+   To run the test suite, also install the dev requirements:
+
+```bash
+pip install -r plugins/mcp/requirements-dev.txt
+```
+
 5. Copy `.env.example` to `.env` and set the LLM endpoint and credential.
    Both are optional: with neither set, IR extraction falls back to a
    deterministic offline extractor. That extractor trades roughly 15 to 20
