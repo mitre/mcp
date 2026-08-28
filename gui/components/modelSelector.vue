@@ -45,14 +45,31 @@
          ====================================================== -->
     <div v-if="expanded" class="model-config__body">
 
-      <div class="field" v-for="f in requiredFields" :key="f.key">
-        <label class="label is-small">{{ f.label }}</label>
+      <!-- Provider is an allowlist in llm_client, not free text: an
+           unrecognised value raised "Unsupported model provider" at
+           extraction time, long after Save reported success. -->
+      <div class="field">
+        <label class="label is-small">Provider</label>
+        <div class="select is-small is-fullwidth">
+          <select v-model="local.provider" :class="{ 'is-danger': !local.provider }">
+            <option value="openai_compatible">openai_compatible</option>
+            <option value="ollama">ollama</option>
+          </select>
+        </div>
+        <p class="help">
+          Use <code>openai_compatible</code> for any OpenAI-shaped endpoint,
+          including OpenAI itself.
+        </p>
+      </div>
+
+      <div class="field">
+        <label class="label is-small">Model</label>
         <input
           class="input is-small"
-          :class="{ 'is-danger': !local[f.key] }"
-          v-model="local[f.key]"
+          :class="{ 'is-danger': !local.model }"
+          v-model="local.model"
         />
-        <p v-if="!local[f.key]" class="help is-danger">Required</p>
+        <p v-if="!local.model" class="help is-danger">Required</p>
       </div>
 
       <div class="field">

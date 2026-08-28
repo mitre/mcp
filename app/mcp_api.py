@@ -35,6 +35,9 @@ _RAG_DEFAULTS = {
 # api_key_env names a variable, not a value, so it is kept.
 _SECRET_KEY_NAME = re.compile(r"api_?key", re.IGNORECASE)
 
+# Mirrors the dispatch in llm_client.LLMClient.generate.
+_VALID_PROVIDERS = {"openai_compatible", "ollama"}
+
 
 def _is_secret(name) -> bool:
     return bool(_SECRET_KEY_NAME.search(str(name))) and not str(name).endswith("_env")
@@ -523,12 +526,29 @@ class McpAPI:
 
             # 2️⃣ Run pipeline (NON-BLOCKING)
             loop = asyncio.get_running_loop()
-            loop.run_in_executor(
+            future = loop.run_in_executor(
                 None,
                 svc.run_stage,
                 self.base_dir,
                 step
             )
+
+            # run_stage re-raises after marking FAILED. Without retrieving the
+            # result the exception dies with the future, so a run that failed
+            # immediately looked identical to one still working: no log line,
+            # and the file stuck on "pending" forever.
+            def _report(fut):
+                exc = fut.exception()
+                if exc is None:
+                    self.log.info(f"[MCP] CTI pipeline finished: step={step}")
+                else:
+                    self.log.error(
+                        f"[MCP] CTI pipeline failed: step={step} files={files}",
+                        exc_info=exc,
+                    )
+
+            future.add_done_callback(_report)
+            self.log.info(f"[MCP] CTI pipeline started: step={step} files={files}")
 
             return web.json_response({
                 "status": "started",
@@ -655,16 +675,10 @@ class McpAPI:
 
             self.log.info(f"[MCP] Uploaded CTI input: {input_path}")
 
-            # 2️⃣ Kick off pipeline (Stage 1 + 2)
-            # subprocess.Popen(
-            #     ["python", "app/cti_ingest_svc.py", "--base-dir", "data"],
-            #     stdout=subprocess.DEVNULL,
-            #     stderr=subprocess.DEVNULL,
-            # )
-            print(" starting cti ingest subprocess ")
-
+            # Staging only. Extraction runs from the Run Pipeline button,
+            # which posts to /plugin/mcp/cti/run.
             return web.json_response({
-                "status": "CTI ingest started",
+                "status": "staged",
                 "file": filename
             })
 
@@ -830,6 +844,22 @@ class McpAPI:
                     {"error": "Invalid config payload"},
                     status=400
                 )
+
+            # llm_client dispatches on an exact provider string and raises
+            # "Unsupported model provider" otherwise. Catching it here names
+            # the field while the operator is still looking at it, rather
+            # than failing on every document at extraction time.
+            invalid = [
+                f"{section}.provider={cfg['provider']!r}"
+                for section, cfg in unwrap_config_envelope(data).items()
+                if isinstance(cfg, dict) and cfg.get("provider")
+                and cfg["provider"] not in _VALID_PROVIDERS
+            ]
+            if invalid:
+                return web.json_response({
+                    "error": f"unsupported provider: {', '.join(invalid)}. "
+                             f"Valid: {', '.join(sorted(_VALID_PROVIDERS))}"
+                }, status=400)
 
             conf_dir = self.root_dir / "conf"
             conf_dir.mkdir(exist_ok=True)
