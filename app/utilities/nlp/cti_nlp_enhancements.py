@@ -13,11 +13,11 @@ Output conforms to:
     ir["threat_actors"] cleaned + normalized
 """
 
-import spacy
+
+from plugins.mcp.app.utilities.nlp_model import get_nlp
 import re
 from rapidfuzz import fuzz
 
-nlp = spacy.load("en_core_web_lg")
 
 def _log(msg: str):
     """Simple stdout logger for tee-based debugging."""
@@ -106,7 +106,7 @@ def clean_ir_nlp_layer1(ir: dict, original_text: str) -> dict:
         - entity canonical names
     """
     _log("Beginning NLP Layer #1")
-    doc = nlp(original_text)
+    doc = get_nlp()(original_text)
 
     # ------------------------
     # Behavior Extraction
@@ -136,7 +136,7 @@ def clean_ir_nlp_layer1(ir: dict, original_text: str) -> dict:
     filtered = []
 
     for m in merged:
-        doc_b = nlp(m)
+        doc_b = get_nlp()(m)
 
         # Require at least one VERB
         if not any(t.pos_ == "VERB" for t in doc_b):
@@ -248,7 +248,7 @@ def _cosine(a, b) -> float:
 def dedupe_behaviors_by_vector(texts: list[str], threshold: float = 0.92) -> list[str]:
     kept: list[tuple[str, any]] = []
     for t in texts:
-        v = nlp(t).vector
+        v = get_nlp()(t).vector
         merged = False
         for i, (kt, kv) in enumerate(kept):
             if _cosine(v, kv) >= threshold:

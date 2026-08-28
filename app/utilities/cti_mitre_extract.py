@@ -15,6 +15,8 @@ This module performs NO orchestration.
 import re
 import numpy as np
 import spacy
+
+from plugins.mcp.app.utilities.nlp_model import get_nlp
 from datetime import datetime
 import uuid
 from functools import lru_cache
@@ -25,7 +27,6 @@ from spacy.lang.en.stop_words import STOP_WORDS as SPACY_STOP_WORDS
 # NLP MODEL (GLOBAL SINGLE LOAD)
 # ============================================================
 
-nlp = spacy.load("en_core_web_lg")
 
 
 # ============================================================
@@ -44,7 +45,7 @@ MITRE_DROPPED: list[dict] = []
 
 @lru_cache(maxsize=4096)
 def vectorize(text: str):
-    return nlp(text).vector
+    return get_nlp()(text).vector
 
 
 # ============================================================
@@ -165,7 +166,7 @@ def map_behaviors_to_techniques(
             continue
 
         ev_tokens = re.findall(r"[a-z0-9]+", evidence.lower())
-        d = nlp(evidence)
+        d = get_nlp()(evidence)
         has_vo = False
         for tok in d:
             if tok.pos_ == "VERB" and any(c.dep_ in ("dobj", "pobj", "attr") for c in tok.children):
@@ -335,7 +336,7 @@ def evidence_specificity_score(text: str) -> float:
     Returns a multiplier in [0.6, 1.0]
     Penalizes abstract / generic evidence structurally, not lexically.
     """
-    doc = nlp(text)
+    doc = get_nlp()(text)
 
     verbs = [t for t in doc if t.pos_ == "VERB"]
     nouns = [t for t in doc if t.pos_ in ("NOUN", "PROPN")]
