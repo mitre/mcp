@@ -44,10 +44,10 @@ from plugins.mcp.app.utilities.cti_mitre_extract import extract_mitre_techniques
 from plugins.mcp.app.utilities.cti_taxonomy_loader import build_normalized_attack_patterns
 
 from plugins.mcp.app.utilities.cti_linguistics import extract_dynamic_techniques, extract_commands, extract_hashes
-from plugins.mcp.app.utilities.cti_ae_library_loader import (
-    _extract_file_paths as extract_file_paths,
-    _extract_registry as extract_registry_keys,
-    _extract_subnets as extract_network_subnets,
+from plugins.mcp.app.utilities.cti_text_extract import (
+    extract_file_paths,
+    extract_registry_keys,
+    extract_network_subnets,
 )
 from plugins.mcp.app.utilities.cti_technique_grounding import (
     ground_techniques,

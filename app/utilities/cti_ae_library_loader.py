@@ -61,6 +61,11 @@ try:
         new_stix_id,
         now,
     )
+    from plugins.mcp.app.utilities.cti_text_extract import (
+        extract_file_paths,
+        extract_network_subnets,
+        extract_registry_keys,
+    )
 except ImportError:  # pragma: no cover - direct-script execution fallback
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
     from plugins.mcp.app.utilities.cti_stix_builders import (  # type: ignore
@@ -69,6 +74,11 @@ except ImportError:  # pragma: no cover - direct-script execution fallback
         make_attack_pattern,
         new_stix_id,
         now,
+    )
+    from plugins.mcp.app.utilities.cti_text_extract import (  # type: ignore
+        extract_file_paths,
+        extract_network_subnets,
+        extract_registry_keys,
     )
 
 
@@ -571,71 +581,6 @@ def _extract_hosts_inline(text: str) -> dict[str, dict]:
         rec = hosts.setdefault(token, {"hostname": token, "ip": "",
                                        "evidence": text[lo:hi][:200]})
     return hosts
-
-
-def _extract_subnets(text: str) -> list[str]:
-    """Explicit CIDR mentions plus /24 subnets derived from each IPv4
-    host address found in the plan.
-
-    AE plans sometimes give the subnet explicitly ("10.20.20.0/24") and
-    sometimes only an individual host ("raremon (10.30.10.4)") -- the
-    derivation step ensures the contractor / management subnets are
-    surfaced even when the plan never spells out the /24.
-    """
-    out: set[str] = {m.group(1) for m in _CIDR_RE.finditer(text)}
-    for ip_match in re.finditer(r"\b((\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\d{1,3})\b", text):
-        octs = ip_match.group(1).split(".")
-        if len(octs) != 4:
-            continue
-        try:
-            i0 = int(octs[0])
-        except ValueError:
-            continue
-        # RFC1918 only (the AE plan ranges); skip 0.x / 127.x / 169.254 etc.
-        if i0 not in (10,) and not (
-            i0 == 172 and 16 <= int(octs[1]) <= 31
-        ) and not (i0 == 192 and int(octs[1]) == 168):
-            continue
-        cidr = f"{octs[0]}.{octs[1]}.{octs[2]}.0/24"
-        out.add(cidr)
-    return sorted(out)
-
-
-def _extract_file_paths(text: str) -> list[str]:
-    out: set[str] = set()
-    for r in (_WIN_PATH_RE, _WIN_ABS_PATH_RE, _UNIX_PATH_RE):
-        for m in r.finditer(text):
-            val = m.group(0).strip().rstrip(".,;:!)")
-            if val and len(val) >= 4:
-                out.add(val)
-    return sorted(out)
-
-
-def _extract_registry(text: str) -> list[str]:
-    out: set[str] = set()
-    for m in _REG_KEY_RE.finditer(text):
-        out.add(m.group(0).rstrip(".,;:"))
-    for m in _REG_VALNAME_RE.finditer(text):
-        out.add(m.group(1))
-    return sorted(out)
-
-
-# Extension stop-list: common script/doc/image extensions that aren't
-# encryption-marker / IOC extensions. Sourced from STIX 2.1 'file' SCO
-# examples + mimetypes stdlib types.
-_EXTENSION_STOPLIST = {
-    "com", "net", "org", "gov", "edu", "io", "html", "htm", "php", "asp",
-    "aspx", "jsp", "json", "xml", "txt", "log", "md", "pdf", "png", "jpg",
-    "jpeg", "gif", "svg", "yml", "yaml", "csv", "exe", "dll", "ps1", "py",
-    "sh", "bat", "cmd", "ini", "conf", "cfg", "iso", "zip", "tar", "gz",
-    "bz2", "xz", "rar", "msi", "lnk", "dat", "rs", "go", "js", "ts",
-    "java", "cs", "cpp", "c", "h", "hpp", "rb", "pl", "swift", "kt",
-    "manifest", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "rtf", "tex",
-    # AE plan boilerplate
-    "name", "type", "url", "ref", "key", "val", "id", "tag",
-}
-
-
 def _extract_extensions(text: str) -> list[str]:
     """File extensions used as encryption / IOC markers.
 
@@ -1002,13 +947,13 @@ def parse_ae_plan(plan_meta: dict, *, taxonomy: Optional[dict] = None) -> dict:
     users = _extract_users_from_tables(text, col_alias_map)
 
     # ---- Subnets ----
-    network_subnets = _extract_subnets(text)
+    network_subnets = extract_network_subnets(text)
 
     # ---- File paths ----
-    file_paths = _extract_file_paths(text)
+    file_paths = extract_file_paths(text)
 
     # ---- Registry keys ----
-    registry_keys = _extract_registry(text)
+    registry_keys = extract_registry_keys(text)
 
     # ---- File extensions (as IOC markers) ----
     file_extensions = _extract_extensions(text)
