@@ -306,6 +306,188 @@ async def fuse_cti_bundles(stix_paths: list[str]) -> dict:
     }
 
 
+def _bundle_technique_ids(bundle: dict) -> list[str]:
+    """ATT&CK ids from a bundle's attack-patterns, keyed on external_references.
+
+    STIX object ids regenerate every run, so external_id is the only stable key.
+    """
+    out = []
+    for o in bundle.get("objects", []) or []:
+        if o.get("type") != "attack-pattern":
+            continue
+        for ref in o.get("external_references", []) or []:
+            if (ref.get("source_name") or "").lower() != "mitre-attack":
+                continue
+            eid = (ref.get("external_id") or "").strip()
+            if eid.startswith("T"):
+                out.append(eid)
+    return sorted(set(out))
+
+
+def _bundle_actor_name(bundle: dict) -> Optional[str]:
+    for o in bundle.get("objects", []) or []:
+        if o.get("type") in ("threat-actor", "intrusion-set") and o.get("name"):
+            return str(o["name"])
+    return None
+
+
+def _technique_matches(report_id: str, ability_id: str) -> bool:
+    """A report naming T1059 should reach T1059.001 abilities and vice versa.
+
+    Reports and the stockpile disagree on granularity often enough that an
+    exact match alone reports coverage the operator actually has.
+    """
+    if report_id == ability_id:
+        return True
+    return report_id.split(".")[0] == ability_id.split(".")[0]
+
+
+@mcp.tool(name="cti_pipeline_build_adversary")
+@_stdout_safe
+async def build_adversary(stix_path: str, platforms: Optional[list] = None,
+                          name: Optional[str] = None, commit: bool = False,
+                          max_per_technique: int = 3) -> dict:
+    """Build a CALDERA adversary from the techniques in a STIX bundle.
+
+    Maps each ATT&CK technique in the bundle to the abilities that implement
+    it, scoped to the platforms your agents actually run. Reports what it
+    could not cover instead of silently dropping it.
+
+    Args:
+        stix_path: path to a stage 2 STIX bundle.
+        platforms: platforms to scope abilities to (e.g. ["windows"]).
+            Defaults to the platforms of agents that have checked in.
+        name: adversary name. Defaults to the bundle's threat actor,
+            then the file stem.
+        commit: create the adversary. Leave false to preview.
+        max_per_technique: abilities to keep per technique. A single
+            technique can have 90+ implementations across the atomic
+            plugin, which makes an adversary that runs for hours. Raise it
+            for breadth; ability_count_available reports what was capped.
+
+    Returns:
+        {name, matched, unmatched_techniques, platform_excluded,
+         technique_count, ability_count, ability_count_available,
+         committed, adversary_id}
+        matched              - ability ids that will run
+        unmatched_techniques - technique ids with no ability at all
+        platform_excluded    - an ability exists but no live agent can run it
+    """
+    if not stix_path:
+        return {"error": "stix_path is required"}
+    p = _resolve_pipeline_file(stix_path, data_subdirs=("outputs_stix", "stix_cti"))
+    if not p.is_file():
+        return {"error": f"stix bundle not found: {stix_path}"}
+
+    try:
+        bundle = json.loads(p.read_text(encoding="utf-8"))
+    except Exception as e:
+        return {"error": f"could not read {p}: {e}"}
+
+    techniques = _bundle_technique_ids(bundle)
+    if not techniques:
+        return {"error": f"no ATT&CK techniques in {p.name}; nothing to build from"}
+
+    import aiohttp
+
+    wanted = {str(x).lower().strip() for x in (platforms or []) if x}
+    if not wanted:
+        # A report says what to run; only live agents say where. Guessing here
+        # yields a full-looking adversary that runs nothing.
+        url = _caldera_base_url() + "agents"
+        try:
+            async with aiohttp.ClientSession(headers=_caldera_headers()) as session:
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+                    agents = json.loads(await resp.text() or "[]") if resp.status == 200 else []
+        except Exception as e:
+            return {"error": f"could not read agents to determine platforms: {e}"}
+        wanted = {(a.get("platform") or "").lower() for a in agents if a.get("platform")}
+        if not wanted:
+            return {"error": "no agents have checked in, so no platform is known. "
+                             "Deploy an agent, or pass platforms explicitly to preview."}
+
+    url = _caldera_base_url() + "abilities"
+    try:
+        async with aiohttp.ClientSession(headers=_caldera_headers()) as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                abilities = json.loads(await resp.text() or "[]") if resp.status == 200 else []
+    except Exception as e:
+        return {"error": f"could not read abilities: {e}"}
+
+    by_technique: dict[str, list[str]] = {}
+    covered: set[str] = set()
+    excluded_techniques: set[str] = set()
+    available = 0
+    for ab in sorted(abilities, key=lambda a: str(a.get("ability_id") or "")):
+        tid = (ab.get("technique_id") or "").strip()
+        ability_id = ab.get("ability_id")
+        if not tid or not ability_id:
+            continue
+        hits = [t for t in techniques if _technique_matches(t, tid)]
+        if not hits:
+            continue
+        ab_platforms = {(ex.get("platform") or "").lower()
+                        for ex in (ab.get("executors") or []) if ex.get("platform")}
+        if ab_platforms and not (ab_platforms & wanted):
+            excluded_techniques.update(hits)
+            continue
+        available += 1
+        covered.update(hits)
+        bucket = by_technique.setdefault(hits[0], [])
+        if len(bucket) < max(1, max_per_technique):
+            bucket.append(ability_id)
+
+    matched = list(dict.fromkeys(
+        aid for tid in sorted(by_technique) for aid in by_technique[tid]
+    ))
+    unmatched = sorted(set(techniques) - covered - excluded_techniques)
+    platform_excluded = sorted(excluded_techniques - covered)
+
+    adv_name = name or _bundle_actor_name(bundle) or p.name.replace(".stix.json", "")
+    result = {
+        "name": adv_name,
+        "platforms": sorted(wanted),
+        "technique_count": len(techniques),
+        "ability_count": len(matched),
+        "ability_count_available": available,
+        "matched": matched,
+        "unmatched_techniques": unmatched,
+        "platform_excluded": platform_excluded,
+        "committed": False,
+        "stix_path": str(p),
+    }
+    if not commit:
+        return result
+    if not matched:
+        return {**result, "error": "no ability matched any technique; nothing to commit"}
+
+    body = {
+        "name": adv_name,
+        "description": f"Built from {p.name} ({len(matched)} abilities, "
+                       f"{len(techniques)} techniques)",
+        "atomic_ordering": matched,
+    }
+    url = _caldera_base_url() + "adversaries"
+    try:
+        async with aiohttp.ClientSession(headers=_caldera_headers()) as session:
+            async with session.post(url, json=body,
+                                    timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                text = await resp.text()
+                try:
+                    payload = json.loads(text) if text else {}
+                except json.JSONDecodeError:
+                    payload = {"raw": text}
+                if resp.status >= 400:
+                    return {**result, "error": f"adversary creation returned {resp.status}",
+                            "response": payload}
+    except Exception as e:
+        return {**result, "error": f"adversary creation failed: {e}"}
+
+    result["committed"] = True
+    result["adversary_id"] = (payload or {}).get("adversary_id")
+    return result
+
+
 @mcp.tool(name="cti_pipeline_run_operation")
 async def run_operation(
     adversary_id: str,
