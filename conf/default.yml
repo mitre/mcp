@@ -44,9 +44,10 @@ cti:
   offline: true
   use_mock: false
 
-# Caldera REST API used by the caldera_core MCP subprocess to call /api/v2/*
-# on the running Caldera server. Credentials live in plugins/mcp/.env;
-# this block only names the env vars to consult.
+# Caldera REST API used by the caldera_core MCP subprocess. The url and key
+# auto-resolve from caldera's own main config, so a stock deployment needs no
+# setup. This block only names the env vars that override that; their values
+# live in plugins/mcp/.env.
 caldera:
   url_env: CALDERA_URL
   api_key_env: CORE_CALDERA_API_KEY

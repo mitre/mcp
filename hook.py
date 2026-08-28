@@ -110,14 +110,40 @@ try:
     from plugins.mcp.app.discovery.servers import discover_mcp_servers
     from plugins.mcp.app.discovery.workflows import discover_workflows
     from plugins.mcp.app.discovery.capabilities import discover_capabilities
+    from plugins.mcp.app.config import caldera_connection
     logging.getLogger("litellm_logging").setLevel(logging.ERROR)
 
 except ImportError as e:
     log.error(f"[MCP] Error importing MCP plugin modules: {e}")
     traceback.print_exc()
 
+
+def report_caldera_connection():
+    """Log the resolved Caldera REST connection, and say so when it won't work.
+
+    A rejected key is otherwise near-undiagnosable: caldera 401s, the tool
+    wraps that in a successful result, and the operator sees only a confused
+    agent trajectory.
+    """
+    caldera = caldera_connection()
+    if caldera['key_valid'] is False:
+        log.warning(
+            f"[MCP] Caldera at {caldera['url']} rejects the configured API key. "
+            f"Set {caldera['api_key_env']} in plugins/mcp/.env to this server's "
+            f"API_TOKEN, printed once in the caldera log when conf/local.yml "
+            f"was generated."
+        )
+    else:
+        log.info(f"[MCP] Caldera REST resolved to {caldera['url']}")
+
+
 async def enable(services):
     app = services.get('app_svc').application
+
+    try:
+        report_caldera_connection()
+    except Exception as e:
+        log.warning(f"[MCP] Could not resolve the Caldera REST connection: {e}")
 
     # Discover MCP servers, workflows, and capabilities at boot. Each registry is
     # built once and handed to MCPService; nothing rescans at request time.

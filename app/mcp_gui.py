@@ -74,6 +74,8 @@ class McpGUI(BaseWorld):
             "llm_api_base": llm.get("api_base") or "",
             "caldera_url": caldera.get("url") or "",
             "caldera_api_key_env": caldera.get("api_key_env") or "CORE_CALDERA_API_KEY",
+            # Unknown (config unreadable) is not a failure worth flagging.
+            "caldera_key_rejected": caldera.get("key_valid") is False,
             "server_names": sorted(servers.keys()),
             "workflow_names": sorted(workflows.keys()),
             "capability_names": sorted(capabilities.keys()),

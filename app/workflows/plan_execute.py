@@ -81,9 +81,12 @@ def get_env(lm_settings=None):
         if lm_settings.get('ssl_verify') is not None:
             env[ENV_SSL_VERIFY] = str(lm_settings.get('ssl_verify')).lower()
 
+    # Push the resolved values, not the raw environment: caldera_connection()
+    # already honours the env vars, and re-reading them here would hand the
+    # child a url missing the /api/v2/ suffix.
     caldera = caldera_connection()
-    env['CALDERA_URL'] = os.environ.get('CALDERA_URL') or caldera['url']
-    env['CORE_CALDERA_API_KEY'] = os.environ.get('CORE_CALDERA_API_KEY') or caldera['api_key']
+    env['CALDERA_URL'] = caldera['url']
+    env['CORE_CALDERA_API_KEY'] = caldera['api_key']
 
     return env
 
