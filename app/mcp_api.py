@@ -69,6 +69,10 @@ class McpAPI:
         self.services = services
         # check_authorization reaches for self.auth_svc on the instance.
         self.auth_svc = services.get("auth_svc")
+        # Outcome of the most recent CTI run. cti_run returns as soon as the
+        # work is scheduled, so this is the only thing the browser can poll to
+        # learn that a run failed.
+        self._cti_run = {"state": "idle", "step": None, "files": [], "error": None}
         self.mcp_svc = services.get("mcp_svc")
         self.log = logging.getLogger("plugins.mcp")
         self.log.info("[MCP] Initialized McpAPI")
@@ -573,15 +577,29 @@ class McpAPI:
                 step
             )
 
+            self._cti_run = {
+                "state": "running", "step": step, "files": files, "error": None,
+            }
+
             # run_stage re-raises after marking FAILED. Without retrieving the
             # result the exception dies with the future, so a run that failed
             # immediately looked identical to one still working: no log line,
-            # and the file stuck on "pending" forever.
+            # and the file stuck on "pending" forever. The outcome is recorded
+            # here too, because the service instance is local to this request
+            # and the browser has nothing else to poll.
             def _report(fut):
                 exc = fut.exception()
                 if exc is None:
+                    self._cti_run = {
+                        "state": "complete", "step": step, "files": files,
+                        "error": None,
+                    }
                     self.log.info(f"[MCP] CTI pipeline finished: step={step}")
                 else:
+                    self._cti_run = {
+                        "state": "failed", "step": step, "files": files,
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
                     self.log.error(
                         f"[MCP] CTI pipeline failed: step={step} files={files}",
                         exc_info=exc,
@@ -651,15 +669,16 @@ class McpAPI:
                 for p in stix_dir.glob("*.json"):
                     stat = p.stat()
 
-                    # ⬇️ READ BUNDLE METADATA SAFELY
                     model = None
                     provider = None
+                    extractor = None
 
                     try:
                         with p.open("r", encoding="utf-8") as f:
                             bundle = json.load(f)
                             model = bundle.get("x_cti_model")
                             provider = bundle.get("x_cti_provider")
+                            extractor = (bundle.get("x_cti_config") or {}).get("extractor")
                     except Exception:
                         # Do NOT fail listing if one file is malformed
                         pass
@@ -668,8 +687,10 @@ class McpAPI:
                         "filename": p.name,
                         "size": stat.st_size,
                         "modified": datetime.utcfromtimestamp(stat.st_mtime).isoformat() + "Z",
+                        # Absent on an offline bundle, which credits no model.
                         "model": model,
                         "provider": provider,
+                        "extractor": extractor,
                     })
 
             self.log.info(f"[MCP] listing stix cti files: {files}")
@@ -900,6 +921,15 @@ class McpAPI:
         except Exception as e:
             return web.json_response({"error": str(e)}, status=500)
 
+    async def cti_status(self, request):
+        """Outcome of the most recent CTI run.
+
+        cti_run schedules the work and returns immediately, so without this
+        a failure only ever reached the server log and the row in the UI
+        stayed on 'pending' indefinitely.
+        """
+        return web.json_response(self._cti_run)
+
     async def view_cti_raw(self, request):
         """Return an uploaded report as text for the preview modal.
 
@@ -938,11 +968,21 @@ class McpAPI:
                 if clean.is_file():
                     text = clean.read_text(encoding="utf-8", errors="replace")
                 else:
-                    proc = await asyncio.create_subprocess_exec(
-                        "pdftotext", "-layout", str(target), "-",
-                        stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.PIPE,
-                    )
+                    # Same missing-poppler case the cleaner handles: name the
+                    # dependency rather than letting FileNotFoundError read as
+                    # the report being absent.
+                    try:
+                        proc = await asyncio.create_subprocess_exec(
+                            "pdftotext", "-layout", str(target), "-",
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE,
+                        )
+                    except FileNotFoundError:
+                        return web.json_response(
+                            {"error": "pdftotext not found. Install poppler to "
+                                      "preview PDF reports."},
+                            status=501,
+                        )
                     out, err = await proc.communicate()
                     if proc.returncode != 0:
                         return web.json_response(
