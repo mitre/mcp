@@ -66,17 +66,38 @@ async def extract_clean_text_from_html(path: Path) -> str:
 # PDF extraction (async)
 # ============================================================
 
+class PdfToolMissing(RuntimeError):
+    """pdftotext is not on PATH. Raised so the caller can report which
+    dependency is absent rather than surfacing a bare FileNotFoundError that
+    reads like the report itself went missing."""
+
+
 async def pdf_to_text(path: Path) -> str:
     async with SEMAPHORE:
-        proc = await asyncio.create_subprocess_exec(
-            "pdftotext",
-            "-layout",
-            str(path),
-            "-",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        out, _ = await proc.communicate()
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "pdftotext",
+                "-layout",
+                str(path),
+                "-",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+        except FileNotFoundError as e:
+            # pdftotext ships with poppler and is not a pip dependency, so a
+            # stock install has no PDF support until it is installed.
+            raise PdfToolMissing(
+                "pdftotext not found. Install poppler "
+                "(brew install poppler, or apt install poppler-utils) "
+                "to ingest PDF reports."
+            ) from e
+
+        out, err = await proc.communicate()
+        if proc.returncode != 0:
+            raise RuntimeError(
+                f"pdftotext failed on {path.name}: "
+                f"{err.decode(errors='ignore')[:200]}"
+            )
         return out.decode(errors="ignore") if out else ""
 
 # ============================================================
@@ -113,7 +134,13 @@ async def process_raw_file(path: Path, clean_dir: Path, images_dir: Path):
     # PDF
     # ---------------------------------------------------------
     if ext == ".pdf":
-        cleaned = await pdf_to_text(path)
+        # Every other branch reports its outcome as a string, so a missing
+        # poppler reports the same way instead of raising through the gather
+        # and discarding the whole batch's results.
+        try:
+            cleaned = await pdf_to_text(path)
+        except (PdfToolMissing, RuntimeError) as e:
+            return f"[ERR] {path.name}: {e}"
 
         if not cleaned.strip():
             return f"[SKIP] Empty PDF: {path.name}"
@@ -172,10 +199,14 @@ async def clean_raw_directory_async(raw_dir: Path, clean_dir: Path, images_dir: 
     print(f"[DEBUG] raw_dir={raw_dir}")
     print(f"[DEBUG] clean_dir={clean_dir}")
     print(f"[DEBUG] images_dir={images_dir}")
-    results = await asyncio.gather(*tasks)
+    # One unhandled failure used to discard every other file's result.
+    results = await asyncio.gather(*tasks, return_exceptions=True)
 
     for line in results:
-        print("   ", line)
+        if isinstance(line, BaseException):
+            print(f"    [ERR] {type(line).__name__}: {line}")
+        else:
+            print("   ", line)
     clean_count = len(list(clean_dir.glob("*.txt")))
     print(f"[DEBUG] clean txt count={clean_count}")
 

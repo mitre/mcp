@@ -402,10 +402,16 @@ def process_one_file_sync(path, ir_dir, final_dir, stop_after):
         • Executes the async pipeline via asyncio.run()
     """
 
-    # Load spaCy per worker (MANDATORY)
+    # The model is not on PyPI under its own name, so pip alone does not
+    # supply it. This check existed but its body was `pass`, so the real
+    # failure was an OSError raised from inside spacy.load, several frames
+    # deep in a worker, naming nothing the operator could act on.
     import spacy
     if not spacy.util.is_package("en_core_web_lg"):
-        pass
+        raise RuntimeError(
+            "spaCy model en_core_web_lg is not installed. Run: "
+            "python -m spacy download en_core_web_lg"
+        )
 
     asyncio.run(process_file(path, ir_dir, final_dir, stop_after))
 
