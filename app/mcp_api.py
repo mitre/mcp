@@ -14,6 +14,7 @@ from app.service.auth_svc import for_all_public_methods, check_authorization
 
 from plugins.mcp.app.config import llm_defaults
 from plugins.mcp.app.utilities.llm_client import (
+    deep_merge,
     load_config,
     reload_config,
     unwrap_config_envelope,
@@ -1054,13 +1055,22 @@ class McpAPI:
             else:
                 existing = {}
 
-            # 2️⃣ Update only provided top-level keys
+            # 2️⃣ Merge the provided keys into each section.
             # Example payload: { "cti": {...} } or { "llm": {...} }
             # get_config hands back {"config": cfg}, so a client that edits
             # what it read posts that envelope straight back.
+            #
+            # This assigned the section outright, so a partial payload erased
+            # every key it did not mention. The CTI panel posts four keys, so
+            # one Save deleted a hand-pinned model, api_base or ssl_verify.
+            # Removing a key is still a file edit; a POST only ever adds or
+            # updates.
             for section, cfg in unwrap_config_envelope(data).items():
                 if isinstance(cfg, dict):
-                    existing[section] = cfg
+                    current = existing.get(section)
+                    existing[section] = (
+                        deep_merge(current, cfg) if isinstance(current, dict) else cfg
+                    )
 
             # 3️⃣ Scrub secrets from the whole file, not just the posted
             # sections, so a save also clears a key an earlier build wrote.
