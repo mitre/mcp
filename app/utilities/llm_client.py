@@ -178,6 +178,20 @@ def _aiohttp_ssl_arg(ssl_verify):
 # Provenance (Stage 2 / STIX support)
 # ------------------------------------------------------
 
+def layered_profile(cfg: dict, profile: str) -> dict:
+    """A non-default profile layers over 'llm'.
+
+    The endpoint and credentials are configured once, globally. A workload
+    profile carries only what it genuinely needs differently, such as
+    extraction wanting temperature 0, and inherits the rest. Without this the
+    same api_base had to be entered twice and could silently drift apart.
+    """
+    raw = (cfg or {}).get(profile) or {}
+    if profile == "llm" or not raw:
+        return raw
+    return {**((cfg or {}).get("llm") or {}), **raw}
+
+
 def get_llm_provenance(profile: str = "llm", *, runtime: bool = False) -> dict:
     """
     Provenance metadata for logging + deterministic audit.
@@ -185,7 +199,7 @@ def get_llm_provenance(profile: str = "llm", *, runtime: bool = False) -> dict:
     If runtime=True, include runtime fields required to execute (api_key, api_base).
     Keep runtime=False as safe-to-log (no secrets).
     """
-    llm = resolve_env_indirection(load_config().get(profile, {}) or {})
+    llm = resolve_env_indirection(layered_profile(load_config(), profile))
 
     base = {
         "provider": llm["provider"],
@@ -249,7 +263,7 @@ class LLMClient:
         self.cfg = load_config()
 
     async def generate(self, prompt: str, profile: str = "llm") -> str | None:
-        raw_cfg = self.cfg.get(profile, {})
+        raw_cfg = layered_profile(self.cfg, profile)
         if not raw_cfg:
             raise KeyError(f"No LLM profile '{profile}' in config")
 
