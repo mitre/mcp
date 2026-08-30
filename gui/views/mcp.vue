@@ -143,20 +143,6 @@
           </div>
 
           <div class="field">
-            <label class="label">Temperature</label>
-            <div class="control">
-              <input
-                class="input"
-                type="number"
-                v-model.number="globalConfig.temperature"
-                step="0.1"
-                min="0.1"
-                max="1"
-              />
-            </div>
-          </div>
-
-          <div class="field">
             <label class="label">API Base</label>
             <div class="control">
               <input
@@ -185,6 +171,20 @@
               <input type="checkbox" v-model="globalConfig.sslVerify" />
               Verify TLS certificates
             </label>
+          </div>
+
+          <div class="field">
+            <label class="label">Temperature</label>
+            <div class="control">
+              <input
+                class="input"
+                type="number"
+                v-model.number="globalConfig.temperature"
+                step="0.1"
+                min="0.1"
+                max="1"
+              />
+            </div>
           </div>
 
           <div class="field">
