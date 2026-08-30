@@ -93,11 +93,20 @@ def _load_mitre_taxonomy():
 
     name_index = {}        # name → (type, id, obj)
     attack_id_index = {}   # T1048 → attack-pattern obj
+    matrix_tactic_refs = []
+    tactic_shortnames = {}   # x-mitre-tactic id → shortname
     print("[DEBUG] Total MITRE objects loaded:", len(objects))
     for obj in objects:
         obj_type = obj.get("type")
         obj_id = obj.get("id", "")
         name = obj.get("name", "").strip()
+
+        # The matrix states the kill-chain sequence that the tactic objects
+        # themselves do not carry.
+        if obj_type == "x-mitre-matrix":
+            matrix_tactic_refs = obj.get("tactic_refs", []) or []
+        elif obj_type == "x-mitre-tactic":
+            tactic_shortnames[obj_id] = obj.get("x_mitre_shortname", "")
 
         # ------------------------------
         # ATTACK PATTERNS (TTPs)
@@ -188,6 +197,13 @@ def _load_mitre_taxonomy():
     print("[DEBUG][MITRE] relationships loaded:", len(relationships))
     print("[DEBUG][MITRE] name_index entries:", len(name_index))
     print("[DEBUG][MITRE] attack_id_index entries:", len(attack_id_index))
+
+    kill_chain_order = tuple(
+        tactic_shortnames[ref]
+        for ref in matrix_tactic_refs
+        if tactic_shortnames.get(ref)
+    )
+    print("[DEBUG][MITRE] kill_chain_order:", len(kill_chain_order))
 
     return {
         "attack_patterns": attack_patterns,
