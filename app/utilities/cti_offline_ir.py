@@ -1,5 +1,5 @@
 """
-cti_offline_ir.py — Offline IR Extraction (No LLM Required)
+cti_offline_ir.py - Offline IR Extraction (No LLM Required)
 
 Produces the same IR schema as cti_parsing.py but using only:
 - spaCy NER for entity extraction
@@ -116,7 +116,7 @@ def extract_ir_offline(text: str) -> dict:
     text_lower = text.lower()
 
     # ---------------------------------------------------------
-    # 1. MITRE taxonomy scan — find known entities in text
+    # 1. MITRE taxonomy scan - find known entities in text
     # ---------------------------------------------------------
     for name_lower, (category, canonical_name, desc) in mitre_index.items():
         if len(name_lower) < 3:
@@ -139,20 +139,16 @@ def extract_ir_offline(text: str) -> dict:
     # ---------------------------------------------------------
     from collections import Counter as _Counter
 
-    # Get MITRE malware and group names
-    malware_set = set()
+    # Only MITRE intrusion sets are candidates. Ransomware families are the
+    # most repeated name in a report, so including malware here made the
+    # adversary get named after the payload rather than the actor.
     group_set = set()
     for obj in mitre_index.values():
-        cat = obj[0]
-        name = obj[1].lower()
-        if cat == "malware":
-            malware_set.add(name)
-        elif cat == "threat_actors":
-            group_set.add(name)
+        if obj[0] == "threat_actors":
+            group_set.add(obj[1].lower())
 
-    # Count frequency of each MITRE malware/group in the text
     actor_freq = _Counter()
-    for name in (malware_set | group_set):
+    for name in group_set:
         if len(name) < 3:
             continue
         pattern = r"\b" + re.escape(name) + r"\b"
@@ -179,15 +175,13 @@ def extract_ir_offline(text: str) -> dict:
         key = ("threat_actors", name)
         if key not in seen_entities:
             seen_entities.add(key)
-            # Find canonical name from index
-            canonical = name
-            for idx_name, (cat, canon, desc) in mitre_index.items():
-                if idx_name == name:
-                    canonical = canon
-                    break
+            canonical, description = name, ""
+            entry = mitre_index.get(name)
+            if entry:
+                canonical, description = entry[1], entry[2]
             ir["threat_actors"].append({
                 "name": canonical,
-                "description": f"Primary threat actor ({count} mentions)",
+                "description": description,
                 "source": "frequency-inference",
             })
 
@@ -217,7 +211,7 @@ def extract_ir_offline(text: str) -> dict:
                 })
 
     # ---------------------------------------------------------
-    # 3. spaCy NER — catch entities MITRE/well-known missed
+    # 3. spaCy NER - catch entities MITRE/well-known missed
     # ---------------------------------------------------------
     nlp = get_nlp()
     doc = nlp(text[:nlp.max_length])
