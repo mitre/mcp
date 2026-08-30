@@ -1,5 +1,5 @@
 """
-cti_text_extract.py — structural text extractors for the AE-library loader
+cti_text_extract.py - structural text extractors for the AE-library loader
 
 Regex extractors the loader uses when it lowers an AE plan into a measuring
 stick. Kept out of the loader so runtime code never has to reach into a dev
