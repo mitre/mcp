@@ -225,7 +225,9 @@
             <td class="file-cell">{{ f.name }}</td>
 
             <td class="has-text-grey">
-              {{ f.provider ? `${f.provider} / ${f.model}` : f.model || '-' }}
+              <span v-if="f.model">{{ f.provider ? `${f.provider} / ${f.model}` : f.model }}</span>
+              <span v-else-if="f.extractor === 'offline'">offline extractor</span>
+              <span v-else>-</span>
             </td>
 
             <td class="has-text-right">
@@ -556,7 +558,8 @@ async function loadStixFiles() {
       name: f.filename,
       size: f.size,
       model: f.model,
-      provider: f.provider
+      provider: f.provider,
+      extractor: f.extractor
     }))
 }
 
@@ -662,12 +665,49 @@ async function runPipelineForSelected() {
     return
   }
 
-  // Accepted, not finished: extraction runs in the background and the file
-  // stays "pending" until its IR lands. Failures appear in the caldera log.
-  ctiStatus.value =
-    `Pipeline running on ${count} file${count === 1 ? '' : 's'}. ` +
-    'Status updates when extraction completes; check the server log for errors.'
+  // Accepted, not finished. The run happens in a background executor, so the
+  // outcome is polled rather than awaited; without this a failure only ever
+  // reached the server log and the row sat on "pending" forever.
+  ctiStatus.value = `Pipeline running on ${count} file${count === 1 ? '' : 's'}…`
   selectedRaw.clear()
+  pollCtiStatus()
+}
+
+// Bounded so a wedged run stops the poll rather than hitting the endpoint
+// until the tab closes.
+const CTI_POLL_INTERVAL_MS = 2000
+const CTI_POLL_LIMIT = 150
+
+async function pollCtiStatus(attempt = 0) {
+  if (attempt >= CTI_POLL_LIMIT) {
+    ctiStatus.value =
+      'Still running after 5 minutes. Check the server log; the page will not ' +
+      'update further.'
+    return
+  }
+
+  await new Promise(r => setTimeout(r, CTI_POLL_INTERVAL_MS))
+
+  let data
+  try {
+    const res = await fetch('/plugin/mcp/cti/status')
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    data = await res.json()
+  } catch (e) {
+    ctiStatus.value = `Lost contact with the server: ${e.message}`
+    return
+  }
+
+  if (data.state === 'running') {
+    loadRawFiles()
+    return pollCtiStatus(attempt + 1)
+  }
+
+  if (data.state === 'failed') {
+    ctiStatus.value = `Pipeline failed: ${data.error || 'no detail reported'}`
+  } else {
+    ctiStatus.value = 'Pipeline complete.'
+  }
 
   loadRawFiles()
   loadStixFiles()

@@ -49,10 +49,15 @@ class TestSetupRoutes:
     """Verify that setup_routes registers all CTI endpoints."""
 
     def test_all_routes_defined(self):
-        """setup_routes should register all CTI UI endpoints."""
-        from plugins.mcp.app.mcp_api import setup_routes
+        """Every CTI UI endpoint must be registered.
+
+        This read setup_routes out of mcp_api, a function that does not
+        exist, so it failed on import rather than on a missing route.
+        Registration happens in hook.enable.
+        """
         import inspect
-        source = inspect.getsource(setup_routes)
+        from plugins.mcp import hook
+        source = inspect.getsource(hook.enable)
 
         expected_routes = [
             "/plugin/mcp/execute",
@@ -61,7 +66,9 @@ class TestSetupRoutes:
             "/plugin/mcp/cti/upload",
             "/plugin/mcp/cti/raw",
             "/plugin/mcp/cti/raw/delete",
+            "/plugin/mcp/cti/raw/view",
             "/plugin/mcp/cti/run",
+            "/plugin/mcp/cti/status",
             "/plugin/mcp/stix/list",
             "/plugin/mcp/stix/upload",
             "/plugin/mcp/stix/get_stix",

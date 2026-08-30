@@ -205,3 +205,4 @@ async def enable(services):
     app.router.add_route('POST', '/plugin/mcp/cti/raw/delete', mcp_api.delete_cti_raw)
     app.router.add_route('POST', '/plugin/mcp/cti/raw/view',   mcp_api.view_cti_raw)
     app.router.add_route('POST', '/plugin/mcp/cti/run',        mcp_api.cti_run)
+    app.router.add_route('GET',  '/plugin/mcp/cti/status',     mcp_api.cti_status)
