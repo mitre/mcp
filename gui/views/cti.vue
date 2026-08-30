@@ -11,7 +11,7 @@
            LEFT: CTI INGEST
            ===================================================== -->
       <div class="column is-two-thirds is-flex">
-        <div class="box is-flex-grow-1">
+        <div class="box is-flex-grow-1 cti-ingest">
 
           <!-- Header -->
           <div class="is-flex is-justify-content-space-between mb-4">
@@ -768,6 +768,13 @@ onMounted(() => {
   color: #f5f5f5;
 }
 
+/* The box stretches to match the config panel beside it, so the dropzone
+   takes the slack rather than leaving it under a fixed-height target. */
+.cti-ingest {
+  display: flex;
+  flex-direction: column;
+}
+
 .cti-dropzone {
   border: 1px dashed rgba(158, 98, 255, 0.45);
   border-radius: 8px;
@@ -776,6 +783,15 @@ onMounted(() => {
   text-align: center;
   cursor: pointer;
   transition: border-color 0.15s ease, background-color 0.15s ease;
+  /* Grow into the leftover height, but keep a sane target when the column
+     is short (narrow viewport, or the panel collapses under it). */
+  flex-grow: 1;
+  min-height: 7rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
 }
 .cti-dropzone:hover,
 .cti-dropzone:focus-visible {
@@ -809,7 +825,8 @@ onMounted(() => {
   white-space: nowrap;
 }
 .cti-dropzone__hint {
-  margin: 0.35rem 0 0;
+  /* Spacing comes from the zone's gap now. */
+  margin: 0;
   font-size: 0.75rem;
   color: #a0a0a0;
 }
