@@ -575,7 +575,10 @@ class McpAPI:
 
             self.base_dir.mkdir(parents=True, exist_ok=True)
 
-            rag_dir = self.base_dir / "stix_cti"
+            # Same directory the four read handlers and the pipeline use.
+            # Uploading to stix_cti made every bundle invisible to list,
+            # get, download and delete.
+            rag_dir = self.base_dir / "outputs_stix"
             rag_dir.mkdir(parents=True, exist_ok=True)
             target_path = rag_dir / filename
             if target_path.exists():
