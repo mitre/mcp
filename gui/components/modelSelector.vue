@@ -21,15 +21,34 @@
          ====================================================== -->
     <div class="model-config__body">
 
-      <!-- Provider, model and endpoint are not repeated here. This profile
-           layers over the global one, so they are set once in Global Model
-           Config and inherited. Only what extraction needs differently
-           lives below. -->
-      <p class="help mb-3">
-        Endpoint, model and credentials come from
-        <strong>Global Model Config</strong>. These override them for
-        extraction only.
-      </p>
+      <!-- This used to claim the endpoint came from Global Model Config.
+           It does not: that panel is browser-local and rides only on
+           /execute, while extraction reads conf/local.yml server-side. A
+           model pinned there wins, and nothing showed that. -->
+      <div class="resolved mb-3">
+        <p class="resolved__title">Extraction will use</p>
+        <p class="resolved__row">
+          <span class="resolved__label">Model</span>
+          <span class="resolved__value">{{ resolvedModel }}</span>
+          <span v-if="backendConfig.model_pinned" class="tag is-warning is-light">pinned</span>
+        </p>
+        <p class="resolved__row">
+          <span class="resolved__label">Endpoint</span>
+          <span class="resolved__value">{{ resolvedApiBase }}</span>
+          <span v-if="backendConfig.api_base_pinned" class="tag is-warning is-light">pinned</span>
+        </p>
+        <p v-if="hasPin" class="help mt-2">
+          Pinned values are set in <code>conf/local.yml</code> under
+          <code>cti</code> and override Global Model Config. Remove them there
+          to follow the global endpoint.
+        </p>
+        <p v-else class="help mt-2">
+          Inherited from the <code>llm</code> profile in
+          <code>conf/local.yml</code> or <code>conf/default.yml</code>.
+          Global Model Config is browser-local and applies to chat and
+          planning, not to extraction.
+        </p>
+      </div>
 
       <div class="field">
         <label class="label">Temperature</label>
@@ -110,6 +129,16 @@ const saveState = ref(null)
  * left to require. Demanding a field this panel does not edit would leave
  * Save permanently disabled.
  * ============================================================ */
+const resolvedModel = computed(
+  () => props.backendConfig?.resolved_model || 'not set'
+)
+const resolvedApiBase = computed(
+  () => props.backendConfig?.resolved_api_base || 'not set'
+)
+const hasPin = computed(
+  () => !!(props.backendConfig?.model_pinned || props.backendConfig?.api_base_pinned)
+)
+
 const isValid = computed(
   () => local.temperature === null || local.temperature === undefined
     ? true
@@ -187,6 +216,36 @@ async function save() {
 /* Pushes Save to the bottom edge, level with the box alongside. */
 .model-config__body {
   flex-grow: 1;
+}
+
+.resolved {
+  border: 1px solid rgba(158, 98, 255, 0.35);
+  border-radius: 6px;
+  background-color: #242424;
+  padding: 0.75rem;
+}
+.resolved__title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #a0a0a0;
+  margin: 0 0 0.4rem;
+}
+.resolved__row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0 0 0.2rem;
+}
+.resolved__label {
+  min-width: 4.5rem;
+  color: #a0a0a0;
+  font-size: 0.8125rem;
+}
+.resolved__value {
+  color: #f5f5f5;
+  word-break: break-all;
+  flex: 1;
 }
 
 /* Bulma's .help is 0.75rem, which is too tight for prose that explains what
