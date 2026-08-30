@@ -55,12 +55,14 @@ def discover_mcp_servers(plugins_root: Path) -> dict:
     # the defaults baked in below.
     cti_pipeline_path = plugins_root / "mcp" / "mcp_server.py"
     if cti_pipeline_path.exists():
+        # Only reached when the server's own MCP_METADATA could not be read.
+        # Restating its description here is how this copy came to advertise a
+        # deploy step that no longer exists, so say only what is still true
+        # when the metadata is unavailable.
         cti_metadata = _safe_load_metadata(cti_pipeline_path) or {
             "display_name": "CTI Pipeline",
             "default_enabled": False,
-            "description": (
-                "CTI ingest -> STIX -> adversary -> operation tools."
-            ),
+            "description": "CTI pipeline tools. Server metadata unavailable.",
         }
         registry["cti_pipeline"] = {
             "path": cti_pipeline_path,
