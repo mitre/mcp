@@ -227,8 +227,14 @@ class TestProvenanceGuards:
 
     @pytest.fixture
     def stub_yaml(self, monkeypatch):
+        """The connection lives on llm; a workload profile cannot carry it.
+        cti keeps only a generation setting so the guard is still exercised
+        through the layered resolution rather than a flat dict."""
         from plugins.mcp.app.utilities import llm_client
-        cfg = {"cti": {"model": "openai/x", "api_key": "sk-test", "api_base": ""}}
+        cfg = {
+            "llm": {"model": "openai/x", "api_key": "sk-test", "api_base": ""},
+            "cti": {"temperature": 0.0},
+        }
         monkeypatch.setattr(llm_client, "load_config", lambda: cfg)
         return cfg
 
@@ -246,7 +252,7 @@ class TestProvenanceGuards:
     def test_runtime_requires_api_base_for_every_provider(self, stub_yaml, provider):
         # This guard used to be gated on openai_compatible, unlike the other two.
         from plugins.mcp.app.utilities.llm_client import get_llm_provenance
-        stub_yaml["cti"]["provider"] = provider
+        stub_yaml["llm"]["provider"] = provider
         with pytest.raises(ValueError, match="api_base missing"):
             get_llm_provenance("cti", runtime=True)
 

@@ -59,12 +59,16 @@ def init_mlflow(profile: str):
 # Config loader (local, explicit, deterministic)
 # ------------------------------------------------------
 
-def _deep_merge(base: dict, override: dict) -> dict:
-    """Overlay override onto base, recursing into nested dicts."""
+def deep_merge(base: dict, override: dict) -> dict:
+    """Overlay override onto base, recursing into nested dicts.
+
+    Public because set_config needs the same semantics local.yml already uses
+    when it overlays default.yml.
+    """
     merged = dict(base)
     for key, value in (override or {}).items():
         if isinstance(value, dict) and isinstance(merged.get(key), dict):
-            merged[key] = _deep_merge(merged[key], value)
+            merged[key] = deep_merge(merged[key], value)
         else:
             merged[key] = value
     return merged
@@ -99,7 +103,7 @@ def load_config() -> dict:
             config = yaml.safe_load(f) or {}
     if local_path.exists():
         with local_path.open("r", encoding="utf-8") as f:
-            config = _deep_merge(config, unwrap_config_envelope(yaml.safe_load(f) or {}))
+            config = deep_merge(config, unwrap_config_envelope(yaml.safe_load(f) or {}))
 
     if not config:
         raise FileNotFoundError("No config found (default.yml or local.yml)")
@@ -178,18 +182,48 @@ def _aiohttp_ssl_arg(ssl_verify):
 # Provenance (Stage 2 / STIX support)
 # ------------------------------------------------------
 
-def layered_profile(cfg: dict, profile: str) -> dict:
-    """A non-default profile layers over 'llm'.
+# What a workload profile is allowed to differ on. Everything else, above all
+# the endpoint and the credentials, belongs to 'llm' and to 'llm' only.
+#
+# This used to be an unrestricted merge, so any key under cti won. A model
+# pinned there beat the global one with nothing in the UI to show it, and the
+# panel that wrote those keys put them there by accident. One endpoint, one
+# model, and per-workload generation settings is the whole model now.
+WORKLOAD_OVERRIDABLE = frozenset({
+    "temperature",
+    "top_p",
+    "max_tokens",
+    "timeout",
+    "stream",
+    # Per-workload run mode: extraction can go offline without silencing chat.
+    "offline",
+    # A different embedding model is a separate axis from the chat endpoint,
+    # so it cannot be confused with one.
+    "embed_model",
+})
 
-    The endpoint and credentials are configured once, globally. A workload
-    profile carries only what it genuinely needs differently, such as
-    extraction wanting temperature 0, and inherits the rest. Without this the
-    same api_base had to be entered twice and could silently drift apart.
+
+def layered_profile(cfg: dict, profile: str) -> dict:
+    """Resolve a workload profile over the global 'llm' profile.
+
+    'llm' owns the connection: provider, model, api_base, credentials and TLS.
+    A workload profile such as 'cti' may only adjust generation settings.
+    Anything else it declares is ignored and logged, because silently honouring
+    it is how extraction ended up on a different endpoint from everything else.
     """
     raw = (cfg or {}).get(profile) or {}
     if profile == "llm" or not raw:
         return raw
-    return {**((cfg or {}).get("llm") or {}), **raw}
+
+    allowed = {k: v for k, v in raw.items() if k in WORKLOAD_OVERRIDABLE}
+    ignored = sorted(set(raw) - set(allowed))
+    if ignored:
+        logging.getLogger("plugins.mcp").warning(
+            "[MCP] %s: ignoring %s. The connection is configured once on the "
+            "'llm' profile; remove these from conf/local.yml.",
+            profile, ", ".join(ignored),
+        )
+    return {**((cfg or {}).get("llm") or {}), **allowed}
 
 
 def get_llm_provenance(profile: str = "llm", *, runtime: bool = False) -> dict:

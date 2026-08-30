@@ -430,10 +430,13 @@ async function loadBackendConfig() {
   const data = await res.json()
   const cfg = data?.config ?? data ?? {}
   const cti = cfg?.cti ?? {}
-  // Mirrors llm_client.layered_profile: cti overrides llm key by key. The
-  // panel shows the result because a model pinned under cti wins over the
-  // Global Model Config, and there was no way to see that from the UI.
-  const resolved = { ...(cfg?.llm ?? {}), ...cti }
+  // Mirrors llm_client.layered_profile: the connection comes from llm and a
+  // workload profile may only adjust generation settings.
+  const WORKLOAD_KEYS = ['temperature', 'top_p', 'max_tokens', 'timeout', 'stream', 'offline', 'embed_model']
+  const overrides = Object.fromEntries(
+    Object.entries(cti).filter(([k]) => WORKLOAD_KEYS.includes(k))
+  )
+  const resolved = { ...(cfg?.llm ?? {}), ...overrides }
 
   // api_key is deliberately absent: get_config never returns one. The
   // *_env names are surfaced so the panel can say where the key and the
@@ -448,12 +451,10 @@ async function loadBackendConfig() {
     max_tokens: cti.max_tokens ?? 4000,
     timeout: cti.timeout ?? 120,
     offline: cti.offline ?? false,
-    // Read-only, for display. `pinned` marks a value the cti block sets
-    // itself, which is the case that surprises people.
+    // Read-only, for display. A workload profile cannot override the
+    // connection, so this is always what will run.
     resolved_model: resolved.model ?? null,
     resolved_api_base: resolved.api_base || null,
-    model_pinned: Object.prototype.hasOwnProperty.call(cti, 'model'),
-    api_base_pinned: Object.prototype.hasOwnProperty.call(cti, 'api_base'),
   }
 }
 /* ============================================================

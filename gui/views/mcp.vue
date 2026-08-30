@@ -213,6 +213,16 @@
             </div>
           </div>
 
+          <p v-if="serverSyncState" class="is-size-7" :class="serverSyncState.tone">
+            {{ serverSyncState.message }}
+          </p>
+
+          <p class="is-size-7 has-text-grey-light">
+            Model, endpoint and limits are saved on the server and used by
+            every workflow, including CTI extraction. The API key stays in
+            this browser and is never written to disk.
+          </p>
+
           <p class="is-size-7 has-text-grey-light">
             Server toggles and capability settings (e.g. RAG file picker)
             live inside each workflow's session page, scoped to what that
@@ -800,6 +810,65 @@ onMounted(async () => {
 watch(globalConfig, (newConfig) => {
   saveConfig(newConfig)
 }, { deep: true })
+
+/* ============================================================
+ * Server-side sync
+ *
+ * The endpoint used to live only in this browser, so it configured chat and
+ * planning while the CTI pipeline read conf/local.yml and quietly used
+ * something else. The connection fields now write to the llm profile, which
+ * every workload inherits.
+ *
+ * The api key is deliberately excluded and stays in this browser, riding
+ * each request. set_config scrubs it too, so a mistake here cannot put a
+ * credential on disk.
+ *
+ * Debounced because these inputs persist on every keystroke; without it one
+ * edit to a model name rewrote local.yml a dozen times.
+ * ============================================================ */
+const SERVER_SYNC_DEBOUNCE_MS = 800
+let serverSyncTimer = null
+const serverSyncState = ref(null)
+
+async function syncGlobalConfigToServer() {
+  const payload = {
+    llm: {
+      model: globalConfig.modelName,
+      api_base: globalConfig.apiBase || '',
+      ssl_verify: globalConfig.sslVerify,
+      temperature: globalConfig.temperature,
+      max_tokens: globalConfig.maxTokens,
+      max_tool_calls: globalConfig.maxToolCalls,
+    },
+  }
+  try {
+    const res = await fetch('/plugin/mcp/set_config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    serverSyncState.value = { message: 'Saved to server', tone: 'has-text-success' }
+  } catch (e) {
+    serverSyncState.value = { message: `Not saved: ${e.message}`, tone: 'has-text-danger' }
+  }
+}
+
+watch(
+  () => [
+    globalConfig.modelName,
+    globalConfig.apiBase,
+    globalConfig.sslVerify,
+    globalConfig.temperature,
+    globalConfig.maxTokens,
+    globalConfig.maxToolCalls,
+  ],
+  () => {
+    serverSyncState.value = { message: 'Saving…', tone: 'has-text-grey' }
+    clearTimeout(serverSyncTimer)
+    serverSyncTimer = setTimeout(syncGlobalConfigToServer, SERVER_SYNC_DEBOUNCE_MS)
+  },
+)
 
 watch(selectedPath, (path) => {
   try {
