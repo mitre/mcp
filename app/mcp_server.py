@@ -348,16 +348,22 @@ def create_operation(operation_name: str, adversary_name: str):
 
     Args:
         operation_name: Name for the operation
-        adversary_id: ID of the adversary to use for this operation
+        adversary_name: Name of the adversary to use for this operation
 
     Returns:
-        The response from the Caldera API or None if adversary details cannot be fetched
+        The response from the Caldera API, or an error dict when the
+        adversary cannot be found.
     """
     req = caldera_request.make_get_request("adversaries")
-    found_adversaries = []
-    for adversary in req:
-        if adversary["name"] == adversary_name:
-            found_adversaries.append(adversary)
+    if not isinstance(req, list):
+        return {"error": "could not list adversaries", "response": req}
+
+    found_adversaries = [
+        a for a in req
+        if isinstance(a, dict) and a.get("name") == adversary_name
+    ]
+    if not found_adversaries:
+        return {"error": f"no adversary named {adversary_name!r}"}
 
     adversary_details = found_adversaries[0]
 
@@ -377,9 +383,12 @@ def create_operation(operation_name: str, adversary_name: str):
             },
             "objective": "495a9828-cab1-44dd-a0ca-66e58177d8cc",
         },
-        "planner_id": "aaa7c857-37a0-4c4a-85f7-4e9f7f30e31a",
-        "source_id": "ed32b9c3-9593-4c33-b0db-e2007315096b",
-        "objective_id": "495a9828-cab1-44dd-a0ca-66e58177d8cc",
+        # setup_operation pops 'planner' and 'source' as nested dicts and
+        # OperationSchema discards every other key, so the *_id spellings
+        # this used to send were dropped and Caldera silently fell back to
+        # its own defaults.
+        "planner": {"id": "atomic"},
+        "source": {"id": "basic"},
         "state": "paused",
         "autonomous": 1,
         "auto_close": False,

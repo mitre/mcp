@@ -561,9 +561,10 @@ async def run_operation(
 
     Args:
         adversary_id: ID of the adversary to emulate.
-        agent_paws: list of agent paw strings to scope the operation to.
-            When empty, Caldera will run against all agents in the
-            'group' (defaults to 'red').
+        agent_paws: agents the caller intends to target. Recorded on the
+            result for correlation only. Caldera scopes an operation by
+            'group', and OperationSchema discards any other key, so this
+            does NOT narrow the run. Every agent in the group takes part.
         operation_name: optional name; auto-generated when absent.
         source_id: optional fact source to seed the operation with. Defaults
             to Caldera's 'basic' source. Facts about the operator's own
@@ -594,13 +595,6 @@ async def run_operation(
         "visibility": 51,
         "use_learning_parsers": True,
     }
-    if agent_paws:
-        # v2 API accepts paws via the 'group' or 'agents' field shape;
-        # we pass it as a hint via name suffix so downstream observers
-        # can correlate - the actual paw filtering happens through
-        # group membership which sandcat agents already apply.
-        body["_target_paws"] = list(agent_paws)
-
     import aiohttp
     url = _caldera_base_url() + "operations"
     try:
@@ -625,7 +619,9 @@ async def run_operation(
         "state": (payload or {}).get("state", body["state"]),
         "name": (payload or {}).get("name", name),
         "adversary_id": adversary_id,
-        "target_paws": list(agent_paws),
+        # Named for what it is: the caller's request, not an applied filter.
+        "requested_paws": list(agent_paws),
+        "group": body["group"],
         "response": payload,
     }
 
