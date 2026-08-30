@@ -20,9 +20,17 @@ This replaces the old loader that assumed 3 separate JSON files.
 """
 
 import json, re
+import threading
+from functools import lru_cache
 from pathlib import Path
 
 from plugins.mcp.app.utilities.nlp_model import get_nlp
+
+# Stage 1 fans out over a thread pool and every worker needs both tables.
+# lru_cache alone is not single-flight, so racing workers would each pay the
+# full build; the lock makes the first caller the only one that computes.
+_TAXONOMY_LOCK = threading.Lock()
+_PATTERNS_LOCK = threading.Lock()
 
 # ======================================================================
 #  Load the unified MITRE ATT&CK bundle
@@ -51,7 +59,8 @@ def load_mitre_bundle():
 #  Parse and index MITRE objects
 # ======================================================================
 
-def load_mitre_taxonomy(taxonomy=None):
+@lru_cache(maxsize=1)
+def _load_mitre_taxonomy():
     """
     Extracts all relevant MITRE STIX objects and builds fast lookup tables.
 
@@ -189,7 +198,14 @@ def load_mitre_taxonomy(taxonomy=None):
         "relationships_by_id": relationships_by_id,
         "name_index": name_index,
         "attack_id_index": attack_id_index,
+        "kill_chain_order": kill_chain_order,
     }
+
+
+def load_mitre_taxonomy():
+    """Return the shared MITRE taxonomy. Built once, read-only thereafter."""
+    with _TAXONOMY_LOCK:
+        return _load_mitre_taxonomy()
 
 
 # ======================================================================
@@ -220,7 +236,8 @@ def lookup_attack_id(tid: str, taxonomy: dict):
     return taxonomy["attack_id_index"].get(tid.upper().strip())
 
 
-def build_normalized_attack_patterns():
+@lru_cache(maxsize=1)
+def _build_normalized_attack_patterns():
     """
     Unified MITRE technique index for Stage-1 and Stage-2.
 
@@ -278,19 +295,9 @@ def build_normalized_attack_patterns():
 
     return techniques, by_id
 
-# ======================================================================
-#  Singleton global — Stage 2 will import this
-# ======================================================================
-TAXONOMY = None
-try:
-    from app.blackcat_cti_pipeline_stage1 import PHASE1_ONLY
-except Exception:
-    PHASE1_ONLY = True
 
-if not PHASE1_ONLY:
-    try:
-        TAXONOMY = load_mitre_taxonomy()
-    except Exception:
-        TAXONOMY = None
-else:
-    TAXONOMY = None
+def build_normalized_attack_patterns():
+    """Return (techniques, by_id). Vectorising 835 descriptions costs ~30s, and
+    Stage 1 asks for it once per document, so the result is shared."""
+    with _PATTERNS_LOCK:
+        return _build_normalized_attack_patterns()

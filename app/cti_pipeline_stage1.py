@@ -288,9 +288,8 @@ async def process_file(
     # ---------------------------------------------------------
     techniques, lookup = build_normalized_attack_patterns()
 
-    # Loaded once here: load_mitre_taxonomy is not cached, and steps 3.5
-    # and 3.6 below both need the full taxonomy rather than the normalized
-    # attack patterns.
+    # Steps 3.5 and 3.6 below need the full taxonomy rather than the
+    # normalized attack patterns.
     try:
         taxonomy = load_mitre_taxonomy()
     except Exception as e:
