@@ -43,12 +43,18 @@ class TestConfigStructure:
         config = r.json().get("config", r.json())
         assert "cti" in config
 
-    def test_cti_has_model_fields(self):
-        """The cti profile must name a provider and a model."""
+    def test_cti_inherits_connection_fields_from_llm(self):
+        """cti layers over llm, so provider and model are configured once on
+        llm and inherited rather than repeated in both blocks."""
         r = requests.get(f"{CALDERA_URL}/plugin/mcp/get_config", headers=HEADERS)
-        cti = r.json().get("config", r.json()).get("cti", {})
+        cfg = r.json().get("config", r.json())
         for field in ("provider", "model"):
-            assert field in cti, f"Missing config field: {field}"
+            assert field in cfg.get("llm", {}), f"llm must define {field}"
+
+        from plugins.mcp.app.utilities.llm_client import layered_profile
+        resolved = layered_profile(cfg, "cti")
+        for field in ("provider", "model"):
+            assert field in resolved, f"cti must resolve {field}"
 
     def test_cti_has_parameter_fields(self):
         """The cti profile must carry the LM tunables llm_client reads."""
