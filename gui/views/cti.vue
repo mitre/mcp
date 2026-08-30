@@ -285,7 +285,10 @@
 
       <div class="modal-card raw-viewer">
         <header class="modal-card-head">
-          <div>
+          <!-- Bulma gives .modal-card-title the flex-grow that pushes the
+               close button to the right edge. Wrapping the title in a plain
+               div loses it, which left the button beside the filename. -->
+          <div class="raw-viewer__heading">
             <p class="modal-card-title is-size-6">{{ rawViewer.filename }}</p>
             <p class="raw-viewer__meta">
               {{ rawViewer.kind ? rawViewer.kind.toUpperCase() : '' }}
@@ -295,7 +298,11 @@
               <span v-if="rawViewer.kind === 'pdf'"> &middot; extracted text</span>
             </p>
           </div>
-          <button class="delete" aria-label="close" @click="showRawModal = false"></button>
+          <button
+            class="raw-viewer__close"
+            aria-label="Close preview"
+            @click="showRawModal = false"
+          >&times;</button>
         </header>
 
         <section class="modal-card-body">
@@ -725,10 +732,29 @@ onMounted(() => {
 .raw-viewer {
   width: min(900px, 92vw);
 }
+.raw-viewer__heading {
+  flex-grow: 1;
+  min-width: 0;
+}
 .raw-viewer__meta {
   font-size: 0.75rem;
   color: #a0a0a0;
   margin-top: 0.15rem;
+}
+.raw-viewer__close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9e62ff;
+  font-size: 2rem;
+  line-height: 1;
+  padding: 0 0.25rem;
+  transition: color 0.15s ease;
+}
+.raw-viewer__close:hover,
+.raw-viewer__close:focus-visible {
+  color: #c9a3ff;
 }
 /* pre would otherwise force the modal wider than the viewport on a report
    with long unbroken lines, which a PDF extraction often has. */
