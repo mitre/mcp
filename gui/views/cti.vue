@@ -108,26 +108,32 @@
           </tr>
         </thead>
         <tbody>
+          <!-- A directory row expands; anything else toggles its own
+               checkbox, so the whole row is the hit target rather than a
+               13px box. -->
           <tr
             v-for="row in visibleRows"
             :key="row._rowKey"
-            @click="row._kind === 'parent' && row.type === 'dir' && toggleDir(row.name)"
+            class="is-clickable-row"
+            @click="onRawRowClick(row)"
           >
             <td>
+              <!-- Always selects, even on a directory row, where clicking
+                   the row body expands instead. -->
               <input
                 type="checkbox"
-                @click.stop
-                @change="toggleRawSelection(row)"
+                @click.stop="toggleRawSelection(row)"
                 :checked="isRowSelected(row)"
               />
             </td>
 
             <td>
               <span v-if="row._kind === 'parent' && row.type === 'dir'">
-                {{ expandedDirs[row.name] ? '📂' : '📁' }} {{ row.name }}
+                <span class="dir-caret">{{ expandedDirs[row.name] ? '▾' : '▸' }}</span>
+                {{ row.name }}
               </span>
-              <span v-else-if="row._kind === 'parent'">📄 {{ row.name }}</span>
-              <span v-else class="pl-5">📄 {{ row.name }}</span>
+              <span v-else-if="row._kind === 'parent'">{{ row.name }}</span>
+              <span v-else class="pl-5">{{ row.name }}</span>
             </td>
 
             <td>
@@ -182,14 +188,19 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="f in stixFiles" :key="f.name">
+          <tr
+            v-for="f in stixFiles"
+            :key="f.name"
+            class="is-clickable-row"
+            @click="toggleStixSelection(f.name)"
+          >
             <td>
               <input
                 type="checkbox"
                 :checked="selectedStix.has(f.name)"
-                @change="toggleStixSelection(f.name)"
+                @click.stop="toggleStixSelection(f.name)"
               />
-              📦 {{ f.name }}
+              {{ f.name }}
             </td>
 
             <td class="has-text-grey">
@@ -322,6 +333,17 @@ function toggleRawSelection(row) {
   selectedRaw.has(key)
     ? selectedRaw.delete(key)
     : selectedRaw.add(key)
+}
+
+// A directory row has no selectable file of its own, so clicking it expands.
+// Every other row selects, which makes the row the hit target instead of the
+// checkbox alone.
+function onRawRowClick(row) {
+  if (row._kind === 'parent' && row.type === 'dir') {
+    toggleDir(row.name)
+    return
+  }
+  toggleRawSelection(row)
 }
 
 function toggleStixSelection(name) {
@@ -582,6 +604,24 @@ onMounted(() => {
  * ============================================================ */
 .cti-page {
   padding: 0 1rem;
+}
+
+/* The whole row toggles its checkbox, so it has to read as clickable. */
+.is-clickable-row {
+  cursor: pointer;
+}
+.is-clickable-row:hover {
+  background-color: rgba(158, 98, 255, 0.08);
+}
+/* The checkbox keeps its own cursor: clicking it does the same thing, but a
+   text cursor over the label would suggest it does not. */
+.is-clickable-row input[type="checkbox"] {
+  cursor: pointer;
+}
+.dir-caret {
+  display: inline-block;
+  width: 1em;
+  color: #9e62ff;
 }
 
 .cti-dropzone {
