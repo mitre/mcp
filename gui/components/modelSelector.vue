@@ -72,12 +72,6 @@
         </label>
       </div>
 
-      <div class="field">
-        <label class="checkbox is-size-7">
-          <input type="checkbox" v-model="local.use_mock" /> Use mock responses
-        </label>
-      </div>
-
       <p class="help">
         Embeddings reuse the global model unless one is named explicitly.
       </p>
@@ -182,8 +176,7 @@ async function save() {
           temperature: local.temperature,
           max_tokens: local.max_tokens,
           timeout: local.timeout,
-          offline: local.offline,
-          use_mock: local.use_mock
+          offline: local.offline
         }
       })
     })

@@ -4,7 +4,7 @@ llm_client.py — Centralized, deterministic LLM access layer
 Responsibilities:
 - Load effective MCP config (local.yml → default.yml)
 - Provide a single async LLM client
-- Support offline + mock modes
+- Support offline mode
 - Expose deterministic provenance for STIX / CTI artifacts
 """
 
@@ -205,7 +205,6 @@ def get_llm_provenance(profile: str = "llm", *, runtime: bool = False) -> dict:
         "provider": llm["provider"],
         "model": llm.get("model"),
         "offline": llm.get("offline", False),
-        "use_mock": llm.get("use_mock", False),
         "temperature": llm.get("temperature"),
         "top_p": llm.get("top_p"),
         "max_tokens": llm.get("max_tokens"),
@@ -238,8 +237,8 @@ def build_dspy_lm(profile: str = "llm") -> dspy.LM:
     llm_rt = get_llm_provenance(profile, runtime=True)
 
     # Deterministic early exit
-    if llm_rt.get("offline") or llm_rt.get("use_mock"):
-        raise RuntimeError(f"LLM profile '{profile}' is offline/mock; cannot build DSPy LM")
+    if llm_rt.get("offline"):
+        raise RuntimeError(f"LLM profile '{profile}' is offline; cannot build DSPy LM")
 
     kwargs = dspy_lm_kwargs_from_settings(llm_rt)
 
@@ -254,7 +253,7 @@ class LLMClient:
     Central async LLM client.
 
     Guarantees:
-    - No calls when offline or mock enabled
+    - No calls when offline
     - Provider routing by config only
     - No hard dependency on OpenAI SDKs
     """
@@ -269,7 +268,7 @@ class LLMClient:
 
         # Deterministic early exit, before credential resolution: an
         # offline profile may legitimately carry no key and no base.
-        if raw_cfg.get("offline") or raw_cfg.get("use_mock"):
+        if raw_cfg.get("offline"):
             return None
 
         llm_cfg = resolve_env_indirection(raw_cfg)
