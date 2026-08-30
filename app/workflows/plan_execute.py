@@ -210,13 +210,14 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None,
             },
             "cti_pipeline": {
                 "path": cti_pipeline_server_path,
+                # Fallback for when the server's MCP_METADATA cannot be read.
+                # This copy still advertised a deploy step and detection
+                # validation, neither of which exists, and the planner reads
+                # descriptions to decide what it can do.
                 "metadata": {
                     "display_name": "CTI Pipeline",
                     "default_enabled": False,
-                    "description": (
-                        "CTI ingest -> STIX -> adversary -> "
-                        "deploy -> operation -> detection-validation tools."
-                    ),
+                    "description": "CTI pipeline tools. Server metadata unavailable.",
                 },
             },
         }
