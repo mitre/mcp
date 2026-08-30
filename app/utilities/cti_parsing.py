@@ -11,9 +11,12 @@ This module:
     • NO canonicalization
 """
 
+import asyncio
 import json
 import re
 from pathlib import Path
+
+import aiohttp
 
 from plugins.mcp.app.utilities.llm_client import llm_generate
 
@@ -167,17 +170,29 @@ def enforce_ir_schema(ir: dict) -> dict:
 # Main IR extractor
 # ---------------------------------------------------------
 
+def _offline_ir(cti_text: str) -> dict:
+    """Deterministic extraction, recorded so provenance does not credit a
+    model that produced nothing."""
+    from plugins.mcp.app.utilities.cti_offline_ir import extract_ir_offline
+    ir = enforce_ir_schema(extract_ir_offline(cti_text))
+    ir["extractor"] = "offline"
+    return ir
+
+
 async def extract_ir(cti_text: str, debug_path: Path = None) -> dict:
     prompt = build_ir_prompt(cti_text)
-    raw = await llm_generate(prompt, profile="cti")
+    try:
+        raw = await llm_generate(prompt, profile="cti")
+    except (aiohttp.ClientError, asyncio.TimeoutError, OSError) as e:
+        # The endpoint is configured but unreachable. A ValueError or KeyError
+        # means the operator got the config wrong and should hear about it, so
+        # only transport failures degrade.
+        print(f"[LLM][WARN] {type(e).__name__}: {e}. Falling back to offline IR.")
+        return _offline_ir(cti_text)
+
     if not raw:
-        # Offline or unconfigured: fall back to deterministic extraction rather
-        # than emitting an empty IR the rest of Stage 1 cannot use. Recorded so
-        # provenance does not credit a model that produced nothing.
-        from plugins.mcp.app.utilities.cti_offline_ir import extract_ir_offline
-        ir = enforce_ir_schema(extract_ir_offline(cti_text))
-        ir["extractor"] = "offline"
-        return ir
+        # Offline profile, or the model returned nothing at all.
+        return _offline_ir(cti_text)
 
     if debug_path:
         with debug_path.open("a", encoding="utf-8") as f:
