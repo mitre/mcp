@@ -395,8 +395,12 @@ class MCPService(BaseService):
             if not rag_cfg.get("api_base"):
                 rag_cfg["api_base"] = resolved_lm.get("api_base", "")
             if not rag_cfg.get("embed_model"):
+                # Last rung is the chat model: one endpoint, one model, unless
+                # a deployment explicitly names a separate embedding model.
                 rag_cfg["embed_model"] = (
-                    resolved_lm.get("embed_model") or resolved_lm.get("rag_embed_model")
+                    resolved_lm.get("embed_model")
+                    or resolved_lm.get("rag_embed_model")
+                    or resolved_lm.get("model")
                 )
             if rag_cfg.get("ssl_verify") is None:
                 rag_cfg["ssl_verify"] = resolved_lm.get("ssl_verify")

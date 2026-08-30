@@ -34,7 +34,7 @@ class RAGService:
         if stix_bundle_path:
             self.load_stix_bundle(stix_bundle_path)
     
-    def load_stix_bundle(self, stix_bundle_path: str, embed_model: str = 'openai/text-embedding-3-small'):
+    def load_stix_bundle(self, stix_bundle_path: str, embed_model: str | None = None):
         """Load STIX bundle from file path and build embeddings."""
         try:
             with open(stix_bundle_path, 'r') as f:
@@ -45,7 +45,7 @@ class RAGService:
         except json.JSONDecodeError:
             raise ValueError(f"Invalid JSON in STIX bundle: {stix_bundle_path}")
     
-    def initialize_from_bundles(self, stix_bundles: List[dict], embed_model: str = 'openai/text-embedding-3-small'):
+    def initialize_from_bundles(self, stix_bundles: List[dict], embed_model: str | None = None):
         """Initialize the RAG service with multiple STIX bundles and create retriever."""
         all_corpus = []
         all_adv_step = {}
@@ -261,7 +261,7 @@ async def _enrich(prompt: str, settings: dict) -> dict:
     settings keys (all optional):
       rag_files       list of filenames under plugins/mcp/data/
       topk            int, defaults to 5
-      embed_model     str, defaults to openai/text-embedding-3-small
+      embed_model     str, falls back to the chat model when unset
       api_key         str, embedding key fallback (mcp_svc fills this with
                       the resolved chat-LLM key when the caller does not
                       override it via embed_api_key)
@@ -279,7 +279,15 @@ async def _enrich(prompt: str, settings: dict) -> dict:
     embed_api_key = settings.get("embed_api_key") or settings.get("api_key") or ""
     embed_api_base = settings.get("embed_api_base") or settings.get("api_base") or None
     ssl_verify = settings.get("ssl_verify")
-    embed_model = settings.get("embed_model") or "openai/text-embedding-3-small"
+    # An undeclared embedding model falls back to the chat model. A deployment
+    # pointing at its own gateway has no reason to reach for an OpenAI model
+    # name it never chose, and that name would be sent to that gateway.
+    embed_model = settings.get("embed_model") or settings.get("model")
+    if not embed_model:
+        raise ValueError(
+            "No embedding model: set embed_model, or a model on the global "
+            "LLM profile for it to inherit."
+        )
     topk = int(settings.get("topk") or 5)
 
     base_dir = Path(__file__).resolve().parent.parent.parent / "data"
