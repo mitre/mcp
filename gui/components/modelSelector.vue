@@ -45,38 +45,15 @@
          ====================================================== -->
     <div v-if="expanded" class="model-config__body">
 
-      <!-- Provider is an allowlist in llm_client, not free text: an
-           unrecognised value raised "Unsupported model provider" at
-           extraction time, long after Save reported success. -->
-      <div class="field">
-        <label class="label is-small">Provider</label>
-        <div class="select is-small is-fullwidth">
-          <select v-model="local.provider" :class="{ 'is-danger': !local.provider }">
-            <option value="openai_compatible">openai_compatible</option>
-            <option value="ollama">ollama</option>
-          </select>
-        </div>
-        <p class="help">
-          Use <code>openai_compatible</code> for any OpenAI-shaped endpoint,
-          including OpenAI itself.
-        </p>
-      </div>
-
-      <div class="field">
-        <label class="label is-small">Model</label>
-        <input
-          class="input is-small"
-          :class="{ 'is-danger': !local.model }"
-          v-model="local.model"
-        />
-        <p v-if="!local.model" class="help is-danger">Required</p>
-      </div>
-
-      <div class="field">
-        <label class="label is-small">API Base URL</label>
-        <input class="input is-small" v-model="local.api_base" placeholder="Optional override" />
-        <p class="help">Blank falls back to <code>{{ apiBaseEnv }}</code>.</p>
-      </div>
+      <!-- Provider, model and endpoint are not repeated here. This profile
+           layers over the global one, so they are set once in Global Model
+           Config and inherited. Only what extraction needs differently
+           lives below. -->
+      <p class="help mb-3">
+        Endpoint, model and credentials come from
+        <strong>Global Model Config</strong>. These override them for
+        extraction only.
+      </p>
 
       <div class="field">
         <label class="label is-small">Temperature</label>
@@ -102,8 +79,7 @@
       </div>
 
       <p class="help">
-        The API key is never written to disk. It resolves at runtime from
-        <code>{{ apiKeyEnv }}</code>.
+        Embeddings reuse the global model unless one is named explicitly.
       </p>
     </div>
 
@@ -154,19 +130,17 @@ const saveState = ref(null)
 /* ============================================================
  * Validation
  *
- * Only the fields set_config actually persists are required.
- * api_base and api_key resolve from the environment, so demanding
- * them here left Save permanently disabled.
+ * Every field here is an optional override with a shipped default, and
+ * provider and model now live on the global profile, so there is nothing
+ * left to require. Demanding a field this panel does not edit would leave
+ * Save permanently disabled.
  * ============================================================ */
-const requiredFields = [
-  { key: 'provider', label: 'Provider' },
-  { key: 'model', label: 'Model' }
-]
+const isValid = computed(
+  () => local.temperature === null || local.temperature === undefined
+    ? true
+    : local.temperature >= 0 && local.temperature <= 1
+)
 
-const isValid = computed(() => requiredFields.every(f => !!local[f.key]))
-
-const apiBaseEnv = computed(() => props.backendConfig?.api_base_env || 'MCP_LLM_API_BASE')
-const apiKeyEnv = computed(() => props.backendConfig?.api_key_env || 'MCP_LLM_API_KEY')
 
 /* ============================================================
  * Sync
@@ -201,10 +175,10 @@ async function save() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        // Connection fields are deliberately absent. Writing them back would
+        // pin a copy of the global endpoint into local.yml, which is the
+        // duplication this profile now inherits its way out of.
         [props.configKey]: {
-          provider: local.provider,
-          model: local.model,
-          api_base: local.api_base || '',
           temperature: local.temperature,
           max_tokens: local.max_tokens,
           timeout: local.timeout,
