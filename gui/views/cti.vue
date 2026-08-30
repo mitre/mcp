@@ -24,11 +24,40 @@
             entities, behaviors, MITRE techniques, and produces STIX for RAG.
           </p>
 
-          <!-- Upload -->
+          <!-- Upload. The whole zone is a drop target; the hidden input is
+               kept so keyboard and screen-reader users still get a real
+               file picker. -->
+          <div
+            class="cti-dropzone"
+            :class="{ 'is-dragging': isDragging, 'has-file': !!ctiFile }"
+            role="button"
+            tabindex="0"
+            @click="ctiFileInput.click()"
+            @keydown.enter.prevent="ctiFileInput.click()"
+            @keydown.space.prevent="ctiFileInput.click()"
+            @dragenter.prevent="onDragEnter"
+            @dragover.prevent
+            @dragleave="onDragLeave"
+            @drop.prevent="onDrop"
+          >
+            <p v-if="ctiFile" class="cti-dropzone__file">
+              {{ ctiFile.name }}
+              <span class="cti-dropzone__size">
+                {{ (ctiFile.size / 1024).toFixed(1) }} KB
+              </span>
+            </p>
+            <p v-else class="cti-dropzone__copy">
+              Drop a report here, or <span class="cti-dropzone__link">browse</span>
+            </p>
+            <p class="cti-dropzone__hint">TXT, MD, HTML or PDF</p>
+          </div>
+
+          <p v-if="ctiDropError" class="help is-danger mt-2">{{ ctiDropError }}</p>
+
           <input
             ref="ctiFileInput"
             type="file"
-            class="input"
+            class="is-hidden"
             accept=".txt,.md,.html,.pdf"
             @change="onCtiFileSelected"
           />
@@ -231,6 +260,9 @@ import McpModelConfigPanel from '../components/modelSelector.vue'
 const backendConfig = ref(null)
 const ctiFile = ref(null)
 const ctiFileInput = ref(null)
+const isDragging = ref(false)
+const dragDepth = ref(0)
+const ctiDropError = ref('')
 const ctiStatus = ref('')
 const expandedDirs = ref({})
 const rawFiles = ref([])
@@ -348,8 +380,54 @@ async function deleteSelectedRaw() {
   loadRawFiles()
 }
 
+// Mirrors the extension check in mcp_api.upload_cti_raw. Rejecting here keeps
+// an unsupported file from becoming a 400 the operator has to interpret.
+const CTI_EXTENSIONS = ['.txt', '.md', '.html', '.pdf']
+
+function acceptCtiFile(file) {
+  ctiDropError.value = ''
+  if (!file) return
+  const name = (file.name || '').toLowerCase()
+  if (!CTI_EXTENSIONS.some(ext => name.endsWith(ext))) {
+    ctiDropError.value = `${file.name} is not a supported type. Use TXT, MD, HTML or PDF.`
+    ctiFile.value = null
+    return
+  }
+  ctiFile.value = file
+}
+
 function onCtiFileSelected(e) {
-  ctiFile.value = e.target.files[0]
+  acceptCtiFile(e.target.files[0])
+}
+
+function onDragEnter() {
+  dragDepth.value += 1
+  isDragging.value = true
+}
+
+function onDragLeave() {
+  // dragleave also fires when the cursor crosses a child element, so track
+  // depth rather than clearing on the first one.
+  dragDepth.value -= 1
+  if (dragDepth.value <= 0) {
+    dragDepth.value = 0
+    isDragging.value = false
+  }
+}
+
+function onDrop(e) {
+  dragDepth.value = 0
+  isDragging.value = false
+  const files = e.dataTransfer?.files
+  if (!files || !files.length) return
+  if (files.length > 1) {
+    ctiDropError.value = 'Drop one file at a time.'
+    return
+  }
+  acceptCtiFile(files[0])
+  // The hidden input still holds any earlier pick, so clear it to keep the
+  // two entry points from disagreeing about what is staged.
+  if (ctiFileInput.value) ctiFileInput.value.value = ''
 }
 
 async function uploadCti() {
@@ -371,7 +449,8 @@ async function uploadCti() {
   // Staged only. Nothing is extracted until Run Pipeline.
   ctiStatus.value = 'File staged. Select it and press Run Pipeline to extract.'
   ctiFile.value = null
-  ctiFileInput.value.value = ''
+  ctiDropError.value = ''
+  if (ctiFileInput.value) ctiFileInput.value.value = ''
 
   loadRawFiles()
 }
@@ -503,5 +582,57 @@ onMounted(() => {
  * ============================================================ */
 .cti-page {
   padding: 0 1rem;
+}
+
+.cti-dropzone {
+  border: 1px dashed rgba(158, 98, 255, 0.45);
+  border-radius: 8px;
+  background-color: #242424;
+  padding: 1.75rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.cti-dropzone:hover,
+.cti-dropzone:focus-visible {
+  border-color: rgba(158, 98, 255, 0.8);
+  background-color: #2a2730;
+}
+/* The browser paints no drag feedback of its own, so the lift has to be
+   obvious enough to read as a valid target mid-drag. */
+.cti-dropzone.is-dragging {
+  border-color: #9e62ff;
+  border-style: solid;
+  background-color: #2f2838;
+}
+.cti-dropzone.has-file {
+  border-style: solid;
+  border-color: rgba(72, 199, 142, 0.6);
+}
+.cti-dropzone__copy,
+.cti-dropzone__file {
+  margin: 0;
+  color: #f5f5f5;
+  word-break: break-all;
+}
+.cti-dropzone__link {
+  color: #9e62ff;
+  text-decoration: underline;
+}
+.cti-dropzone__size {
+  color: #a0a0a0;
+  margin-left: 0.4rem;
+  white-space: nowrap;
+}
+.cti-dropzone__hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  color: #a0a0a0;
+}
+
+/* Pointer-events off so a drag over the filename does not fire dragleave on
+   the zone, which would flicker the highlight. */
+.cti-dropzone * {
+  pointer-events: none;
 }
 </style>
