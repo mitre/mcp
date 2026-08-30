@@ -23,8 +23,11 @@ from plugins.mcp.app.cti_ingest_svc import CTIIngestService
 # come back from llm_defaults() which already applies its own fallbacks;
 # the RAG-specific defaults stay here because they belong to the capability
 # rather than the LLM provider.
+#
+# rag_embed_model has no literal default: an undeclared embedding model falls
+# back to the configured chat model, since a deployment pointing at its own
+# gateway has no reason to reach for an OpenAI model name it never chose.
 _RAG_DEFAULTS = {
-    "rag_embed_model": "openai/text-embedding-3-small",
     "rag_topk": 5,
 }
 
@@ -228,10 +231,12 @@ class McpAPI:
                 "fields_locked": cfg.get("fields_locked") or {},
             }
             for key, fallback in _RAG_DEFAULTS.items():
-                if key == "rag_embed_model":
-                    payload[key] = cfg.get(key) or cfg.get("embed_model") or fallback
-                else:
-                    payload[key] = cfg.get(key, fallback)
+                payload[key] = cfg.get(key, fallback)
+            payload["rag_embed_model"] = (
+                cfg.get("rag_embed_model")
+                or cfg.get("embed_model")
+                or cfg.get("model")
+            )
             return web.json_response(payload)
         except Exception as e:
             self.log.error(f"[MCP] Error fetching defaults: {e}")
