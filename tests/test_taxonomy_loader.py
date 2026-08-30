@@ -89,3 +89,33 @@ class TestLookupAttackId:
         from plugins.mcp.app.utilities.cti_taxonomy_loader import lookup_attack_id
         assert lookup_attack_id("T9999", taxonomy) is None
         assert lookup_attack_id("", taxonomy) is None
+
+
+class TestKillChainOrder:
+    """The order used to be a hand-written tuple in mcp_server.py. It is
+    derived from the bundle's x-mitre-matrix so it tracks the installed
+    ATT&CK version."""
+
+    def test_present_and_complete(self, taxonomy):
+        order = taxonomy["kill_chain_order"]
+        assert isinstance(order, tuple)
+        assert len(order) == 14
+
+    def test_starts_and_ends_where_attack_does(self, taxonomy):
+        order = taxonomy["kill_chain_order"]
+        assert order[0] == "reconnaissance"
+        assert order[-1] == "impact"
+
+    def test_phases_are_shortnames_abilities_use(self, taxonomy):
+        order = taxonomy["kill_chain_order"]
+        for phase in ("execution", "persistence", "lateral-movement"):
+            assert phase in order
+
+
+class TestBuildNormalizedCaching:
+    def test_cached(self):
+        """Vectorising 835 descriptions costs ~30s; Stage 1 asks per document."""
+        from plugins.mcp.app.utilities.cti_taxonomy_loader import (
+            build_normalized_attack_patterns,
+        )
+        assert build_normalized_attack_patterns() is build_normalized_attack_patterns()

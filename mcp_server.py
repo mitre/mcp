@@ -341,14 +341,8 @@ def _bundle_actor_name(bundle: dict) -> Optional[str]:
 # rather than its CALDERA tactic: CALDERA's vocabulary is its own, and its
 # three most common values (multiple, stealth, defense-impairment) have no
 # ATT&CK counterpart, so 43 percent of the stockpile would tie for last.
-# ATT&CK STIX names the kill-chain phases but not their sequence, so the
-# sequence itself has to be stated.
-_KILL_CHAIN = (
-    "reconnaissance", "resource-development", "initial-access", "execution",
-    "persistence", "privilege-escalation", "defense-evasion",
-    "credential-access", "discovery", "lateral-movement", "collection",
-    "command-and-control", "exfiltration", "impact",
-)
+# The sequence comes from the bundle's x-mitre-matrix, so it tracks whatever
+# ATT&CK version is installed rather than a copy that silently goes stale.
 
 
 def _technique_rank(technique_id: str, taxonomy: dict) -> int:
@@ -357,17 +351,18 @@ def _technique_rank(technique_id: str, taxonomy: dict) -> int:
     A technique can span phases (T1547.001 is persistence and
     privilege-escalation); the earliest is the one that has to run first.
     """
+    kill_chain = taxonomy.get("kill_chain_order") or ()
     entry = (taxonomy.get("attack_id_index") or {}).get((technique_id or "").strip())
     if not entry:
         parent = (technique_id or "").split(".")[0]
         entry = (taxonomy.get("attack_id_index") or {}).get(parent)
     ranks = [
-        _KILL_CHAIN.index(p["phase_name"])
+        kill_chain.index(p["phase_name"])
         for p in (entry or {}).get("kill_chain_phases") or []
         if p.get("kill_chain_name") == "mitre-attack"
-        and p.get("phase_name") in _KILL_CHAIN
+        and p.get("phase_name") in kill_chain
     ]
-    return min(ranks) if ranks else len(_KILL_CHAIN)
+    return min(ranks) if ranks else len(kill_chain)
 
 
 def _technique_matches(report_id: str, ability_id: str) -> bool:
