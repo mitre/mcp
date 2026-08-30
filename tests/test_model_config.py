@@ -63,12 +63,22 @@ class TestConfigStructure:
         for field in ("temperature", "top_p", "max_tokens", "timeout"):
             assert field in cti, f"Missing config field: {field}"
 
-    def test_cti_has_toggle_fields(self):
-        """The cti profile must carry the run-mode toggles."""
+    def test_cti_carries_its_own_offline_toggle(self):
+        """Offline stays per profile so extraction can be taken offline
+        without silencing the planner."""
         r = requests.get(f"{CALDERA_URL}/plugin/mcp/get_config", headers=HEADERS)
         cti = r.json().get("config", r.json()).get("cti", {})
-        for field in ("stream", "offline", "use_mock"):
-            assert field in cti, f"Missing config field: {field}"
+        assert "offline" in cti
+
+    def test_use_mock_is_not_shipped(self):
+        """use_mock was a second name for offline with no distinct behaviour.
+        Asserted against the shipped defaults rather than the live config,
+        which may still carry the key from an operator's local.yml."""
+        import yaml
+        from plugins.mcp.app.utilities.paths import get_mcp_root
+        shipped = yaml.safe_load((get_mcp_root() / "conf" / "default.yml").read_text())
+        for profile in ("llm", "cti"):
+            assert "use_mock" not in shipped[profile]
 
 
 # ============================================================
@@ -94,7 +104,6 @@ class TestOllamaConfig:
                     "timeout": 120,
                     "stream": False,
                     "offline": False,
-                    "use_mock": False,
                 }
             }
         }
@@ -122,7 +131,6 @@ class TestOpenAICompatibleConfig:
                     "timeout": 120,
                     "stream": False,
                     "offline": False,
-                    "use_mock": False,
                     "ssl_verify": False,
                     "extra_headers": {"Host": "llm.example.com"},
                 }
@@ -247,7 +255,6 @@ class TestRestoreConfig:
                     "timeout": 120,
                     "stream": False,
                     "offline": False,
-                    "use_mock": False,
                     "ssl_verify": False,
                     "extra_headers": {"Host": "llm.example.com"},
                 }

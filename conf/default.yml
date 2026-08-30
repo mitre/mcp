@@ -26,7 +26,6 @@ llm:
   api_key_env: MCP_LLM_API_KEY
   ssl_verify: true
   offline: true
-  use_mock: false
   fields_locked:
     model: false
     api_base: false
@@ -46,10 +45,9 @@ cti:
   top_p: 1.0
   max_tokens: 4000
   timeout: 120
-  # Run-mode toggles stay per profile: extraction can be taken offline
-  # without also silencing the planner and chat.
+  # Offline stays per profile: extraction can be taken offline without
+  # also silencing the planner and chat.
   offline: true
-  use_mock: false
 
 # Caldera REST API used by the caldera_core MCP subprocess. The url and key
 # auto-resolve from caldera's own main config, so a stock deployment needs no

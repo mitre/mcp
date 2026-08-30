@@ -352,8 +352,7 @@ async function loadBackendConfig() {
     temperature: cti.temperature ?? 0.0,
     max_tokens: cti.max_tokens ?? 4000,
     timeout: cti.timeout ?? 120,
-    offline: cti.offline ?? false,
-    use_mock: cti.use_mock ?? false
+    offline: cti.offline ?? false
   }
 }
 /* ============================================================
