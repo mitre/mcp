@@ -17,6 +17,9 @@
 # fields_locked declares which fields the deployment fixes; locked fields
 # ignore UI overrides and the UI greys out the corresponding inputs.
 llm:
+  # Declared here rather than only on cti so every profile that layers over
+  # this one inherits it. LLMClient.generate reads it with no default.
+  provider: openai_compatible
   model: openai/gpt-oss-120b
   api_base: ""
   api_base_env: MCP_LLM_API_BASE
@@ -43,6 +46,10 @@ cti:
   top_p: 1.0
   max_tokens: 4000
   timeout: 120
+  # Run-mode toggles stay per profile: extraction can be taken offline
+  # without also silencing the planner and chat.
+  offline: true
+  use_mock: false
 
 # Caldera REST API used by the caldera_core MCP subprocess. The url and key
 # auto-resolve from caldera's own main config, so a stock deployment needs no
