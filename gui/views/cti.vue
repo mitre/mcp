@@ -77,150 +77,6 @@
           </div>
         </div>
 
-        <!-- =====================================================
-             RAW CTI FILES
-             ===================================================== -->
-        <div class="box mt-4">
-          <h3 class="title is-6">Raw CTI Inputs</h3>
-
-          <table class="table is-fullwidth is-striped is-hoverable">
-            <thead>
-              <tr>
-                <th></th>
-                <th>File</th>
-                <th>Status</th>
-                <th class="has-text-right">Size</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="row in visibleRows"
-                :key="row._rowKey"
-                @click="row._kind === 'parent' && row.type === 'dir' && toggleDir(row.name)"
-              >
-                <td>
-                  <input
-                    type="checkbox"
-                    @click.stop
-                    @change="toggleRawSelection(row)"
-                    :checked="isRowSelected(row)"
-                  />
-                </td>
-
-                <td>
-                  <span v-if="row._kind === 'parent' && row.type === 'dir'">
-                    {{ expandedDirs[row.name] ? '📂' : '📁' }} {{ row.name }}
-                  </span>
-                  <span v-else-if="row._kind === 'parent'">📄 {{ row.name }}</span>
-                  <span v-else class="pl-5">📄 {{ row.name }}</span>
-                </td>
-
-                <td>
-                  <span
-                    v-if="row.type === 'file'"
-                    class="tag"
-                    :class="row.status === 'processed' ? 'is-success' : 'is-warning'"
-                  >
-                    {{ row.status || 'pending' }}
-                  </span>
-                </td>
-
-                <td class="has-text-right">
-                  {{ row.size ? (row.size / 1024).toFixed(1) + ' KB' : '—' }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          <div class="buttons">
-            <button
-              class="button is-primary is-small"
-              :disabled="!selectedRaw.size"
-              @click="runPipelineForSelected"
-            >
-              Run Pipeline
-            </button>
-
-            <button
-              class="button is-danger is-small"
-              :disabled="!selectedRaw.size"
-              @click="deleteSelectedRaw"
-            >
-              Delete Selected
-            </button>
-          </div>
-        </div>
-
-        <!-- =====================================================
-             GENERATED STIX
-             ===================================================== -->
-        <div class="box mt-4">
-          <h3 class="title is-6">Generated STIX Objects</h3>
-
-          <table class="table is-fullwidth is-striped is-hoverable">
-            <thead>
-              <tr>
-                <th>File</th>
-                <th>Model</th>
-                <th class="has-text-right">Size</th>
-                <th style="width: 70px;">View</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="f in stixFiles" :key="f.name">
-                <td>
-                  <input
-                    type="checkbox"
-                    :checked="selectedStix.has(f.name)"
-                    @change="toggleStixSelection(f.name)"
-                  />
-                  📦 {{ f.name }}
-                </td>
-
-                <td class="has-text-grey">
-                  {{ f.provider ? `${f.provider} / ${f.model}` : f.model || '—' }}
-                </td>
-
-                <td class="has-text-right">
-                  {{ (f.size / 1024).toFixed(1) }} KB
-                </td>
-
-                <td>
-                  <button
-                    class="button is-primary is-small is-light"
-                    @click.stop="viewStix(f.name)"
-                  >
-                    View
-                  </button>
-                </td>
-              </tr>
-
-              <tr v-if="!stixFiles.length">
-                <td colspan="4" class="has-text-grey has-text-centered">
-                  No STIX objects generated yet
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          <div class="buttons">
-            <button
-              class="button is-primary is-small"
-              :disabled="!selectedStix.size"
-              @click="downloadStix(Array.from(selectedStix))"
-            >
-              Download Selected
-            </button>
-
-            <button
-              class="button is-danger is-small"
-              :disabled="!selectedStix.size"
-              @click="deleteStix"
-            >
-              Delete Selected
-            </button>
-          </div>
-        </div>
       </div>
 
       <!-- =====================================================
@@ -233,6 +89,151 @@
           title="CTI Extraction Model"
           @saved="loadBackendConfig"
         />
+      </div>
+    </div>
+
+    <!-- =====================================================
+         RAW CTI FILES
+         ===================================================== -->
+    <div class="box mt-4">
+      <h3 class="title is-6">Raw CTI Inputs</h3>
+
+      <table class="table is-fullwidth is-striped is-hoverable">
+        <thead>
+          <tr>
+            <th></th>
+            <th>File</th>
+            <th>Status</th>
+            <th class="has-text-right">Size</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="row in visibleRows"
+            :key="row._rowKey"
+            @click="row._kind === 'parent' && row.type === 'dir' && toggleDir(row.name)"
+          >
+            <td>
+              <input
+                type="checkbox"
+                @click.stop
+                @change="toggleRawSelection(row)"
+                :checked="isRowSelected(row)"
+              />
+            </td>
+
+            <td>
+              <span v-if="row._kind === 'parent' && row.type === 'dir'">
+                {{ expandedDirs[row.name] ? '📂' : '📁' }} {{ row.name }}
+              </span>
+              <span v-else-if="row._kind === 'parent'">📄 {{ row.name }}</span>
+              <span v-else class="pl-5">📄 {{ row.name }}</span>
+            </td>
+
+            <td>
+              <span
+                v-if="row.type === 'file'"
+                class="tag"
+                :class="row.status === 'processed' ? 'is-success' : 'is-warning'"
+              >
+                {{ row.status || 'pending' }}
+              </span>
+            </td>
+
+            <td class="has-text-right">
+              {{ row.size ? (row.size / 1024).toFixed(1) + ' KB' : '—' }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="buttons">
+        <button
+          class="button is-primary is-small"
+          :disabled="!selectedRaw.size"
+          @click="runPipelineForSelected"
+        >
+          Run Pipeline
+        </button>
+
+        <button
+          class="button is-danger is-small"
+          :disabled="!selectedRaw.size"
+          @click="deleteSelectedRaw"
+        >
+          Delete Selected
+        </button>
+      </div>
+    </div>
+
+    <!-- =====================================================
+         GENERATED STIX
+         ===================================================== -->
+    <div class="box mt-4">
+      <h3 class="title is-6">Generated STIX Objects</h3>
+
+      <table class="table is-fullwidth is-striped is-hoverable">
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Model</th>
+            <th class="has-text-right">Size</th>
+            <th style="width: 70px;">View</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="f in stixFiles" :key="f.name">
+            <td>
+              <input
+                type="checkbox"
+                :checked="selectedStix.has(f.name)"
+                @change="toggleStixSelection(f.name)"
+              />
+              📦 {{ f.name }}
+            </td>
+
+            <td class="has-text-grey">
+              {{ f.provider ? `${f.provider} / ${f.model}` : f.model || '—' }}
+            </td>
+
+            <td class="has-text-right">
+              {{ (f.size / 1024).toFixed(1) }} KB
+            </td>
+
+            <td>
+              <button
+                class="button is-primary is-small is-light"
+                @click.stop="viewStix(f.name)"
+              >
+                View
+              </button>
+            </td>
+          </tr>
+
+          <tr v-if="!stixFiles.length">
+            <td colspan="4" class="has-text-grey has-text-centered">
+              No STIX objects generated yet
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="buttons">
+        <button
+          class="button is-primary is-small"
+          :disabled="!selectedStix.size"
+          @click="downloadStix(Array.from(selectedStix))"
+        >
+          Download Selected
+        </button>
+
+        <button
+          class="button is-danger is-small"
+          :disabled="!selectedStix.size"
+          @click="deleteStix"
+        >
+          Delete Selected
+        </button>
       </div>
     </div>
 
