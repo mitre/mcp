@@ -863,6 +863,70 @@ class McpAPI:
         except Exception as e:
             return web.json_response({"error": str(e)}, status=500)
 
+    async def view_cti_raw(self, request):
+        """Return an uploaded report as text for the preview modal.
+
+        A PDF is not readable as-is, so the extracted text from data/clean is
+        preferred when the pipeline has already produced it, and pdftotext runs
+        on demand otherwise. That keeps a pending PDF viewable without making
+        the operator run the pipeline just to see what they uploaded.
+        """
+        try:
+            try:
+                data = await request.json()
+            except Exception:
+                return web.json_response({"error": "Body must be JSON"}, status=400)
+
+            filename = (data or {}).get("filename")
+            if not filename or not isinstance(filename, str):
+                return web.json_response({"error": "Missing filename"}, status=400)
+
+            # A nested upload is addressed as "<dir>/<name>", so basename is
+            # too strict here. resolve() collapses any .. before the parents
+            # check, which is what actually contains the read to the root.
+            uploads = self.base_dir / "raw" / "uploads"
+            processed = self.base_dir / "raw" / "processed"
+            target = None
+            for root in (uploads, processed):
+                candidate = (root / filename).resolve()
+                if root.resolve() in candidate.parents and candidate.is_file():
+                    target = candidate
+                    break
+            if target is None:
+                return web.json_response({"error": "File not found"}, status=404)
+
+            suffix = target.suffix.lower()
+            if suffix == ".pdf":
+                clean = self.base_dir / "clean" / f"{target.stem}.txt"
+                if clean.is_file():
+                    text = clean.read_text(encoding="utf-8", errors="replace")
+                else:
+                    proc = await asyncio.create_subprocess_exec(
+                        "pdftotext", "-layout", str(target), "-",
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                    )
+                    out, err = await proc.communicate()
+                    if proc.returncode != 0:
+                        return web.json_response(
+                            {"error": f"Could not read PDF: {err.decode()[:200]}"},
+                            status=500,
+                        )
+                    text = out.decode("utf-8", errors="replace")
+            else:
+                text = target.read_text(encoding="utf-8", errors="replace")
+
+            return web.json_response({
+                "filename": filename,
+                "kind": suffix.lstrip("."),
+                "size": target.stat().st_size,
+                "text": text,
+            })
+
+        except Exception as e:
+            self.log.error(f"[MCP] view_cti_raw failed: {e}")
+            return web.json_response({"error": str(e)}, status=500)
+
     async def get_config(self, request):
         try:
             cfg = load_config()
