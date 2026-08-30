@@ -242,22 +242,26 @@ CTI/RAG model settings can use the chat endpoint by default or a separate saved 
 
 Prefer environment variables for local values, and keep `conf/default.yml` limited to safe defaults.
 
-To pin values on disk instead, set them in `conf/local.yml`. That file is overlaid onto `conf/default.yml` key by key, so it only needs the keys it changes.
-
-The `llm` block sits at the top level of the file:
+To pin values on disk instead, copy `conf/local.yml.example` to `conf/local.yml`. That file is a **sparse overlay**, not a full config: it is deep-merged onto `conf/default.yml` key by key, so it needs only the keys it changes. A file containing one temperature is valid and complete.
 
 ```yaml
 llm:
   model: openai/gpt-oss-120b
   api_base: https://api.example.com/v1
-  api_base_env: MCP_LLM_API_BASE
-  api_key_env: MCP_LLM_API_KEY
-  temperature: 0.5
-  max_tool_calls: 5
-  max_tokens: 24000
+  offline: false
+
+cti:
+  temperature: 0.0
+  max_tokens: 4000
 ```
 
-A value set here outranks the environment variable named beside it, so leave `api_base` empty to keep resolving it from `MCP_LLM_API_BASE`. The `cti` block takes the same shape and may name a different variable if CTI extraction should reach a separate endpoint.
+Three rules that are easy to trip over:
+
+- **`cti` layers over `llm`.** Any key set under `cti` wins for extraction. Pinning `model` or `api_base` there means extraction ignores the `llm` profile, which is usually not intended. The CTI Extraction Model panel shows the resolved values and marks them `pinned` when this is happening.
+- **Precedence differs by field.** `api_key` resolves environment-first and is never read from this file. `api_base` resolves yaml-first, so a value here beats `MCP_LLM_API_BASE`; leave it empty to keep using the variable.
+- **A key with no value is `null`, and null overrides.** A bare `llm:` heading wipes the shipped block rather than falling through to it. Omit the block instead.
+
+The GUI's **Global Model Config** panel is browser-local: it is stored in `localStorage` and sent only with chat and planning requests. It does not configure the CTI pipeline, which reads this file server-side.
 
 ## API Surface
 

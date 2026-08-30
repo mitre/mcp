@@ -430,6 +430,10 @@ async function loadBackendConfig() {
   const data = await res.json()
   const cfg = data?.config ?? data ?? {}
   const cti = cfg?.cti ?? {}
+  // Mirrors llm_client.layered_profile: cti overrides llm key by key. The
+  // panel shows the result because a model pinned under cti wins over the
+  // Global Model Config, and there was no way to see that from the UI.
+  const resolved = { ...(cfg?.llm ?? {}), ...cti }
 
   // api_key is deliberately absent: get_config never returns one. The
   // *_env names are surfaced so the panel can say where the key and the
@@ -443,7 +447,13 @@ async function loadBackendConfig() {
     temperature: cti.temperature ?? 0.0,
     max_tokens: cti.max_tokens ?? 4000,
     timeout: cti.timeout ?? 120,
-    offline: cti.offline ?? false
+    offline: cti.offline ?? false,
+    // Read-only, for display. `pinned` marks a value the cti block sets
+    // itself, which is the case that surprises people.
+    resolved_model: resolved.model ?? null,
+    resolved_api_base: resolved.api_base || null,
+    model_pinned: Object.prototype.hasOwnProperty.call(cti, 'model'),
+    api_base_pinned: Object.prototype.hasOwnProperty.call(cti, 'api_base'),
   }
 }
 /* ============================================================
