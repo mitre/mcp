@@ -169,14 +169,20 @@ def convert_ir_to_stix(ir: dict, debug: dict, taxonomy: dict) -> dict:
     if not provenance:
         raise ValueError("Missing provenance in IR (rerun Stage-1 to regenerate IR with provenance)")
 
-    model = provenance.get("model")
-    provider = provenance.get("provider")
+    # provenance is built from config whether or not the model was reached, so
+    # crediting it unconditionally stamped the configured model onto bundles
+    # that spaCy produced end to end. Stage 1 records which extractor actually
+    # ran; only the LLM path earns the attribution.
+    extractor = ir.get("extractor")
+    used_llm = extractor == "llm"
+    model = provenance.get("model") if used_llm else None
+    provider = provenance.get("provider") if used_llm else None
 
     bundle = make_bundle(
         stix_objects,
         model=model,
         provider=provider,
-        config=provenance,
+        config={**provenance, "extractor": extractor} if extractor else provenance,
     )
     debug["bundle_id"] = bundle["id"]
 
