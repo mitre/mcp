@@ -28,21 +28,21 @@ llm:
     model: false
     api_base: false
 
-# Dedicated profile for raw CTI -> IR/STIX extraction. It can intentionally
-# use a different model than the general MCP planner/chat profile.
+# Raw CTI -> IR/STIX extraction. This block LAYERS OVER llm: the endpoint,
+# credentials and model are inherited, so they are configured once. Only the
+# generation settings extraction genuinely needs differently live here.
+#
+# Extraction emits structured JSON that the rest of Stage 1 parses, so it wants
+# temperature 0 where the planner and chat profile want sampling. That is the
+# only real difference between the two workloads.
+#
+# To point extraction at a different model or endpoint entirely, set `model` or
+# `api_base` here and the override wins.
 cti:
-  provider: openai_compatible
-  model: openai/gpt-oss-120b
-  api_base: ""
-  api_base_env: MCP_LLM_API_BASE
-  api_key_env: MCP_LLM_API_KEY
-  ssl_verify: true
   temperature: 0.0
   top_p: 1.0
   max_tokens: 4000
   timeout: 120
-  offline: true
-  use_mock: false
 
 # Caldera REST API used by the caldera_core MCP subprocess. The url and key
 # auto-resolve from caldera's own main config, so a stock deployment needs no
