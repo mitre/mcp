@@ -242,7 +242,7 @@ CTI/RAG model settings can use the chat endpoint by default or a separate saved 
 
 Prefer environment variables for local values, and keep `conf/default.yml` limited to safe defaults.
 
-To pin values on disk instead, copy `conf/local.yml.example` to `conf/local.yml`. That file is a **sparse overlay**, not a full config: it is deep-merged onto `conf/default.yml` key by key, so it needs only the keys it changes. A file containing one temperature is valid and complete.
+To pin values on disk instead, create `conf/local.yml`. That file is a **sparse overlay**, not a full config: it is deep-merged onto `conf/default.yml` key by key, so it needs only the keys it changes. A file containing one temperature is valid and complete.
 
 ```yaml
 llm:

@@ -1,10 +1,10 @@
 <!-- ============================================================
      MODEL CONFIG PANEL (per-profile LLM settings)
 
-     Edits one server-side profile in conf/local.yml via
-     /plugin/mcp/set_config. Distinct from mcp.vue's Global Model
-     Config, which is browser-local and only rides along on
-     /execute requests.
+     Edits one workload profile in conf/local.yml via
+     /plugin/mcp/set_config. The connection belongs to the global llm
+     profile, which mcp.vue's Global Model Config writes; a workload
+     profile may only adjust generation settings.
      ============================================================ -->
 <template>
   <div class="box model-config">
@@ -21,32 +21,23 @@
          ====================================================== -->
     <div class="model-config__body">
 
-      <!-- This used to claim the endpoint came from Global Model Config.
-           It does not: that panel is browser-local and rides only on
-           /execute, while extraction reads conf/local.yml server-side. A
-           model pinned there wins, and nothing showed that. -->
+      <!-- Read-only. The connection belongs to the global profile and a
+           workload profile cannot override it, so this is always what will
+           run. It is shown because extraction silently using a different
+           endpoint is the failure this design removed. -->
       <div class="resolved mb-3">
         <p class="resolved__title">Extraction will use</p>
         <p class="resolved__row">
           <span class="resolved__label">Model</span>
           <span class="resolved__value">{{ resolvedModel }}</span>
-          <span v-if="backendConfig.model_pinned" class="tag is-warning is-light">pinned</span>
         </p>
         <p class="resolved__row">
           <span class="resolved__label">Endpoint</span>
           <span class="resolved__value">{{ resolvedApiBase }}</span>
-          <span v-if="backendConfig.api_base_pinned" class="tag is-warning is-light">pinned</span>
         </p>
-        <p v-if="hasPin" class="help mt-2">
-          Pinned values are set in <code>conf/local.yml</code> under
-          <code>cti</code> and override Global Model Config. Remove them there
-          to follow the global endpoint.
-        </p>
-        <p v-else class="help mt-2">
-          Inherited from the <code>llm</code> profile in
-          <code>conf/local.yml</code> or <code>conf/default.yml</code>.
-          Global Model Config is browser-local and applies to chat and
-          planning, not to extraction.
+        <p class="help mt-2">
+          Set in <strong>Global Model Config</strong>. Extraction shares one
+          endpoint with chat and planning; only the settings below differ.
         </p>
       </div>
 
@@ -135,10 +126,6 @@ const resolvedModel = computed(
 const resolvedApiBase = computed(
   () => props.backendConfig?.resolved_api_base || 'not set'
 )
-const hasPin = computed(
-  () => !!(props.backendConfig?.model_pinned || props.backendConfig?.api_base_pinned)
-)
-
 const isValid = computed(
   () => local.temperature === null || local.temperature === undefined
     ? true
