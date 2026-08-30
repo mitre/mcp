@@ -3,13 +3,15 @@
      ============================================================ -->
 <template>
   <div class="content cti-page">
-    <div class="columns">
+    <!-- Both columns stretch so the ingest box and the config panel share a
+         baseline instead of the shorter one leaving a ragged edge. -->
+    <div class="columns is-align-items-stretch">
 
       <!-- =====================================================
-           LEFT: CTI INGEST + FILE TABLES
+           LEFT: CTI INGEST
            ===================================================== -->
-      <div class="column is-two-thirds">
-        <div class="box">
+      <div class="column is-two-thirds is-flex">
+        <div class="box is-flex-grow-1">
 
           <!-- Header -->
           <div class="is-flex is-justify-content-space-between mb-4">
@@ -82,7 +84,7 @@
       <!-- =====================================================
            RIGHT: CTI EXTRACTION MODEL (sticky sidebar)
            ===================================================== -->
-      <div class="column is-one-third">
+      <div class="column is-one-third is-flex">
         <McpModelConfigPanel
           :backend-config="backendConfig ?? {}"
           config-key="cti"
@@ -101,10 +103,11 @@
       <table class="table is-fullwidth is-striped is-hoverable">
         <thead>
           <tr>
-            <th></th>
+            <th class="select-col"></th>
             <th>File</th>
             <th>Status</th>
             <th class="has-text-right">Size</th>
+            <th class="view-col">View</th>
           </tr>
         </thead>
         <tbody>
@@ -117,7 +120,7 @@
             class="is-clickable-row"
             @click="onRawRowClick(row)"
           >
-            <td>
+            <td class="select-col">
               <!-- Always selects, even on a directory row, where clicking
                    the row body expands instead. -->
               <input
@@ -127,7 +130,7 @@
               />
             </td>
 
-            <td>
+            <td class="file-cell">
               <span v-if="row._kind === 'parent' && row.type === 'dir'">
                 <span class="dir-caret">{{ expandedDirs[row.name] ? '▾' : '▸' }}</span>
                 {{ row.name }}
@@ -147,7 +150,23 @@
             </td>
 
             <td class="has-text-right">
-              {{ row.size ? (row.size / 1024).toFixed(1) + ' KB' : '—' }}
+              {{ row.size ? (row.size / 1024).toFixed(1) + ' KB' : '-' }}
+            </td>
+
+            <td class="view-col">
+              <button
+                v-if="row.type === 'file'"
+                class="button is-primary is-small is-light"
+                @click.stop="viewRaw(row)"
+              >
+                View
+              </button>
+            </td>
+          </tr>
+
+          <tr v-if="!visibleRows.length">
+            <td colspan="5" class="has-text-grey has-text-centered">
+              No reports uploaded yet
             </td>
           </tr>
         </tbody>
@@ -181,10 +200,11 @@
       <table class="table is-fullwidth is-striped is-hoverable">
         <thead>
           <tr>
+            <th class="select-col"></th>
             <th>File</th>
             <th>Model</th>
             <th class="has-text-right">Size</th>
-            <th style="width: 70px;">View</th>
+            <th class="view-col">View</th>
           </tr>
         </thead>
         <tbody>
@@ -194,24 +214,25 @@
             class="is-clickable-row"
             @click="toggleStixSelection(f.name)"
           >
-            <td>
+            <td class="select-col">
               <input
                 type="checkbox"
                 :checked="selectedStix.has(f.name)"
                 @click.stop="toggleStixSelection(f.name)"
               />
-              {{ f.name }}
             </td>
 
+            <td class="file-cell">{{ f.name }}</td>
+
             <td class="has-text-grey">
-              {{ f.provider ? `${f.provider} / ${f.model}` : f.model || '—' }}
+              {{ f.provider ? `${f.provider} / ${f.model}` : f.model || '-' }}
             </td>
 
             <td class="has-text-right">
               {{ (f.size / 1024).toFixed(1) }} KB
             </td>
 
-            <td>
+            <td class="view-col">
               <button
                 class="button is-primary is-small is-light"
                 @click.stop="viewStix(f.name)"
@@ -222,7 +243,7 @@
           </tr>
 
           <tr v-if="!stixFiles.length">
-            <td colspan="4" class="has-text-grey has-text-centered">
+            <td colspan="5" class="has-text-grey has-text-centered">
               No STIX objects generated yet
             </td>
           </tr>
@@ -255,6 +276,39 @@
       :stix="stixData"
       @close="showStixModal = false"
     />
+
+    <!-- =====================================================
+         RAW REPORT PREVIEW
+         ===================================================== -->
+    <div v-if="showRawModal" class="modal is-active">
+      <div class="modal-background" @click="showRawModal = false"></div>
+
+      <div class="modal-card raw-viewer">
+        <header class="modal-card-head">
+          <div>
+            <p class="modal-card-title is-size-6">{{ rawViewer.filename }}</p>
+            <p class="raw-viewer__meta">
+              {{ rawViewer.kind ? rawViewer.kind.toUpperCase() : '' }}
+              <span v-if="rawViewer.size">
+                &middot; {{ (rawViewer.size / 1024).toFixed(1) }} KB
+              </span>
+              <span v-if="rawViewer.kind === 'pdf'"> &middot; extracted text</span>
+            </p>
+          </div>
+          <button class="delete" aria-label="close" @click="showRawModal = false"></button>
+        </header>
+
+        <section class="modal-card-body">
+          <p v-if="rawViewer.loading" class="has-text-grey">Loading…</p>
+          <p v-else-if="rawViewer.error" class="has-text-danger">{{ rawViewer.error }}</p>
+          <pre v-else class="raw-viewer__text">{{ rawViewer.text }}</pre>
+        </section>
+
+        <footer class="modal-card-foot is-justify-content-flex-end">
+          <button class="button is-small" @click="showRawModal = false">Close</button>
+        </footer>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -284,6 +338,11 @@ const showStixModal = ref(false)
 const stixData = ref(null)
 const stixFilename = ref('')
 const stixFiles = ref([])
+
+const showRawModal = ref(false)
+const rawViewer = reactive({
+  filename: '', kind: '', size: 0, text: '', loading: false, error: '',
+})
 
 /* ============================================================
  * Computed
@@ -525,6 +584,31 @@ async function downloadStix(files) {
   }
 }
 
+// A nested row is addressed by "<dir>/<name>", the same key selection uses.
+async function viewRaw(row) {
+  const name = row._kind === 'parent' ? row.name : itemPath(row._parent, row.name)
+
+  Object.assign(rawViewer, {
+    filename: name, kind: '', size: 0, text: '', loading: true, error: '',
+  })
+  showRawModal.value = true
+
+  try {
+    const res = await fetch('/plugin/mcp/cti/raw/view', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: name })
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+    Object.assign(rawViewer, {
+      kind: data.kind, size: data.size, text: data.text, loading: false,
+    })
+  } catch (e) {
+    Object.assign(rawViewer, { loading: false, error: e.message })
+  }
+}
+
 async function viewStix(filename) {
   const res = await fetch('/plugin/mcp/stix/get_stix', {
     method: 'POST',
@@ -622,6 +706,40 @@ onMounted(() => {
   display: inline-block;
   width: 1em;
   color: #9e62ff;
+}
+
+/* Both tables share these so the File column starts at the same x on each. */
+.select-col {
+  width: 2.5rem;
+}
+.view-col {
+  width: 5rem;
+}
+.file-cell {
+  word-break: break-all;
+}
+
+/* ============================================================
+ * RAW REPORT PREVIEW
+ * ============================================================ */
+.raw-viewer {
+  width: min(900px, 92vw);
+}
+.raw-viewer__meta {
+  font-size: 0.75rem;
+  color: #a0a0a0;
+  margin-top: 0.15rem;
+}
+/* pre would otherwise force the modal wider than the viewport on a report
+   with long unbroken lines, which a PDF extraction often has. */
+.raw-viewer__text {
+  background: transparent;
+  padding: 0;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #f5f5f5;
 }
 
 .cti-dropzone {
