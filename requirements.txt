@@ -4,9 +4,12 @@
 # a plugin never contests a core-owned version. Everything below is either
 # core-owned (floor) or plugin-only (unpinned).
 #
-# Two things pip cannot do, both needed for a working install:
+# Three things pip cannot do, all needed for a working install:
 #   python -m spacy download en_core_web_lg
 #   npm --prefix plugins/magma install && npm --prefix plugins/magma run build
+#   poppler, for pdftotext, without which PDF reports cannot be ingested:
+#     brew install poppler        (macOS)
+#     apt install poppler-utils   (Debian/Ubuntu)
 
 # Core-owned: floors only.
 aiohttp>=3.14.1
