@@ -32,20 +32,26 @@
       </p>
 
       <div class="field">
-        <label class="label is-small">Temperature</label>
-        <input class="input is-small" type="number" step="0.1" min="0" max="1"
+        <label class="label">Temperature</label>
+        <input class="input" type="number" step="0.1" min="0" max="1"
                v-model.number="local.temperature" />
+        <p class="help">0 keeps extraction repeatable across runs.</p>
       </div>
 
       <div class="field">
-        <label class="label is-small">Max Tokens</label>
-        <input class="input is-small" type="number" v-model.number="local.max_tokens" />
+        <label class="label">Max Tokens</label>
+        <input class="input" type="number" v-model.number="local.max_tokens" />
       </div>
 
       <div class="field">
-        <label class="checkbox is-size-7">
+        <label class="checkbox">
           <input type="checkbox" v-model="local.offline" /> Offline mode
         </label>
+        <p class="help">
+          Skips the LLM entirely and extracts with spaCy and the MITRE
+          taxonomy. No network calls and no API key, at lower recall. This is
+          also the automatic fallback when the endpoint cannot be reached.
+        </p>
       </div>
 
       <p class="help">
@@ -61,7 +67,7 @@
         {{ saveState.message }}
       </span>
       <button
-        class="button is-success is-small"
+        class="button is-success"
         :disabled="!isValid || saving"
         :class="{ 'is-loading': saving }"
         @click="save"
@@ -181,5 +187,13 @@ async function save() {
 /* Pushes Save to the bottom edge, level with the box alongside. */
 .model-config__body {
   flex-grow: 1;
+}
+
+/* Bulma's .help is 0.75rem, which is too tight for prose that explains what
+   a setting does rather than just labelling it. */
+.model-config__body :deep(.help) {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #b5b5b5;
 }
 </style>
