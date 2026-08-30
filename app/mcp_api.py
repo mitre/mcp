@@ -492,13 +492,37 @@ class McpAPI:
     # CTI vue
     async def cti_run(self, request):
         try:
-            data = await request.json()
+            try:
+                data = await request.json()
+            except Exception:
+                return web.json_response(
+                    {"error": "Body must be JSON"}, status=400
+                )
+            if not isinstance(data, dict):
+                return web.json_response(
+                    {"error": "Body must be a JSON object"}, status=400
+                )
+
             files = data.get("files")
             step = data.get("step", "all")
 
             if not files or not isinstance(files, list):
                 return web.json_response(
                     {"error": "Missing files list"},
+                    status=400
+                )
+            # Every name is joined onto a Path below, so a non-string element
+            # raises TypeError and surfaces as a 500. The upload handlers pass
+            # their filenames through basename; this one never did, so a name
+            # with a separator escaped the uploads directory.
+            if not all(isinstance(f, str) and f.strip() for f in files):
+                return web.json_response(
+                    {"error": "files must be a list of non-empty strings"},
+                    status=400
+                )
+            if any(f != os.path.basename(f) for f in files):
+                return web.json_response(
+                    {"error": "files must be bare filenames"},
                     status=400
                 )
 
@@ -654,7 +678,15 @@ class McpAPI:
 
     async def upload_cti_raw(self, request):
         try:
-            reader = await request.multipart()
+            # multipart() raises KeyError('Content-Type') rather than a 4xx
+            # when the header is absent, which reached the client as a 500.
+            try:
+                reader = await request.multipart()
+            except Exception:
+                return web.json_response(
+                    {"error": "Expected a multipart/form-data upload"},
+                    status=400
+                )
             file_part = None
             async for part in reader:
                 if part.name == "file":
