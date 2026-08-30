@@ -59,8 +59,7 @@ def discover_mcp_servers(plugins_root: Path) -> dict:
             "display_name": "CTI Pipeline",
             "default_enabled": False,
             "description": (
-                "CTI ingest -> STIX -> adversary -> "
-                "-> operation tools."
+                "CTI ingest -> STIX -> adversary -> operation tools."
             ),
         }
         registry["cti_pipeline"] = {
