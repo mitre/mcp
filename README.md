@@ -115,7 +115,7 @@ Install MCP like a standard CALDERA plugin.
 1. Clone or copy this repository into the CALDERA plugin directory:
 
 ```bash
-git clone https://gitlab.mitre.org/caldera/caldera-mcp.git plugins/mcp
+git clone https://github.com/mitre/mcp.git plugins/mcp
 ```
 
 2. Add `mcp` to your CALDERA plugin list in `conf/local.yml`. Keep local configuration in `conf/local.yml`; do not commit that file.
@@ -139,6 +139,15 @@ pip install -r plugins/mcp/requirements.txt
 
 ```bash
 python -m spacy download en_core_web_lg
+```
+
+   Install poppler as well, which supplies `pdftotext`. Without it the
+   pipeline still ingests TXT, MD and HTML, and PDF uploads report the
+   missing dependency rather than failing silently:
+
+```bash
+brew install poppler          # macOS
+apt install poppler-utils     # Debian/Ubuntu
 ```
 
    To run the test suite, also install the dev requirements:
