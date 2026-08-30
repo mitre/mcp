@@ -681,16 +681,37 @@ class McpAPI:
             return web.json_response({"error": str(e)}, status=500)
 
     async def delete_stix_cti(self, request):
-        data = await request.json()
-        files = data.get("files", [])
-        stix_dir = self.base_dir /"outputs_stix"
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response({"error": "Body must be JSON"}, status=400)
+
+        files = (data or {}).get("files", [])
+        if not isinstance(files, list) or not all(isinstance(f, str) for f in files):
+            return web.json_response(
+                {"error": "files must be a list of strings"}, status=400
+            )
+
+        stix_dir = self.base_dir / "outputs_stix"
+        stix_root = stix_dir.resolve()
+        deleted = []
 
         for fname in files:
-            p = stix_dir / fname
-            if p.exists() and p.is_file():
-                p.unlink()
+            # This used to join the name and unlink whatever existed, so any
+            # path resolving to a file was deletable. download_stix_cti twelve
+            # lines below already had the right guard.
+            target = (stix_dir / fname).resolve()
+            if stix_root not in target.parents:
+                continue
+            try:
+                if target.is_file():
+                    target.unlink()
+                    deleted.append(fname)
+            except OSError as e:
+                self.log.error(f"[MCP] could not delete {fname}: {e}")
 
-        return web.json_response({"deleted": files})
+        # Report what actually went, not what was asked for.
+        return web.json_response({"deleted": deleted})
 
     async def upload_cti_raw(self, request):
         try:
@@ -820,11 +841,16 @@ class McpAPI:
             deleted = []
 
             def try_delete(base: Path, name: str) -> bool:
+                if not isinstance(name, str) or not name.strip():
+                    return False
+
                 target = (base / name).resolve()
                 base_resolved = base.resolve()
 
-                # hard safety: no traversal
-                if base_resolved not in target.parents and target != base_resolved:
+                # Containment. The base directory itself was previously
+                # admitted, so an empty name resolved to it and the rmtree
+                # below removed the whole uploads or processed directory.
+                if base_resolved not in target.parents:
                     return False
 
                 if target.exists():
