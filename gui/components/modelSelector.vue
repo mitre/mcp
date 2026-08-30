@@ -10,40 +10,16 @@
   <div class="box model-config">
 
     <!-- ======================================================
-         HEADER / DISCLOSURE
+         HEADER
          ====================================================== -->
-    <div
-      class="model-config__header is-flex is-justify-content-space-between is-align-items-center"
-      :class="{ 'mb-3': expanded }"
-      role="button"
-      tabindex="0"
-      :aria-expanded="String(expanded)"
-      @click="expanded = !expanded"
-      @keydown.enter.prevent="expanded = !expanded"
-      @keydown.space.prevent="expanded = !expanded"
-    >
+    <div class="model-config__header mb-3">
       <h3 class="title is-6 has-text-primary mb-0">{{ title }}</h3>
-
-      <span class="icon">
-        <svg v-if="expanded" viewBox="0 0 448 512">
-          <path
-            fill="currentColor"
-            d="M432 256c0 17.7-14.3 32-32 32H48c-17.7 0-32-14.3-32-32s14.3-32 32-32h352c17.7 0 32 14.3 32 32z"
-          />
-        </svg>
-        <svg v-else viewBox="0 0 448 512">
-          <path
-            fill="currentColor"
-            d="M256 80c17.7 0 32 14.3 32 32v112h112c17.7 0 32 14.3 32 32s-14.3 32-32 32H288v112c0 17.7-14.3 32-32 32s-32-14.3-32-32V288H112c-17.7 0-32-14.3-32-32s14.3-32 32-32h112V112c0-17.7 14.3-32 32-32z"
-          />
-        </svg>
-      </span>
     </div>
 
     <!-- ======================================================
          CONFIG FORM
          ====================================================== -->
-    <div v-if="expanded" class="model-config__body">
+    <div class="model-config__body">
 
       <!-- Provider, model and endpoint are not repeated here. This profile
            layers over the global one, so they are set once in Global Model
@@ -80,7 +56,7 @@
     <!-- ======================================================
          SAVE
          ====================================================== -->
-    <div v-if="expanded" class="model-config__footer is-flex is-align-items-center is-justify-content-flex-end mt-3">
+    <div class="model-config__footer is-flex is-align-items-center is-justify-content-flex-end mt-3">
       <span v-if="saveState" class="help mt-0 mr-2" :class="saveState.tone">
         {{ saveState.message }}
       </span>
@@ -116,7 +92,6 @@ const emit = defineEmits(['saved'])
 /* ============================================================
  * State
  * ============================================================ */
-const expanded = ref(false)
 const local = reactive({})
 const saving = ref(false)
 const saveState = ref(null)
@@ -194,27 +169,17 @@ async function save() {
 </script>
 
 <style scoped>
-/* ============================================================
- * STICKY SIDEBAR
- * ============================================================ */
+/* The panel fills its column so it shares a baseline with the box beside
+   it. The form is short enough now that it needs no scroll of its own. */
 .model-config {
-  position: sticky;
-  top: 1rem;
   display: flex;
   flex-direction: column;
-  /* Without a viewport-bound ceiling a long form scrolls its own Save
-     button off-screen, since the box itself never scrolls. */
-  max-height: calc(100vh - 2rem);
+  flex-grow: 1;
+  width: 100%;
 }
 
-.model-config__header {
-  cursor: pointer;
-}
-
+/* Pushes Save to the bottom edge, level with the box alongside. */
 .model-config__body {
-  /* Flex children default to min-height:auto and refuse to shrink,
-     which would defeat the overflow. */
-  min-height: 0;
-  overflow-y: auto;
+  flex-grow: 1;
 }
 </style>
