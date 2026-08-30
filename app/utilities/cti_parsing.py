@@ -19,6 +19,7 @@ from pathlib import Path
 import aiohttp
 
 from plugins.mcp.app.utilities.llm_client import llm_generate
+from plugins.mcp.app.utilities.paths import get_mcp_data_dir
 
 # Give the repair engine more chances
 MAX_REPAIR_ATTEMPTS = 3
@@ -210,8 +211,11 @@ async def extract_ir(cti_text: str, debug_path: Path = None) -> dict:
     # Empty or invalid JSON
     print("[LLM][WARN] Empty or malformed IR returned, attempting repair…")
 
-    # Log original bad JSON
-    debug_log_path = Path("debug_mitre.log")
+    # Relative, this landed in whatever the server's cwd happened to be, which
+    # for a running Caldera is the repo root, untracked and unignored. Keep it
+    # beside the pipeline's other debug output.
+    debug_log_path = get_mcp_data_dir() / "outputs_ir" / "debug_mitre.log"
+    debug_log_path.parent.mkdir(parents=True, exist_ok=True)
     with debug_log_path.open("a", encoding="utf-8") as dbg:
         dbg.write("\n\n========== FIRST BAD LLM OUTPUT ==========\n")
         dbg.write(orig_raw)
