@@ -10,6 +10,8 @@ import asyncio
 from pathlib import Path
 from datetime import datetime
 
+from app.service.auth_svc import for_all_public_methods, check_authorization
+
 from plugins.mcp.app.config import llm_defaults
 from plugins.mcp.app.utilities.llm_client import (
     load_config,
@@ -54,10 +56,19 @@ def _without_secrets(value):
         return [_without_secrets(v) for v in value]
     return value
 
+# Caldera gates plugin routes per handler, not with a middleware: auth_svc.apply
+# only installs the session and security machinery, and check_authorization is
+# what calls check_permissions. Without this every route here was reachable
+# unauthenticated, including the ones that delete files and rewrite local.yml.
+# McpGUI in this same plugin already carries it, as do access, gameboard and
+# human. Every public method on this class is a registered route.
+@for_all_public_methods(check_authorization)
 class McpAPI:
 
     def __init__(self, services):
         self.services = services
+        # check_authorization reaches for self.auth_svc on the instance.
+        self.auth_svc = services.get("auth_svc")
         self.mcp_svc = services.get("mcp_svc")
         self.log = logging.getLogger("plugins.mcp")
         self.log.info("[MCP] Initialized McpAPI")
