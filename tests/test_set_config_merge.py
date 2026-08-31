@@ -39,29 +39,29 @@ def _save(api, payload):
 class TestSetConfigMerges:
     def test_a_partial_save_keeps_pinned_keys(self, api):
         (api.root_dir / "conf" / "local.yml").write_text(
-            "cti:\n  model: devstral\n  api_base: https://gw/v1\n  temperature: 0.0\n"
+            "cti:\n  top_p: 0.9\n  offline: true\n  timeout: 60\n"
         )
-        _save(api, {"cti": {"temperature": 0.2}})
+        _save(api, {"cti": {"timeout": 120}})
         cti = _local(api)["cti"]
-        assert cti["model"] == "devstral"
-        assert cti["api_base"] == "https://gw/v1"
-        assert cti["temperature"] == 0.2
+        assert cti["top_p"] == 0.9
+        assert cti["offline"] is True
+        assert cti["timeout"] == 120
 
     def test_other_sections_are_untouched(self, api):
         (api.root_dir / "conf" / "local.yml").write_text(
-            "llm:\n  model: qwen\ncti:\n  temperature: 0.0\n"
+            "llm:\n  model: qwen\ncti:\n  timeout: 60\n"
         )
-        _save(api, {"cti": {"temperature": 0.5}})
+        _save(api, {"cti": {"timeout": 120}})
         assert _local(api)["llm"]["model"] == "qwen"
 
     def test_a_new_section_is_created(self, api):
         (api.root_dir / "conf" / "local.yml").write_text("llm:\n  model: qwen\n")
-        _save(api, {"cti": {"temperature": 0.0}})
-        assert _local(api)["cti"]["temperature"] == 0.0
+        _save(api, {"cti": {"timeout": 120}})
+        assert _local(api)["cti"]["timeout"] == 120
 
     def test_writes_a_file_that_does_not_exist_yet(self, api):
-        _save(api, {"cti": {"temperature": 0.0}})
-        assert _local(api)["cti"]["temperature"] == 0.0
+        _save(api, {"cti": {"timeout": 120}})
+        assert _local(api)["cti"]["timeout"] == 120
 
     def test_secrets_never_reach_the_file(self, api):
         # api_key belongs to the connection, so it goes to 'llm'. On a

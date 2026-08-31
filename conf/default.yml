@@ -21,22 +21,24 @@ llm:
   api_key_env: MCP_LLM_API_KEY
   ssl_verify: true
   offline: true
+  # Shared by chat, planning and extraction. Set here rather than per profile
+  # so the two panels that show them cannot display different numbers.
+  # temperature 0 because Stage 1 parses the model's own output as JSON.
+  temperature: 0.0
+  max_tokens: 24000
   fields_locked:
     model: false
     api_base: false
 
-# Raw CTI to IR and STIX. Layers over llm and may set only generation
-# settings: temperature, top_p, max_tokens, timeout, stream, offline and
-# embed_model. The connection belongs to llm alone, and anything else here is
-# dropped and logged so extraction cannot quietly run against another endpoint.
+# Raw CTI to IR and STIX. Layers over llm and may set only top_p, timeout,
+# stream, offline and embed_model. The connection, temperature and max_tokens
+# belong to llm alone, and anything else here is dropped and logged.
 #
-# Extraction parses its own output as JSON, so it wants temperature 0 where
-# chat and planning want sampling. offline is per profile so extraction can be
-# taken offline without silencing them.
+# timeout is longer than an interactive turn because a report is a long
+# document. offline is per profile so extraction can be taken offline without
+# silencing chat and planning.
 cti:
-  temperature: 0.0
   top_p: 1.0
-  max_tokens: 4000
   timeout: 120
   offline: true
 

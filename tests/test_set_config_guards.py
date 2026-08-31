@@ -58,7 +58,9 @@ class TestWorkloadProfilesRefuseTheConnection:
     @pytest.mark.parametrize(
         "key,value",
         [("model", "devstral"), ("api_base", "https://gw/v1"),
-         ("provider", "ollama"), ("ssl_verify", False), ("api_key", "sk-x")],
+         ("provider", "ollama"), ("ssl_verify", False), ("api_key", "sk-x"),
+         # Shown by two panels, so stored once on llm.
+         ("temperature", 0.0), ("max_tokens", 4000)],
     )
     async def test_a_connection_key_is_refused(self, api, tmp_path, key, value):
         resp = await api.set_config(_FakeRequest({"cti": {key: value}}))
@@ -72,9 +74,9 @@ class TestWorkloadProfilesRefuseTheConnection:
 
     @pytest.mark.asyncio
     async def test_a_generation_setting_is_accepted(self, api, tmp_path):
-        resp = await api.set_config(_FakeRequest({"cti": {"temperature": 0.0}}))
+        resp = await api.set_config(_FakeRequest({"cti": {"timeout": 120}}))
         assert resp.status == 200
-        assert _saved(tmp_path)["cti"]["temperature"] == 0.0
+        assert _saved(tmp_path)["cti"]["timeout"] == 120
 
     @pytest.mark.asyncio
     async def test_the_connection_is_accepted_on_llm(self, api, tmp_path):
@@ -133,7 +135,7 @@ class TestGetConfigResolvesServerSide:
     async def test_the_connection_is_resolved_onto_the_workload(self, api, tmp_path):
         (tmp_path / "conf" / "local.yml").write_text(yaml.safe_dump(
             {"llm": {"model": "devstral", "api_base": "https://gw/v1"},
-             "cti": {"temperature": 0.0}}))
+             "cti": {"timeout": 120}}))
         llm_client.load_config.cache_clear()
 
         resp = await api.get_config(None)
@@ -141,7 +143,7 @@ class TestGetConfigResolvesServerSide:
 
         assert body["resolved"]["cti"]["model"] == "devstral"
         assert body["resolved"]["cti"]["api_base"] == "https://gw/v1"
-        assert body["resolved"]["cti"]["temperature"] == 0.0
+        assert body["resolved"]["cti"]["timeout"] == 120
 
     @pytest.mark.asyncio
     async def test_the_env_indirection_is_applied(self, api, tmp_path, monkeypatch):
