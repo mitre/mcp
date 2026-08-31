@@ -1,25 +1,19 @@
 ---
-# LLM provider used by DSPy signatures, the ReAct loop, and embeddings.
-# Values shipped here are non-secret defaults. The api_key is supplied at
-# runtime via the env var named in api_key_env (set in plugins/mcp/.env)
-# or per-session through the UI's Global Model Configuration.
+# MCP configuration. conf/local.yml is overlaid on this file key by key, so it
+# needs only the keys it changes. Credentials never live in either file: they
+# come from the env vars named below, set in plugins/mcp/.env.
+
+# The connection. Chat, planning and CTI extraction all share it.
 #
-# api_base ships empty so no deployment's gateway hostname is baked into
-# the repo. Point it at your OpenAI-compatible endpoint via the env var
-# named in api_base_env. Leaving it unresolved is fatal by design:
-# LiteLLM would otherwise fall back to its built-in
-# https://api.openai.com/v1 and quietly send prompts to a provider the
-# deployment never chose.
+# api_base ships empty so no deployment's gateway is baked into the repo. Set
+# MCP_LLM_API_BASE instead. Building an LM without one is refused rather than
+# defaulted: LiteLLM would route to its built-in https://api.openai.com/v1 and
+# send the prompt and the key to a provider this deployment never chose.
 #
-# To pin values on disk instead, set them in conf/local.yml. That file is
-# overlaid onto this one key by key, so it only needs the keys it changes.
-#
-# fields_locked declares which fields the deployment fixes. Locked fields
-# ignore UI overrides and are refused by the set_config endpoint. It is not
-# settable over the API, by design: a writable lock unlocks itself.
+# fields_locked pins a field against UI edits and set_config refuses to write
+# it. The lock itself is not settable over the API, because a writable lock
+# unlocks itself.
 llm:
-  # Declared here rather than only on cti so every profile that layers over
-  # this one inherits it. LLMClient.generate reads it with no default.
   provider: openai_compatible
   model: openai/gpt-oss-120b
   api_base: ""
@@ -31,42 +25,30 @@ llm:
     model: false
     api_base: false
 
-# Raw CTI -> IR/STIX extraction. This block LAYERS OVER llm: the endpoint,
-# credentials and model are inherited, so they are configured once. Only the
-# generation settings extraction genuinely needs differently live here.
+# Raw CTI to IR and STIX. Layers over llm and may set only generation
+# settings: temperature, top_p, max_tokens, timeout, stream, offline and
+# embed_model. The connection belongs to llm alone, and anything else here is
+# dropped and logged so extraction cannot quietly run against another endpoint.
 #
-# Extraction emits structured JSON that the rest of Stage 1 parses, so it wants
-# temperature 0 where the planner and chat profile want sampling. That is the
-# only real difference between the two workloads.
-#
-# The connection cannot be changed here. provider, model, api_base, the
-# credentials and ssl_verify belong to `llm` alone, and this block may set only
-# generation settings: temperature, top_p, max_tokens, timeout, stream, offline
-# and embed_model. Anything else is dropped and logged, because extraction
-# quietly running against a different endpoint from everything else is the
-# failure this split exists to prevent.
+# Extraction parses its own output as JSON, so it wants temperature 0 where
+# chat and planning want sampling. offline is per profile so extraction can be
+# taken offline without silencing them.
 cti:
   temperature: 0.0
   top_p: 1.0
   max_tokens: 4000
   timeout: 120
-  # Offline stays per profile: extraction can be taken offline without
-  # also silencing the planner and chat.
   offline: true
 
-# Caldera REST API used by the caldera_core MCP subprocess. The url and key
-# auto-resolve from caldera's own main config, so a stock deployment needs no
-# setup. This block only names the env vars that override that; their values
-# live in plugins/mcp/.env.
+# Caldera's REST API, used by the caldera_core subprocess. Both values
+# auto-resolve from caldera's own config, so a stock deployment needs no setup;
+# these only name the env vars that override it.
 caldera:
   url_env: CALDERA_URL
   api_key_env: CORE_CALDERA_API_KEY
 
-# MLflow tracking server. Defaults to localhost:5000 (MLflow's own default).
-# Override in conf/local.yml when this Caldera tree shares a host with
-# another Caldera tree whose MCP plugin is already bound to 5000 — set
-# `port: 5050` (or any free port) so the two trees keep separate
-# tracking stores instead of cross-contaminating runs.
+# MLflow tracking. Override the port when two Caldera trees share a host, so
+# each keeps its own tracking store instead of cross-contaminating runs.
 mlflow:
   host: 127.0.0.1
   port: 5000
