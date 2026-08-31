@@ -8,6 +8,8 @@ Tests different LLM backend configurations:
 - Config validation (required fields)
 - Config persistence
 """
+from pathlib import Path
+
 import pytest
 import requests
 import json
@@ -28,6 +30,34 @@ def mcp_available():
 
 
 skip = pytest.mark.skipif(not mcp_available(), reason="MCP not enabled")
+
+LOCAL_YML = Path(__file__).resolve().parents[1] / "conf" / "local.yml"
+
+
+@pytest.fixture(autouse=True)
+def restore_local_yml():
+    """Put conf/local.yml back exactly as it was.
+
+    These tests POST to a live server, which writes the operator's real
+    config. An earlier version of this file is how a deployment ended up
+    pinned to a gateway nobody had chosen. set_config only merges, so a POST
+    cannot undo one: the file itself has to be restored, and the server told
+    to reload it.
+    """
+    before = LOCAL_YML.read_text(encoding="utf-8") if LOCAL_YML.exists() else None
+    try:
+        yield
+    finally:
+        if before is None:
+            LOCAL_YML.unlink(missing_ok=True)
+        else:
+            LOCAL_YML.write_text(before, encoding="utf-8")
+        # A no-op save is the only route that clears the server's config cache.
+        try:
+            requests.post(f"{CALDERA_URL}/plugin/mcp/set_config",
+                          headers=JSON_HEADERS, json={"config": {}}, timeout=5)
+        except Exception:
+            pass
 
 
 # ============================================================
@@ -93,18 +123,20 @@ class TestOllamaConfig:
         """Set config to use Ollama backend."""
         config = {
             "config": {
-                "cti": {
+                "llm": {
                     "provider": "ollama",
                     "model": "ollama/gemma3n:latest",
                     "api_base": "http://127.0.0.1:11434",
                     "api_key": "ollama",
+                },
+                "cti": {
                     "temperature": 0.0,
                     "top_p": 1.0,
                     "max_tokens": 4000,
                     "timeout": 120,
                     "stream": False,
                     "offline": False,
-                }
+                },
             }
         }
         r = requests.post(f"{CALDERA_URL}/plugin/mcp/set_config",
@@ -120,20 +152,21 @@ class TestOpenAICompatibleConfig:
         """Set config to use OpenAI-compatible backend."""
         config = {
             "config": {
-                "cti": {
+                "llm": {
                     "provider": "openai_compatible",
                     "model": "devstral",
                     "api_base": "https://localhost:8443/v1",
                     "api_key": "test-key",
+                    "ssl_verify": False,
+                },
+                "cti": {
                     "temperature": 0.0,
                     "top_p": 1.0,
                     "max_tokens": 4000,
                     "timeout": 120,
                     "stream": False,
                     "offline": False,
-                    "ssl_verify": False,
-                    "extra_headers": {"Host": "llm.example.com"},
-                }
+                },
             }
         }
         r = requests.post(f"{CALDERA_URL}/plugin/mcp/set_config",
@@ -145,7 +178,7 @@ class TestOpenAICompatibleConfig:
         models = ["devstral", "openai/gpt-oss-120b", "nemotron-3-nano",
                   "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8"]
         for model in models:
-            config = {"config": {"cti": {"model": model, "provider": "openai_compatible"}}}
+            config = {"config": {"llm": {"model": model, "provider": "openai_compatible"}}}
             r = requests.post(f"{CALDERA_URL}/plugin/mcp/set_config",
                              headers=JSON_HEADERS, json=config, timeout=5)
             assert r.status_code == 200, f"Failed to set model: {model}"
@@ -232,34 +265,3 @@ class TestLlmClientProviders:
         assert "model" in prov
 
 
-# ============================================================
-# RESTORE CONFIG
-# ============================================================
-
-@skip
-class TestRestoreConfig:
-    """Restore original config after tests."""
-
-    def test_restore(self):
-        """Restore config to working state."""
-        config = {
-            "config": {
-                "cti": {
-                    "provider": "openai_compatible",
-                    "model": "devstral",
-                    "api_base": "https://localhost:8443/v1",
-                    "api_key": "test-api-key",
-                    "temperature": 0.0,
-                    "top_p": 1.0,
-                    "max_tokens": 4000,
-                    "timeout": 120,
-                    "stream": False,
-                    "offline": False,
-                    "ssl_verify": False,
-                    "extra_headers": {"Host": "llm.example.com"},
-                }
-            }
-        }
-        r = requests.post(f"{CALDERA_URL}/plugin/mcp/set_config",
-                         headers=JSON_HEADERS, json=config, timeout=5)
-        assert r.status_code == 200
