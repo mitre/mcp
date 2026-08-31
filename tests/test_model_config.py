@@ -31,33 +31,6 @@ def mcp_available():
 
 skip = pytest.mark.skipif(not mcp_available(), reason="MCP not enabled")
 
-LOCAL_YML = Path(__file__).resolve().parents[1] / "conf" / "local.yml"
-
-
-@pytest.fixture(autouse=True)
-def restore_local_yml():
-    """Put conf/local.yml back exactly as it was.
-
-    These tests POST to a live server, which writes the operator's real
-    config. An earlier version of this file is how a deployment ended up
-    pinned to a gateway nobody had chosen. set_config only merges, so a POST
-    cannot undo one: the file itself has to be restored, and the server told
-    to reload it.
-    """
-    before = LOCAL_YML.read_text(encoding="utf-8") if LOCAL_YML.exists() else None
-    try:
-        yield
-    finally:
-        if before is None:
-            LOCAL_YML.unlink(missing_ok=True)
-        else:
-            LOCAL_YML.write_text(before, encoding="utf-8")
-        # A no-op save is the only route that clears the server's config cache.
-        try:
-            requests.post(f"{CALDERA_URL}/plugin/mcp/set_config",
-                          headers=JSON_HEADERS, json={"config": {}}, timeout=5)
-        except Exception:
-            pass
 
 
 # ============================================================
