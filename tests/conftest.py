@@ -10,9 +10,36 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1].parents[1]))
 
 MCP_ROOT = Path(__file__).resolve().parents[1]
+LOCAL_YML = MCP_ROOT / "conf" / "local.yml"
 DATA_DIR = MCP_ROOT / "data"
 CLEAN_DIR = DATA_DIR / "clean"
 TAXONOMY_PATH = MCP_ROOT / "app" / "utilities" / "cti_taxonomy" / "enterprise_attack.json"
+
+
+@pytest.fixture(autouse=True)
+def _preserve_local_yml():
+    """No test may leave the operator's conf/local.yml changed.
+
+    Several suites POST to a running server, so their writes land in the real
+    file. That is how a deployment ended up pinned to a gateway nobody chose,
+    and the server rewrites the file with yaml.safe_dump, so the comments go
+    too. set_config only merges, so a POST cannot undo one: the file has to be
+    restored on disk.
+
+    Autouse and unconditional, because the next suite to grow a live POST
+    should not have to remember this.
+    """
+    before = LOCAL_YML.read_text(encoding="utf-8") if LOCAL_YML.exists() else None
+    try:
+        yield
+    finally:
+        after = LOCAL_YML.read_text(encoding="utf-8") if LOCAL_YML.exists() else None
+        if after == before:
+            return
+        if before is None:
+            LOCAL_YML.unlink(missing_ok=True)
+        else:
+            LOCAL_YML.write_text(before, encoding="utf-8")
 
 
 @pytest.fixture(scope="session")
