@@ -189,7 +189,16 @@ class CreateCommand(dspy.Module):
         self.create_full_command = dspy.ChainOfThought(CreateFullCommand)
 
     def forward(self, description: str, platform: str):
-        identified_technologies = self.identify_technologies(description=description, platform=platform)
-        ranked_approaches = self.rank_approaches(description=description, technologies=identified_technologies)
-        full_command = self.create_full_command(technologies=identified_technologies, approaches=ranked_approaches)
-        return full_command.command
+        # Each step returns a Prediction, not the field. Passing the whole
+        # object into a list[str] input made DSPy stringify the prediction,
+        # reasoning included, into the next prompt: the ranker saw a paragraph
+        # of prose where it declared a list, and warned on every call.
+        technologies = self.identify_technologies(
+            description=description, platform=platform
+        ).technologies
+        approaches = self.rank_approaches(
+            description=description, technologies=technologies
+        ).approaches
+        return self.create_full_command(
+            technologies=technologies, approaches=approaches
+        ).command
