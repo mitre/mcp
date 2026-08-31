@@ -257,7 +257,7 @@ cti:
 
 Three rules that are easy to trip over:
 
-- **`cti` layers over `llm`, but only for generation settings.** A workload profile may set `temperature`, `top_p`, `max_tokens`, `timeout`, `stream`, `offline` and `embed_model`. The connection, meaning `provider`, `model`, `api_base`, the credentials and `ssl_verify`, belongs to `llm` alone; anything else under `cti` is dropped and logged, and `set_config` rejects it outright. If an older `conf/local.yml` carries a connection under `cti` and declares no `llm` block, it is read as the global connection for that run and a warning names the edit to make.
+- **`cti` layers over `llm`, but only for generation settings.** A workload profile may set `temperature`, `top_p`, `max_tokens`, `timeout`, `stream`, `offline` and `embed_model`. The connection, meaning `provider`, `model`, `api_base`, the credentials and `ssl_verify`, belongs to `llm` alone; anything else under `cti` is dropped and logged, and `set_config` rejects it outright. A connection left under `cti` by an older config is ignored, and the warning names the keys to move.
 - **Precedence differs by field.** `api_key` resolves environment-first and is never read from this file. `api_base` resolves yaml-first, so a value here beats `MCP_LLM_API_BASE`; leave it empty to keep using the variable.
 - **A key with no value is `null`, and null overrides.** A bare `llm:` heading wipes the shipped block rather than falling through to it. Omit the block instead.
 
