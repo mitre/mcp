@@ -8,11 +8,9 @@ Tests different LLM backend configurations:
 - Config validation (required fields)
 - Config persistence
 """
-from pathlib import Path
 
 import pytest
 import requests
-import json
 
 CALDERA_URL = "http://localhost:8888"
 API_KEY = "ADMIN123"
@@ -94,125 +92,16 @@ class TestConfigStructure:
 # LLM BACKEND CONFIGURATIONS
 # ============================================================
 
-@skip
-class TestOllamaConfig:
-    """Test Ollama (local) backend configuration."""
-
-    def test_set_ollama_config(self):
-        """Set config to use Ollama backend."""
-        config = {
-            "config": {
-                "llm": {
-                    "provider": "ollama",
-                    "model": "ollama/gemma3n:latest",
-                    "api_base": "http://127.0.0.1:11434",
-                    "api_key": "ollama",
-                },
-                "cti": {
-                    "temperature": 0.0,
-                    "top_p": 1.0,
-                    "max_tokens": 4000,
-                    "timeout": 120,
-                    "stream": False,
-                    "offline": False,
-                },
-            }
-        }
-        r = requests.post(f"{CALDERA_URL}/plugin/mcp/set_config",
-                         headers=JSON_HEADERS, json=config, timeout=5)
-        assert r.status_code == 200
 
 
-@skip
-class TestOpenAICompatibleConfig:
-    """Test OpenAI-compatible backend (any OpenAI-compatible gateway)."""
-
-    def test_set_openai_compatible_config(self):
-        """Set config to use OpenAI-compatible backend."""
-        config = {
-            "config": {
-                "llm": {
-                    "provider": "openai_compatible",
-                    "model": "devstral",
-                    "api_base": "https://localhost:8443/v1",
-                    "api_key": "test-key",
-                    "ssl_verify": False,
-                },
-                "cti": {
-                    "temperature": 0.0,
-                    "top_p": 1.0,
-                    "max_tokens": 4000,
-                    "timeout": 120,
-                    "stream": False,
-                    "offline": False,
-                },
-            }
-        }
-        r = requests.post(f"{CALDERA_URL}/plugin/mcp/set_config",
-                         headers=JSON_HEADERS, json=config, timeout=5)
-        assert r.status_code == 200
-
-    def test_set_config_with_different_models(self):
-        """Test setting different model names."""
-        models = ["devstral", "openai/gpt-oss-120b", "nemotron-3-nano",
-                  "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8"]
-        for model in models:
-            config = {"config": {"llm": {"model": model, "provider": "openai_compatible"}}}
-            r = requests.post(f"{CALDERA_URL}/plugin/mcp/set_config",
-                             headers=JSON_HEADERS, json=config, timeout=5)
-            assert r.status_code == 200, f"Failed to set model: {model}"
 
 
-@skip
-class TestOfflineConfig:
-    """Test offline mode configuration."""
-
-    def test_set_offline_mode(self):
-        """Enable offline mode (no LLM)."""
-        config = {"config": {"cti": {"offline": True}}}
-        r = requests.post(f"{CALDERA_URL}/plugin/mcp/set_config",
-                         headers=JSON_HEADERS, json=config, timeout=5)
-        assert r.status_code == 200
-
-    def test_set_online_mode(self):
-        """Disable offline mode."""
-        config = {"config": {"cti": {"offline": False}}}
-        r = requests.post(f"{CALDERA_URL}/plugin/mcp/set_config",
-                         headers=JSON_HEADERS, json=config, timeout=5)
-        assert r.status_code == 200
 
 
 # ============================================================
 # CONFIG VALIDATION
 # ============================================================
 
-@skip
-class TestConfigValidation:
-    """Test that set_config accepts the value ranges the panel offers."""
-
-    def test_valid_temperature_range(self):
-        """Temperature should be 0.0-2.0."""
-        for temp in [0.0, 0.5, 1.0, 1.5, 2.0]:
-            config = {"config": {"cti": {"temperature": temp}}}
-            r = requests.post(f"{CALDERA_URL}/plugin/mcp/set_config",
-                             headers=JSON_HEADERS, json=config, timeout=5)
-            assert r.status_code == 200
-
-    def test_valid_top_p_range(self):
-        """top_p should be 0.0-1.0."""
-        for tp in [0.0, 0.5, 1.0]:
-            config = {"config": {"cti": {"top_p": tp}}}
-            r = requests.post(f"{CALDERA_URL}/plugin/mcp/set_config",
-                             headers=JSON_HEADERS, json=config, timeout=5)
-            assert r.status_code == 200
-
-    def test_max_tokens_positive(self):
-        """max_tokens should be positive integer."""
-        for mt in [256, 1024, 4000, 8192]:
-            config = {"config": {"cti": {"max_tokens": mt}}}
-            r = requests.post(f"{CALDERA_URL}/plugin/mcp/set_config",
-                             headers=JSON_HEADERS, json=config, timeout=5)
-            assert r.status_code == 200
 
 
 # ============================================================

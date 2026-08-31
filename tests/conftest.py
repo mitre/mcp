@@ -28,6 +28,11 @@ def _preserve_local_yml():
 
     Autouse and unconditional, because the next suite to grow a live POST
     should not have to remember this.
+
+    It restores the file, not the running server. set_config caches what it
+    wrote, so a live POST kept being served from memory after the file was put
+    back, the browser read it from /defaults, and the panel wrote it to disk
+    again. The tests that did that are gone; this stays as the backstop.
     """
     before = LOCAL_YML.read_text(encoding="utf-8") if LOCAL_YML.exists() else None
     try:
