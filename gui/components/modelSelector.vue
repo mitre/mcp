@@ -97,6 +97,7 @@
  * Imports
  * ============================================================ */
 import { computed, reactive, ref, watch } from 'vue'
+import { request } from '../composables/request.js'
 
 /* ============================================================
  * Props / Emits
@@ -166,7 +167,7 @@ async function save() {
   try {
     // Only the fields this panel edits. conf/local.yml is deep-merged over
     // default.yml, so omitted keys keep their shipped defaults.
-    const res = await fetch('/plugin/mcp/set_config', {
+    await request('Save failed', '/plugin/mcp/set_config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -188,12 +189,12 @@ async function save() {
       })
     })
 
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-
     saveState.value = { message: 'Saved', tone: 'has-text-success' }
     emit('saved')
   } catch (e) {
-    saveState.value = { message: `Save failed: ${e.message}`, tone: 'has-text-danger' }
+    // request() already phrases this for the operator, including the expired
+    // session that used to report a green "Saved" for a save that never ran.
+    saveState.value = { message: e.message, tone: 'has-text-danger' }
   } finally {
     saving.value = false
   }
