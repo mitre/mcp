@@ -18,7 +18,7 @@ from pathlib import Path
 
 import aiohttp
 
-from plugins.mcp.app.utilities.llm_client import llm_generate
+from plugins.mcp.app.utilities.llm_client import LLMHTTPError, llm_generate
 from plugins.mcp.app.utilities.paths import get_mcp_data_dir
 
 # Give the repair engine more chances
@@ -176,10 +176,15 @@ async def extract_ir(cti_text: str, debug_path: Path = None) -> dict:
     prompt = build_ir_prompt(cti_text)
     try:
         raw = await llm_generate(prompt, profile="cti")
+    except LLMHTTPError as e:
+        # A wrong model or a rejected key is a setting, not a blip: degrading
+        # would bury it under a silently worse extraction.
+        if not e.is_transient:
+            raise
+        print(f"[LLM][WARN] {e} Falling back to offline IR.")
+        return _offline_ir(cti_text)
     except (aiohttp.ClientError, asyncio.TimeoutError, OSError) as e:
-        # The endpoint is configured but unreachable. A ValueError or KeyError
-        # means the operator got the config wrong and should hear about it, so
-        # only transport failures degrade.
+        # Configured but unreachable.
         print(f"[LLM][WARN] {type(e).__name__}: {e}. Falling back to offline IR.")
         return _offline_ir(cti_text)
 

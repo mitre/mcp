@@ -24,7 +24,10 @@ def _nested_group(inner):
 def test_the_wrapper_message_is_not_what_gets_recorded():
     grp = _nested_group(RuntimeError(CAPACITY))
     assert str(grp) == "unhandled errors in a TaskGroup (1 sub-exception)"
-    assert summarize_exception(grp) == CAPACITY
+    # The cause reaches the record; capacity is rewritten to name the model.
+    out = summarize_exception(grp)
+    assert "TaskGroup" not in out
+    assert "Qwen/Qwen3-0.6B-Base" in out
 
 
 def test_a_plain_exception_is_unchanged():
@@ -53,3 +56,23 @@ class TestOperatorFacingRewrites:
     ])
     def test_known_provider_errors_are_explained(self, raw, expected):
         assert summarize_exception(_nested_group(RuntimeError(raw))).startswith(expected)
+
+
+class TestProviderErrorsAreExplained:
+    """Providers word the same cause three ways and none says where to fix it."""
+
+    @pytest.mark.parametrize("raw", [
+        "litellm.NotFoundError: The model `bad/model` does not exist.",
+        "Error code: 400 - The model `bad/model` is not available for inference.",
+    ])
+    def test_an_unavailable_model_names_itself_and_the_setting(self, raw):
+        out = summarize_exception(_nested_group(RuntimeError(raw)))
+        assert "bad/model" in out
+        assert "Global Model Config" in out
+
+    def test_capacity_is_not_confused_with_a_bad_name(self):
+        out = summarize_exception(_nested_group(
+            RuntimeError("Qwen/Qwen3-0.6B-Base is temporarily at capacity.")))
+        assert "busy" in out.lower()
+        # The dot in the version must not truncate the name.
+        assert "Qwen/Qwen3-0.6B-Base" in out

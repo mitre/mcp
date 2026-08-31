@@ -295,6 +295,41 @@ def get_llm_provenance(profile: str = "llm", *, runtime: bool = False) -> dict:
 # Central LLM Client
 # ------------------------------------------------------
 
+class LLMHTTPError(RuntimeError):
+    """A non-200 from the provider, with the status kept for the caller.
+
+    Callers need to tell a misconfiguration apart from a blip: the raw body is
+    provider JSON and says nothing about where the setting lives.
+    """
+
+    def __init__(self, status: int, model: str, body: str):
+        self.status = status
+        self.model = model
+        self.body = body
+        super().__init__(self._explain())
+
+    def _explain(self) -> str:
+        b = (self.body or "").lower()
+        if "does not exist" in b or "not available for inference" in b:
+            return (
+                f"Model not available: the provider has no {self.model}. Set a "
+                f"model it serves in Global Model Config, or in llm.model in "
+                f"conf/local.yml."
+            )
+        if "at capacity" in b:
+            return (f"Model busy: the provider has no free slot for "
+                    f"{self.model}. Retry, or pick another model.")
+        if self.status in (401, 403):
+            return ("LLM authentication failed: the provider rejected the API "
+                    "key. Check MCP_LLM_API_KEY in plugins/mcp/.env.")
+        return f"LLM HTTP {self.status} for {self.model}: {self.body[:200]}"
+
+    @property
+    def is_transient(self) -> bool:
+        """Retryable or load related, as opposed to a wrong setting."""
+        return self.status == 429 or self.status >= 500 or "at capacity" in (self.body or "").lower()
+
+
 class LLMClient:
     """
     Central async LLM client.
@@ -409,7 +444,7 @@ class LLMClient:
             ) as resp:
                 if resp.status != 200:
                     text = await resp.text()
-                    raise RuntimeError(f"LLM HTTP {resp.status}: {text}")
+                    raise LLMHTTPError(resp.status, model, text)
 
                 data = await resp.json()
                 choices = data.get("choices", [])

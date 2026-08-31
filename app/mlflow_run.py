@@ -54,6 +54,25 @@ def summarize_exception(exc: BaseException) -> str:
             "LLM provider unavailable: the AI Platform model gateway returned "
             "'failure to get a peer from the ring-balancer' after retries."
         )
+    # Providers word this three ways for the same cause, and none of them say
+    # where the name is set.
+    bad_model = re.search(
+        r"[Tt]he model [`'\"]?([\w./:-]+)[`'\"]? (?:does not exist|is not available)",
+        summary,
+    )
+    if bad_model:
+        return (
+            f"Model not available: the provider has no {bad_model.group(1)}. "
+            f"Set a model it serves in Global Model Config, or in llm.model "
+            f"in conf/local.yml."
+        )
+    busy = re.search(r"[`'\"]?([\w./:-]+)[`'\"]? is temporarily at capacity", summary)
+    if busy:
+        return (
+            f"Model busy: the provider has no free slot for {busy.group(1)}. "
+            f"Retry, or pick another model."
+        )
+
     if "Incorrect API key provided" in summary:
         return (
             "LLM authentication failed: the configured API key was rejected by "
