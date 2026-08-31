@@ -4,7 +4,6 @@ import socket
 import time
 import traceback
 import logging
-import psutil
 from dotenv import load_dotenv
 
 from app.utility.base_world import BaseWorld
@@ -39,24 +38,6 @@ for mod in [
 ]:
     logging.getLogger(mod).setLevel(logging.WARNING)
 
-def kill_existing_mlflow(port=5000):
-    """Find and kill any process listening on the specified port (usually MLflow)."""
-    for proc in psutil.process_iter(attrs=["pid", "name"]):
-        try:
-            connections = proc.connections(kind='inet')
-            for conn in connections:
-                if conn.status == psutil.CONN_LISTEN and conn.laddr.port == port:
-                    print(f"[MCP] Killing existing MLflow process (PID {proc.pid}) on port {port}")
-                    proc.kill()
-                    break
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            continue
-        except Exception as e:
-            print(f"[MCP] Unexpected error while checking connections: {e}")
-            continue
-
-
-
 def is_port_open(port, host='127.0.0.1'):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         return sock.connect_ex((host, port)) == 0
@@ -71,18 +52,18 @@ _MLFLOW_PORT = _mlflow['port']
 _MLFLOW_URI = _mlflow['tracking_uri']
 os.environ.setdefault('MLFLOW_TRACKING_URI', _MLFLOW_URI)
 
-# 🔁 Start MLflow server if it's not already running
-if not is_port_open(_MLFLOW_PORT, _MLFLOW_HOST):
-    # 🧼 Kill old MLflow server if it exists
-    kill_existing_mlflow(_MLFLOW_PORT)
+# Started from enable(), not at import: this spawns a process and blocks for
+# up to 10s, and importing the module should do neither.
+def _ensure_mlflow_server():
+    if is_port_open(_MLFLOW_PORT, _MLFLOW_HOST):
+        log.info(f"[MCP] MLflow already running on {_MLFLOW_HOST}:{_MLFLOW_PORT}")
+        return
     try:
         plugin_dir = os.path.dirname(os.path.abspath(__file__))
-        mlruns_path = os.path.join(plugin_dir, 'mlruns')
-        db_path = os.path.join(plugin_dir, 'mlruns.db')
         subprocess.Popen([
             "mlflow", "server",
-            "--backend-store-uri", f"sqlite:///{db_path}",
-            "--default-artifact-root", mlruns_path,
+            "--backend-store-uri", f"sqlite:///{os.path.join(plugin_dir, 'mlruns.db')}",
+            "--default-artifact-root", os.path.join(plugin_dir, 'mlruns'),
             "--host", _MLFLOW_HOST,
             "--port", str(_MLFLOW_PORT),
         ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -90,17 +71,15 @@ if not is_port_open(_MLFLOW_PORT, _MLFLOW_HOST):
     except Exception as e:
         log.error(f"[MCP] Failed to start MLflow server: {e}")
         traceback.print_exc()
-else:
-    log.info(f"[MCP] MLflow server already running on {_MLFLOW_HOST}:{_MLFLOW_PORT}")
+        return
 
-# 💤 Optional: Wait until server is reachable
-for i in range(10):
-    if is_port_open(_MLFLOW_PORT, _MLFLOW_HOST):
-        log.debug("[MCP] MLflow is ready.")
-        break
-    time.sleep(1)
-else:
-    log.error(f"[MCP] MLflow failed to start within 10 seconds on {_MLFLOW_HOST}:{_MLFLOW_PORT}.")
+    for _ in range(10):
+        if is_port_open(_MLFLOW_PORT, _MLFLOW_HOST):
+            log.debug("[MCP] MLflow is ready.")
+            return
+        time.sleep(1)
+    log.error(f"[MCP] MLflow did not start within 10s on {_MLFLOW_HOST}:{_MLFLOW_PORT}.")
+
 
 # ✅ Now import modules that depend on MLflow
 try:
@@ -139,6 +118,8 @@ def report_caldera_connection():
 
 async def enable(services):
     app = services.get('app_svc').application
+
+    _ensure_mlflow_server()
 
     try:
         report_caldera_connection()
