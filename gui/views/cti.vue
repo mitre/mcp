@@ -75,8 +75,20 @@
             </button>
           </div>
 
-          <div v-if="ctiStatus" class="notification is-info mt-4">
-            {{ ctiStatus }}
+          <!-- One banner for progress, success and failure, so the tone
+               picks the Bulma class and the operator can close it. -->
+          <div
+            v-if="ctiStatus.text"
+            class="notification mt-4"
+            :class="`is-${ctiStatus.tone}`"
+            role="status"
+          >
+            <button
+              class="delete"
+              aria-label="Dismiss status"
+              @click="clearCtiStatus"
+            />
+            {{ ctiStatus.text }}
           </div>
         </div>
 
@@ -326,7 +338,7 @@
 /* ============================================================
  * Imports
  * ============================================================ */
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import StixViewerModal from '../components/stixViewer.vue'
 import McpModelConfigPanel from '../components/modelSelector.vue'
 
@@ -339,7 +351,7 @@ const ctiFileInput = ref(null)
 const isDragging = ref(false)
 const dragDepth = ref(0)
 const ctiDropError = ref('')
-const ctiStatus = ref('')
+const ctiStatus = reactive({ text: '', tone: 'info' })
 const expandedDirs = ref({})
 const rawFiles = ref([])
 const selectedRaw = reactive(new Set())
@@ -376,6 +388,38 @@ const visibleRows = computed(() => {
   }
   return rows
 })
+
+/* ============================================================
+ * Status Banner
+ * ============================================================ */
+// Long enough to read a confirmation without it outliving the action that
+// produced it.
+const CTI_STATUS_FADE_MS = 6000
+
+let ctiStatusTimer = null
+
+/**
+ * Show a status message. Tone is a Bulma modifier: info for work in
+ * flight, success for a finished action, warning for a nudge, danger for
+ * a failure.
+ */
+function setCtiStatus(text, tone = 'info') {
+  clearTimeout(ctiStatusTimer)
+  ctiStatusTimer = null
+  ctiStatus.text = text
+  ctiStatus.tone = tone
+  // Only a success fades on its own. Progress is replaced by its own
+  // outcome, and a failure is the one message the operator needs to read.
+  if (tone === 'success') {
+    ctiStatusTimer = setTimeout(clearCtiStatus, CTI_STATUS_FADE_MS)
+  }
+}
+
+function clearCtiStatus() {
+  clearTimeout(ctiStatusTimer)
+  ctiStatusTimer = null
+  ctiStatus.text = ''
+}
 
 /* ============================================================
  * Helpers
@@ -492,6 +536,10 @@ function acceptCtiFile(file) {
     ctiFile.value = null
     return
   }
+  // Only a spent confirmation is retired, and only once the file is really
+  // staged. Clearing unconditionally wiped the running indicator, and the
+  // failure the operator staged this file to retry.
+  if (ctiStatus.tone === 'success') clearCtiStatus()
   ctiFile.value = file
 }
 
@@ -533,20 +581,28 @@ async function uploadCti() {
   const form = new FormData()
   form.append('file', ctiFile.value)
 
-  ctiStatus.value = 'Uploading CTI…'
+  setCtiStatus('Uploading CTI…')
 
-  const res = await fetch('/plugin/mcp/cti/upload', {
-    method: 'POST',
-    body: form
-  })
+  // Without this the banner sat on "Uploading CTI…" forever when the
+  // server was unreachable, since the rejection never reached the operator.
+  let res
+  try {
+    res = await fetch('/plugin/mcp/cti/upload', {
+      method: 'POST',
+      body: form
+    })
+  } catch (e) {
+    setCtiStatus(`Could not reach the server: ${e.message}`, 'danger')
+    return
+  }
 
   if (!res.ok) {
-    ctiStatus.value = `Upload failed (${res.status}).`
+    setCtiStatus(`Upload failed (${res.status}).`, 'danger')
     return
   }
 
   // Staged only. Nothing is extracted until Run Pipeline.
-  ctiStatus.value = 'File staged. Select it and press Run Pipeline to extract.'
+  setCtiStatus('File staged. Select it and press Run Pipeline to extract.', 'success')
   ctiFile.value = null
   ctiDropError.value = ''
   if (ctiFileInput.value) ctiFileInput.value.value = ''
@@ -647,11 +703,11 @@ async function viewStix(filename) {
 async function runPipelineForSelected() {
   const count = selectedRaw.size
   if (!count) {
-    ctiStatus.value = 'Select a file first.'
+    setCtiStatus('Select a file first.', 'warning')
     return
   }
 
-  ctiStatus.value = 'Starting pipeline…'
+  setCtiStatus('Starting pipeline…')
 
   let res
   try {
@@ -661,7 +717,7 @@ async function runPipelineForSelected() {
       body: JSON.stringify({ files: Array.from(selectedRaw), step: 'all' })
     })
   } catch (e) {
-    ctiStatus.value = `Could not reach the server: ${e.message}`
+    setCtiStatus(`Could not reach the server: ${e.message}`, 'danger')
     return
   }
 
@@ -670,14 +726,14 @@ async function runPipelineForSelected() {
   if (!res.ok) {
     let detail = ''
     try { detail = (await res.json()).error || '' } catch { /* non-JSON body */ }
-    ctiStatus.value = `Pipeline did not start (${res.status})${detail ? ': ' + detail : ''}.`
+    setCtiStatus(`Pipeline did not start (${res.status})${detail ? ': ' + detail : ''}.`, 'danger')
     return
   }
 
   // Accepted, not finished. The run happens in a background executor, so the
   // outcome is polled rather than awaited; without this a failure only ever
   // reached the server log and the row sat on "pending" forever.
-  ctiStatus.value = `Pipeline running on ${count} file${count === 1 ? '' : 's'}…`
+  setCtiStatus(`Pipeline running on ${count} file${count === 1 ? '' : 's'}…`)
   selectedRaw.clear()
   pollCtiStatus()
 }
@@ -689,9 +745,11 @@ const CTI_POLL_LIMIT = 150
 
 async function pollCtiStatus(attempt = 0) {
   if (attempt >= CTI_POLL_LIMIT) {
-    ctiStatus.value =
+    setCtiStatus(
       'Still running after 5 minutes. Check the server log; the page will not ' +
-      'update further.'
+      'update further.',
+      'warning',
+    )
     return
   }
 
@@ -703,7 +761,7 @@ async function pollCtiStatus(attempt = 0) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     data = await res.json()
   } catch (e) {
-    ctiStatus.value = `Lost contact with the server: ${e.message}`
+    setCtiStatus(`Lost contact with the server: ${e.message}`, 'danger')
     return
   }
 
@@ -713,9 +771,9 @@ async function pollCtiStatus(attempt = 0) {
   }
 
   if (data.state === 'failed') {
-    ctiStatus.value = `Pipeline failed: ${data.error || 'no detail reported'}`
+    setCtiStatus(`Pipeline failed: ${data.error || 'no detail reported'}`, 'danger')
   } else {
-    ctiStatus.value = 'Pipeline complete.'
+    setCtiStatus('Pipeline complete.', 'success')
   }
 
   loadRawFiles()
@@ -729,6 +787,10 @@ onMounted(() => {
   loadRawFiles()
   loadStixFiles()
   loadBackendConfig()
+})
+
+onUnmounted(() => {
+  clearTimeout(ctiStatusTimer)
 })
 </script>
 
