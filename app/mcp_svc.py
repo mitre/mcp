@@ -12,6 +12,7 @@ from plugins.mcp.app.config import resolve_llm_config
 from plugins.mcp.app.mlflow_run import (
     RunTracker,
     reconcile_orphaned_runs as _reconcile_orphaned_runs,
+    summarize_exception,
 )
 
 
@@ -45,32 +46,6 @@ def _scrub_secrets(text: str) -> str:
     return _SECRET_RE.sub("sk-***", str(text or ""))
 
 
-def _leaf_exceptions(exc: BaseException) -> list[BaseException]:
-    if isinstance(exc, BaseExceptionGroup):
-        leaves = []
-        for child in exc.exceptions:
-            leaves.extend(_leaf_exceptions(child))
-        return leaves
-    return [exc]
-
-
-def _summarize_exception(exc: BaseException) -> str:
-    leaves = _leaf_exceptions(exc)
-    if not leaves:
-        return _scrub_secrets(str(exc))
-    primary = leaves[-1]
-    summary = _scrub_secrets(str(primary)).strip() or primary.__class__.__name__
-    if "failure to get a peer from the ring-balancer" in summary:
-        return (
-            "LLM provider unavailable: the AI Platform model gateway returned "
-            "'failure to get a peer from the ring-balancer' after retries."
-        )
-    if "Incorrect API key provided" in summary:
-        return (
-            "LLM authentication failed: the configured API key was rejected by "
-            "the selected provider."
-        )
-    return summary
 
 
 _LEGACY_TYPE_MAP = {
@@ -593,7 +568,7 @@ class MCPService(BaseService):
                 )
 
         except Exception as e:
-            error_summary = _summarize_exception(e)
+            error_summary = summarize_exception(e)
             self.log.error(f"[MCP] Execution failed: {error_summary}")
             tracker.set_tag("stage", "error")
             tracker.set_tag("status", "error")
