@@ -201,14 +201,11 @@ def clean_ir_nlp_layer1(ir: dict, original_text: str) -> dict:
     # ------------------------
     # Canonicalization
     # ------------------------
-    ir["malware"] = _canonicalize_list(ir.get("malware", []))
-    ir["tools"] = _canonicalize_list(ir.get("tools", []))
-    ir["infrastructure"] = _canonicalize_list(ir.get("infrastructure", []))
     ir["threat_actors"] = _canonicalize_list(ir.get("threat_actors", []))
 
     _log(
         f"Canonicalized "
-        f"{len(ir['malware']) + len(ir['tools']) + len(ir['infrastructure']) + len(ir['threat_actors'])} entities"
+        f"{len(ir['threat_actors'])} threat actors"
     )
 
     return ir

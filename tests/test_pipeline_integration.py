@@ -52,15 +52,11 @@ def test_offline_ir_extraction():
 
     assert isinstance(ir, dict)
     assert "threat_actors" in ir
-    assert "malware" in ir
-    assert "tools" in ir
     assert "behaviors" in ir
-    assert isinstance(ir["tools"], list)
-    # Should find at least Cobalt Strike or Mimikatz
-    tool_names = {t.get("name", "").lower() for t in ir["tools"]}
-    found_known = tool_names & {"cobalt strike", "mimikatz"}
-    assert len(found_known) >= 1, f"Expected known tools, found: {tool_names}"
-    print(f"  ✓ Offline IR: {len(ir['tools'])} tools, {len(ir['behaviors'])} behaviors")
+    assert isinstance(ir["threat_actors"], list)
+    assert ir["behaviors"], "offline extraction produced no behaviors"
+    print(f"  Offline IR: {len(ir['threat_actors'])} actors, "
+          f"{len(ir['behaviors'])} behaviors")
 
 
 # ============================================================
@@ -189,7 +185,7 @@ def test_stix_output_compliance():
         # It's a STIX bundle
         for obj in data["objects"][:5]:
             assert "type" in obj
-            if obj["type"] in ("malware", "tool", "threat-actor", "infrastructure"):
+            if obj["type"] == "threat-actor":
                 assert "spec_version" in obj, f"Missing spec_version in {obj['type']}"
                 assert obj["spec_version"] == "2.1"
     else:

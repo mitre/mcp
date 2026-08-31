@@ -447,3 +447,198 @@ tool body was written against `ToolError` or the fastmcp `Context` API.**
 - https://github.com/advisories/GHSA-vv7q-7jx5-f767 (CVE-2026-32871, CVSS 10.0, fastmcp OpenAPI provider)
 - https://github.com/advisories/GHSA-rww4-4w9c-7733 (CVE-2026-27124, fastmcp OAuth proxy)
 - https://www.ox.security/blog/the-mother-of-all-ai-supply-chains-critical-systemic-vulnerability-at-the-core-of-the-mcp/
+
+---
+
+# Addendum: supply chain audit (2026-08-30)
+
+Scanned all 227 installed distributions in `.calderavenv` against OSV, cross-checked
+independently with `pip-audit`. Both tools agree.
+
+## Result: 7 advisories across 4 packages, and **none of them are reachable**
+
+| Package | Installed | Advisory | Fixed in | Reachable? |
+|---|---|---|---|---|
+| cryptography | 48.0.1 | CVE-2026-69247 PKCS#7 Bleichenbacher oracle | 50.0.0 | **No** |
+| cryptography | 48.0.1 | CVE-2026-69249 exponential path building | 49.0.0 | **No** |
+| cryptography | 48.0.1 | CVE-2026-69248 wildcard DNS permittedSubtrees escape | 49.0.0 | **No** |
+| asyncssh | 2.20.0 | CVE-2026-54591 SCP path traversal to arbitrary write | 2.23.1 | **No** |
+| asyncssh | 2.20.0 | CVE-2026-54590 AuthorizedKeysFile `%u` escape | 2.23.1 | **No** |
+| diskcache | 5.6.3 | CVE-2025-69872 unsafe pickle deserialization | **none** | Local only |
+| pip | 26.1.2 | CVE-2026-13346 | 26.2 | Build tooling |
+
+### Why the cryptography ones are not reachable
+
+All three live in code paths nothing calls. CVE-2026-69247 needs the PKCS#7
+decryption API; `grep -rn "pkcs7\|PKCS7"` across core, all plugins, and all 227
+venv packages returns zero call sites. The other two live in
+`cryptography.x509.verification`, cryptography's own Rust path builder. CALDERA
+terminates no TLS in Python, and every HTTP client in the tree (requests, httpx,
+litellm, aiohttp, urllib3) verifies through stdlib `ssl` and OpenSSL, not through
+cryptography's verifier.
+
+Core's first-party cryptography use is symmetric only: Fernet, AES-CBC and
+PBKDF2HMAC for payload encryption, in three files. The plugin does not import
+cryptography at all.
+
+### Why the asyncssh ones are not reachable
+
+CALDERA does run an SSH tunnel server (`app/contacts/tunnels/tunnel_ssh.py:29`),
+unconditionally, on `0.0.0.0:8022`. But `create_server` is passed only
+`server_host_keys`, so `allow_scp=False`, `sftp_factory=None`,
+`session_factory=None`. asyncssh refuses session channels outright when none of
+those is set. Verified live against CALDERA's own `SSHServerTunnel`:
+
+```
+scp write   -> ChannelOpenError: Session refused
+sftp        -> ChannelOpenError: Session refused
+exec        -> ChannelOpenError: Session refused
+direct-tcpip forwarding -> allowed (this is the tunnel feature)
+```
+
+There is no channel on which an SCP command can be delivered. For CVE-2026-54590,
+CALDERA passes no `config=` to `create_server`, so `authorized_client_keys` is
+`None` and there is nothing for `%u` to expand into. Public-key auth is not even
+offered: `SSHServerTunnel` implements only password auth.
+
+Both flip if someone adds `sftp_factory` / `allow_scp` to that file, or passes an
+sshd-style config. Worth a comment on the line.
+
+## What actually needs doing
+
+### 1. The venv is nine days stale. This is the whole fix for 5 of 7.
+
+Core commit `e0b5e1ce` (2026-08-26) already bumped `cryptography` to 50.0.1 and
+`asyncssh` to 2.23.1 for exactly these advisories. The venv was built 2026-08-17
+and faithfully matches core's pins *as of that date*. Nothing corrupted it.
+
+```bash
+pip install -r requirements.txt
+```
+
+That takes asyncssh to 2.23.1 with zero conflict (nothing in the tree constrains
+it) and closes both SSH advisories.
+
+### 2. mlflow blocks core's new cryptography pin, going forward
+
+`mlflow` declares `cryptography<50,>=43.0.0` as a **base** dependency, and it is
+the only active cap on cryptography in the tree. Core now pins
+`cryptography==50.0.1`. Those are mutually exclusive. On the next clean install
+pip backtracks to `mlflow 3.2.0`, which caps `pyarrow<22`, which has no cp314
+wheels, so it will not even build.
+
+No mlflow release in its history admits cryptography 50.x. **The reachable
+ceiling is 49.0.0**, which closes two of the three cryptography advisories. The
+one left open (PKCS#7) is the unreachable one, so this costs nothing in practice.
+
+Either ask core to relax to `cryptography>=49.0.0,<51`, or make mlflow optional.
+Worth checking whether mlflow is load-bearing: it is used for run tracking
+(`app/mlflow_run.py`), not for the pipeline itself.
+
+### 3. diskcache has no fix, but dspy ships a mitigation you are not using
+
+dspy enables its disk cache by default at `~/.dspy_cache` (66 MB currently, actively
+in use). The plugin never calls `dspy.configure_cache`, so it inherits
+`restrict_pickle=False`. Directories are 0755 and files 0644, owner-writable only,
+so on a single-operator host the local vector crosses no privilege boundary. In a
+container or shared CI with a shared home it would.
+
+One line at the existing `dspy.configure` site in `app/dspy_env.py`:
+
+```python
+dspy.configure_cache(restrict_pickle=True)
+```
+
+Available from dspy 3.2.0; needs the `dspy>=3.3.0` floor to avoid a litellm cap.
+
+## The structural problems, which matter more than the CVE rows
+
+**13 direct dependencies with no version constraint at all:** `aiofiles`,
+`beautifulsoup4`, `dspy`, `litellm`, `mlflow`, `numpy`, `psutil`, `pydantic`,
+`python-dotenv`, `rapidfuzz`, `requests`, `spacy`, `trafilatura`. No lockfile
+anywhere, zero `--hash` pins. A compromised upload of any in-range version is
+installed silently.
+
+**The `mcp>=1.9,<2` floor is itself exploitable by backtracking.** Demonstrated
+with the real resolver:
+
+```
+pip install "mcp>=1.9,<2" "pydantic<2.9"   ->  mcp 1.12.4
+```
+
+`mcp 1.12.4` carries three advisories. A mild cap on an unrelated package is
+enough to walk `mcp` backwards into vulnerable territory. Raise the floor to
+`mcp>=1.28.1,<2`.
+
+**Two packages are invisible to every scanner.** `en_core_web_lg` (425 MB) and
+`en_core_web_sm` are installed from GitHub release URLs, not PyPI, so OSV has no
+data and `pip-audit` skips them by name. spaCy records a sha256 after download,
+but that is trust-on-first-use, not a pre-declared expected hash. The trust anchor
+is Explosion's GitHub releases plus TLS. Loading a spaCy model is code execution.
+
+**The two-pass install has no constraint file.** `pip check` does not catch this:
+it returns "No broken requirements found" on a drifted venv, because a downgraded
+core package still satisfies every declared range. It is below core's pin, not
+broken. Only a resolve against core's pin file detects it:
+
+```bash
+pip install --dry-run -c ../../requirements.txt -r plugins/mcp/requirements.txt
+```
+
+Adding that to CI is the single highest-value change here, and the plugin CI
+currently runs only flake8.
+
+## Priority
+
+1. `pip install -r requirements.txt` to un-stale the venv. Free, closes both SSH advisories.
+2. Add the constraint-resolve check to CI. Catches this whole class permanently.
+3. Raise `mcp>=1.28.1,<2` and add floors to the 13 unpinned deps.
+4. `dspy.configure_cache(restrict_pickle=True)`.
+5. Resolve the mlflow / cryptography ceiling with core, or make mlflow optional.
+
+None of this involves FastMCP. The supply-chain risk in this plugin is the
+unpinned scientific-Python stack and the absent CI gate, not the MCP layer.
+
+## Is there a lighter-weight `mcp`? No, and it does not matter
+
+`mcp` 1.29.1 declares **17 required** dependencies and only 3 extras (`cli`,
+`rich`, `ws`). `starlette`, `uvicorn`, `sse-starlette`, `python-multipart`,
+`httpx` and `pyjwt[crypto]` are all **required**, not optional, even for a
+stdio-only server. The plugin already installs with no extras, so there is
+nothing to turn off.
+
+But the weight question is moot, because almost all of it is already in the tree
+for other reasons. Measured as a true removal diff against every other declared
+dependency of core and the plugin:
+
+```
+tree without mcp : 168 packages
+tree with mcp    : 173 packages
+marginal cost    :   5 packages  (mcp, httpx-sse, pyjwt, python-multipart, sse-starlette)
+                     2.8 MB total
+```
+
+`starlette` and `uvicorn` are already required by `mlflow-skinny` and `fastapi`.
+`httpx`, `pydantic`, `jsonschema` and `anyio` come in via litellm, dspy and mlflow.
+`cryptography` is pinned by core directly.
+
+For scale, in the same tree: `en_core_web_lg` is 425 MB, `litellm` 113 MB,
+`mlflow` 61 MB. The entire MCP SDK is 0.66% of the spaCy model.
+
+Hand-rolling a stdio JSON-RPC server would recover those 2.8 MB and cost protocol
+conformance ownership. It is also not actually possible without more work than it
+sounds: `mcp` is used on **both** sides here, `ClientSession` and `stdio_client`
+in `plan_execute.py` and `author.py`, and `dspy.Tool.from_mcp_tool` requires a
+real `mcp.ClientSession`. Dropping the SDK means reimplementing the client, the
+server, and the DSPy bridge.
+
+**The backtracking exposure is a floor problem, not a weight problem.** The fix is
+one character range, and it costs nothing:
+
+```diff
+-mcp>=1.9,<2
++mcp>=1.28.1,<2
+```
+
+If reducing supply-chain surface is the actual goal, the targets are `litellm`,
+`mlflow` and the spaCy model, not the MCP SDK.

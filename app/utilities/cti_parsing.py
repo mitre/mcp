@@ -38,15 +38,6 @@ def build_ir_prompt(cti_text: str) -> str:
         "threat_actors": [
             {{"name": "", "description": ""}}
         ],
-        "malware": [
-            {{"name": "", "description": ""}}
-        ],
-        "tools": [
-            {{"name": "", "description": ""}}
-        ],
-        "infrastructure": [
-            {{"name": "", "description": ""}}
-        ],
         "attack_patterns": [],
         "behaviors": [
             {{"description": ""}}
@@ -107,10 +98,11 @@ def clean_raw_to_json(raw: str):
 # ---------------------------------------------------------
 
 def enforce_ir_schema(ir: dict) -> dict:
+    # convert_ir_to_stix reads attack_patterns, threat_actors and hashes
+    # only, so malware, tools and infrastructure were extracted, enriched with
+    # commands, written to the IR and then discarded at conversion.
     fields = [
-        "threat_actors", "malware", "tools",
-        "infrastructure", "attack_patterns",
-        "behaviors",
+        "threat_actors", "attack_patterns", "behaviors",
     ]
 
     clean = {}
@@ -236,9 +228,6 @@ async def extract_ir(cti_text: str, debug_path: Path = None) -> dict:
 
         {{
         "threat_actors": [],
-        "malware": [],
-        "tools": [],
-        "infrastructure": [],
         "attack_patterns": [],
         "behaviors": []
         }}
@@ -283,17 +272,11 @@ def render_ir_summary(ir: dict) -> str:
         lines.append("")
 
     section("Threat Actors", ir.get("threat_actors", []))
-    section("Malware", ir.get("malware", []))
-    section("Tools", ir.get("tools", []))
-    section("Infrastructure", ir.get("infrastructure", []))
     section("Attack Patterns", ir.get("attack_patterns", []))
     section("Behaviors", ir.get("behaviors", []))
 
     print(
         f"[IR][PARSED] actors={len(ir['threat_actors'])}  "
-        f"malware={len(ir['malware'])}  "
-        f"tools={len(ir['tools'])}  "
-        f"infra={len(ir['infrastructure'])}  "
         f"patterns={len(ir['attack_patterns'])}  "
         f"behaviors={len(ir['behaviors'])}"
     )

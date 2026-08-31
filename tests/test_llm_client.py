@@ -68,7 +68,7 @@ class TestEnforceIrSchema:
     def test_fills_missing_fields(self):
         from plugins.mcp.app.utilities.cti_parsing import enforce_ir_schema
         result = enforce_ir_schema({})
-        for key in ("threat_actors", "malware", "tools", "infrastructure",
+        for key in ("threat_actors",
                     "attack_patterns", "behaviors"):
             assert key in result
             assert isinstance(result[key], list)
@@ -81,34 +81,32 @@ class TestEnforceIrSchema:
 
     def test_preserves_valid_data(self):
         from plugins.mcp.app.utilities.cti_parsing import enforce_ir_schema
-        ir = {"malware": [{"name": "X"}], "tools": [{"name": "Y"}]}
+        ir = {"threat_actors": [{"name": "X"}], "attack_patterns": [{"name": "Y"}]}
         result = enforce_ir_schema(ir)
-        assert len(result["malware"]) == 1
-        assert len(result["tools"]) == 1
+        assert len(result["threat_actors"]) == 1
+        assert len(result["attack_patterns"]) == 1
 
     def test_filters_invalid_entries(self):
         from plugins.mcp.app.utilities.cti_parsing import enforce_ir_schema
-        ir = {"malware": [{"no_name_key": "bad"}, {"name": "good"}]}
+        ir = {"threat_actors": [{"no_name_key": "bad"}, {"name": "good"}]}
         result = enforce_ir_schema(ir)
-        assert len(result["malware"]) == 1
+        assert len(result["threat_actors"]) == 1
 
     def test_wraps_dict_to_list(self):
         from plugins.mcp.app.utilities.cti_parsing import enforce_ir_schema
-        ir = {"malware": {"name": "single"}}
+        ir = {"threat_actors": {"name": "single"}}
         result = enforce_ir_schema(ir)
-        assert isinstance(result["malware"], list)
-        assert len(result["malware"]) == 1
+        assert isinstance(result["threat_actors"], list)
+        assert len(result["threat_actors"]) == 1
 
 
 class TestRenderIrSummary:
     def test_renders(self):
         from plugins.mcp.app.utilities.cti_parsing import render_ir_summary
-        ir = {"threat_actors": [{"name": "APT29"}], "malware": [],
-              "tools": [{"name": "Mimikatz"}], "infrastructure": [],
+        ir = {"threat_actors": [{"name": "APT29"}],
               "attack_patterns": [], "behaviors": [], "relationships": []}
         result = render_ir_summary(ir)
         assert "APT29" in result
-        assert "Mimikatz" in result
 
 
 class TestBuildIrPrompt:
@@ -123,6 +121,6 @@ class TestBuildIrPrompt:
         from plugins.mcp.app.utilities.cti_parsing import build_ir_prompt
         prompt = build_ir_prompt("test")
         assert "threat_actors" in prompt
-        assert "malware" in prompt
-        assert "tools" in prompt
+        assert "attack_patterns" in prompt
+        assert "behaviors" in prompt
 

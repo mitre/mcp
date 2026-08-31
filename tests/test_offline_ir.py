@@ -7,30 +7,16 @@ class TestExtractIrOffline:
         text = "APT29 deployed Cobalt Strike for command and control."
         ir = extract_ir_offline(text)
         assert isinstance(ir, dict)
-        for key in ("threat_actors", "malware", "tools", "infrastructure",
+        for key in ("threat_actors",
                     "behaviors", "attack_patterns", "relationships"):
             assert key in ir
 
-    def test_finds_mitre_entities(self):
-        from plugins.mcp.app.utilities.cti_offline_ir import extract_ir_offline
-        text = "The attackers used Mimikatz and PsExec for lateral movement via RDP."
-        ir = extract_ir_offline(text)
-        tool_names = {t.get("name", "").lower() for t in ir["tools"]}
-        found = tool_names & {"mimikatz", "psexec"}
-        assert len(found) >= 1
-
-    def test_finds_infrastructure(self):
-        from plugins.mcp.app.utilities.cti_offline_ir import extract_ir_offline
-        text = "The malware communicated with 192.168.1.100 and evil.example.com."
-        ir = extract_ir_offline(text)
-        infra_names = {i.get("name", "") for i in ir["infrastructure"]}
-        assert any("192.168" in n for n in infra_names)
 
     def test_empty_text(self):
         from plugins.mcp.app.utilities.cti_offline_ir import extract_ir_offline
         ir = extract_ir_offline("")
         assert isinstance(ir, dict)
-        assert ir.get("tools") == [] or ir.get("tools") is not None
+        assert ir.get("threat_actors") == []
 
     def test_actor_frequency_inference(self):
         from plugins.mcp.app.utilities.cti_offline_ir import extract_ir_offline
@@ -40,17 +26,6 @@ class TestExtractIrOffline:
         actor_names = {a.get("name", "").lower() for a in ir["threat_actors"]}
         assert "wizard spider" in actor_names
 
-    def test_malware_is_not_promoted_to_actor(self):
-        """The most repeated name in a report is usually the payload. Naming
-        the adversary after it produced adversaries called 'BlackCat'."""
-        from plugins.mcp.app.utilities.cti_offline_ir import extract_ir_offline
-        text = """BlackCat ransomware attacked multiple organizations. BlackCat
-        used encryption. BlackCat operators deployed tools."""
-        ir = extract_ir_offline(text)
-        actor_names = {a.get("name", "").lower() for a in ir["threat_actors"]}
-        malware_names = {m.get("name", "").lower() for m in ir["malware"]}
-        assert "blackcat" in malware_names
-        assert "blackcat" not in actor_names
 
     def test_behavior_extraction(self):
         from plugins.mcp.app.utilities.cti_offline_ir import extract_ir_offline
