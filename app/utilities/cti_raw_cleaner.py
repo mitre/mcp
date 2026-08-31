@@ -299,22 +299,3 @@ def _is_code_blob(text: str) -> bool:
 
     return False
 
-def _is_valid_cti_text(text: str) -> bool:
-    if not text:
-        return False
-
-    t = text.strip()
-
-    # Too short to be analyst-usable
-    if len(t) < 200:
-        return False
-
-    # Must be linguistically dominant
-    if not _is_linguistically_dominant(t):
-        return False
-
-    # Reject only if code-dominant (not code-containing)
-    if _is_code_blob(t):
-        return False
-
-    return True

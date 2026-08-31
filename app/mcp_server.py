@@ -2,10 +2,8 @@ import os
 from mcp.server.fastmcp import FastMCP
 from typing import Optional
 
-from pydantic import BaseModel
 import requests
 from datetime import datetime
-import time
 import collections
 import uuid
 import sys
@@ -334,7 +332,7 @@ def create_adversary(name: str, description: str, atomic_ordering: list):
     adversary_id = str(uuid.uuid4())
 
     return caldera_request.make_post_request(
-        f"adversaries",
+        "adversaries",
         {
             "adversary_id": adversary_id,
             "name": name,

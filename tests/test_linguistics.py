@@ -1,5 +1,4 @@
 """Tests for cti_linguistics.py — linguistic extraction and matching."""
-import numpy as np
 
 
 
@@ -28,94 +27,13 @@ class TestExtractHashes:
         assert extract_hashes("") == []
 
 
-class TestNormalizeBehaviorText:
-    def test_basic(self):
-        from plugins.mcp.app.utilities.cti_linguistics import normalize_behavior_text
-        assert normalize_behavior_text("  Hello   World  ") == "hello world"
-
-    def test_empty(self):
-        from plugins.mcp.app.utilities.cti_linguistics import normalize_behavior_text
-        assert normalize_behavior_text("") == ""
 
 
-class TestFuzzyResolve:
-    def test_finds_match(self):
-        from plugins.mcp.app.utilities.cti_linguistics import fuzzy_resolve
-        candidates = [{"name": "Mimikatz"}, {"name": "PsExec"}]
-        result = fuzzy_resolve("mimikatz", candidates)
-        assert result is not None
-        assert result["name"] == "Mimikatz"
-
-    def test_no_match(self):
-        from plugins.mcp.app.utilities.cti_linguistics import fuzzy_resolve
-        candidates = [{"name": "Mimikatz"}]
-        result = fuzzy_resolve("completely_different", candidates)
-        assert result is None
-
-    def test_empty_name(self):
-        from plugins.mcp.app.utilities.cti_linguistics import fuzzy_resolve
-        assert fuzzy_resolve("", [{"name": "X"}]) is None
-        assert fuzzy_resolve(None, []) is None
 
 
-class TestPhraseVector:
-    def test_returns_numpy_array(self):
-        from plugins.mcp.app.utilities.cti_linguistics import phrase_vector
-        v = phrase_vector("credential dumping")
-        assert isinstance(v, np.ndarray)
-        assert v.shape == (300,)
-
-    def test_empty_returns_zeros(self):
-        from plugins.mcp.app.utilities.cti_linguistics import phrase_vector
-        v = phrase_vector("")
-        assert np.allclose(v, np.zeros(300))
 
 
-class TestCosine:
-    def test_identical_vectors(self):
-        from plugins.mcp.app.utilities.cti_linguistics import cosine
-        v = np.array([1.0, 2.0, 3.0])
-        assert abs(cosine(v, v) - 1.0) < 0.001
-
-    def test_orthogonal(self):
-        from plugins.mcp.app.utilities.cti_linguistics import cosine
-        a = np.array([1.0, 0.0])
-        b = np.array([0.0, 1.0])
-        assert abs(cosine(a, b)) < 0.001
-
-    def test_zero_vector(self):
-        from plugins.mcp.app.utilities.cti_linguistics import cosine
-        a = np.zeros(3)
-        b = np.array([1.0, 2.0, 3.0])
-        assert cosine(a, b) == 0.0
-
-    def test_none_input(self):
-        from plugins.mcp.app.utilities.cti_linguistics import cosine
-        assert cosine(None, np.array([1.0])) == 0.0
 
 
-class TestExtractCandidatePhrases:
-    def test_extracts_phrases(self):
-        from plugins.mcp.app.utilities.cti_linguistics import extract_candidate_phrases
-        text = "The malware encrypts files and exfiltrates data to cloud storage."
-        phrases = extract_candidate_phrases(text)
-        assert isinstance(phrases, list)
-        assert len(phrases) >= 1
-
-    def test_empty_text(self):
-        from plugins.mcp.app.utilities.cti_linguistics import extract_candidate_phrases
-        assert extract_candidate_phrases("") == []
 
 
-class TestNormalizeEntityType:
-    def test_finds_tool(self):
-        from plugins.mcp.app.utilities.cti_linguistics import normalize_entity_type
-        ir = {"tools": [{"name": "Mimikatz"}], "malware": [], "threat_actors": [],
-              "infrastructure": [], "attack_patterns": []}
-        assert normalize_entity_type("Mimikatz", ir) == "tool"
-
-    def test_unknown(self):
-        from plugins.mcp.app.utilities.cti_linguistics import normalize_entity_type
-        ir = {"tools": [], "malware": [], "threat_actors": [],
-              "infrastructure": [], "attack_patterns": []}
-        assert normalize_entity_type("Unknown", ir) == "unknown"

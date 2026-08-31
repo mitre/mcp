@@ -29,7 +29,6 @@ import json
 import asyncio
 import time
 import os
-import shutil
 import traceback
 from pathlib import Path
 from concurrent.futures import as_completed
@@ -459,34 +458,4 @@ async def load_or_extract_ir(path: Path, text: str, ir_dir: Path) -> dict:
 
 
 
-def prepare_raw_uploads(base_dir: Path, selected: list[dict]):
-    uploads = base_dir / "raw" / "uploads"
-    inbox = base_dir / "raw" / "inbox"
-    processed = base_dir / "raw" / "processed"
-    SUPPORTED_EXTS = {".html", ".htm", ".pdf", ".txt", ".md"}
 
-
-    uploads.mkdir(parents=True, exist_ok=True)
-
-    for item in selected:
-        name = item["name"]
-        location = item["location"]
-
-        src_root = inbox if location == "inbox" else processed
-        src = src_root / name
-
-        if not src.exists():
-            continue
-
-        if src.is_file():
-            _copy_if_needed(src, uploads / src.name)
-
-        elif src.is_dir():
-            for f in src.rglob("*"):
-                if f.suffix.lower() in SUPPORTED_EXTS:
-                    _copy_if_needed(f, uploads / f.name)
-
-def _copy_if_needed(src: Path, dst: Path):
-    if dst.exists():
-        return
-    shutil.copy2(src, dst)

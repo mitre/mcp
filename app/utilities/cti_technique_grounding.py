@@ -622,7 +622,6 @@ __all__ = [
 # CLI / smoke test
 # ----------------------------------------------------------------------
 if __name__ == "__main__":
-    import json
     import sys
     from plugins.mcp.app.utilities.cti_taxonomy_loader import (
         load_mitre_taxonomy,

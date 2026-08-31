@@ -46,7 +46,7 @@ ALLOWED_STIX_TYPES = {
 
 def valid_uuid4(s: str) -> bool:
     try:
-        uuid_obj = uuid.UUID(s, version=4)
+        uuid.UUID(s, version=4)
         return True
     except Exception:
         return False

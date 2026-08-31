@@ -41,7 +41,6 @@ import argparse
 import json
 import re
 import sys
-from collections import defaultdict
 from functools import lru_cache
 from pathlib import Path
 from typing import Iterable, Optional
@@ -365,20 +364,8 @@ def discover_ae_plans(libraries_root: Optional[Path] = None) -> list[dict]:
 _HEADER_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$", re.MULTILINE)
 _EMOJI_RE = re.compile(r":[A-Za-z0-9_+-]+:")  # :microphone:
 _NONWORD_RE = re.compile(r"[^a-z0-9 &]+")
-_PIPE_SEP_RE = re.compile(r"\s*\|\s*[:\-\s|]+\s*\|?\s*$")
 
 
-def _normalise_header(text: str) -> str:
-    """Strip emoji, Markdown markers, and non-word punctuation from a header."""
-    # Drop "Step 1 - " / "Phase 2 - " / "1. " numeric prefixes
-    text = re.sub(r"^(?:step|phase|part)\s*\d+\s*[-:]\s*", "", text, flags=re.IGNORECASE)
-    text = re.sub(r"^\d+\s*[\.\)-:]\s*", "", text)
-    text = _EMOJI_RE.sub("", text)
-    text = text.replace("&", "&")  # idempotent; placeholder for stylized chars
-    text = text.lower().strip()
-    text = _NONWORD_RE.sub(" ", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
 
 
 def _split_pipe_row(line: str) -> list[str]:
@@ -445,27 +432,6 @@ def _column_index_map(headers: list[str], alias_map: dict[str, str]) -> dict[str
     return out
 
 
-def _find_section_blocks(text: str, alias_to_irkey: dict[str, str]) -> dict[str, list[str]]:
-    """Carve the markdown into ``ir_key -> [text-block-bodies]`` slices.
-
-    A section starts at a header matching one of the aliases and ends at
-    the next header of equal-or-higher level. Multiple matching headers
-    aggregate their bodies into the same IR key.
-    """
-    out: dict[str, list[str]] = defaultdict(list)
-    headers = list(_HEADER_RE.finditer(text))
-    for idx, m in enumerate(headers):
-        h_norm = _normalise_header(m.group(2))
-        ir_key = alias_to_irkey.get(h_norm)
-        # Also try a punctuation-stripped variant
-        if not ir_key:
-            ir_key = alias_to_irkey.get(h_norm.replace(" and ", " & ").strip())
-        if not ir_key:
-            continue
-        start = m.end()
-        end = headers[idx + 1].start() if idx + 1 < len(headers) else len(text)
-        out[ir_key].append(text[start:end])
-    return out
 
 
 # ---------------------------------------------------------------------------
@@ -499,8 +465,6 @@ _ACCOUNT_REF_RE = re.compile(
 # CIDR subnet
 _CIDR_RE = re.compile(r"\b((?:\d{1,3}\.){3}\d{1,3}/\d{1,2})\b")
 
-# File-extension marker like ".skyfl2e"
-_FILE_EXT_RE = re.compile(r"\.([A-Za-z][A-Za-z0-9]{2,8})\b")
 
 # Windows registry key (HKLM\..., HKCU\..., HKEY_..\..)
 _REG_KEY_RE = re.compile(
@@ -524,10 +488,6 @@ _FILENAME_RE = re.compile(r"\b([A-Za-z][\w.-]{2,30})\.(ps1|exe|bat|sh|py|dll|jar
 # Versioned software ("rclone v1.64.0", "Mimikatz 2.2.0")
 _NAME_VERSION_RE = re.compile(r"\b([A-Za-z][\w-]{2,30})\s+v?(\d+\.\d+(?:\.\d+(?:\.\d+)?)?)\b")
 
-# Inline-fact pattern matcher (markdown bold / colon delim)
-_INLINE_FACT_RE = re.compile(
-    r"(?:\*\*|__)?\s*([A-Za-z][A-Za-z \-/]{2,30})\s*(?:\*\*|__)?\s*:\s*[`*]*([A-Za-z][A-Za-z0-9_-]{1,40})",
-)
 
 
 def _extract_techniques(text: str) -> list[str]:
@@ -889,9 +849,6 @@ _LIBRARY_ADVERSARY_TO_THREAT_ACTOR = {
 }
 
 
-def _resolve_adversary_slug(name: str) -> str:
-    """Canonicalise an adversary slug for filename / URL safety."""
-    return re.sub(r"[^a-z0-9]+", "-", (name or "").lower()).strip("-")
 
 
 def parse_ae_plan(plan_meta: dict, *, taxonomy: Optional[dict] = None) -> dict:
@@ -909,7 +866,6 @@ def parse_ae_plan(plan_meta: dict, *, taxonomy: Optional[dict] = None) -> dict:
         user_accounts, domains, attack_patterns, network_subnets,
         file_paths, registry_keys, file_extensions
     """
-    alias_to_irkey = _section_alias_to_irkey()
     col_alias_map = _table_column_alias_map()
 
     # Concatenate all markdown sources for this plan.

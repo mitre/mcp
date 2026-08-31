@@ -169,18 +169,7 @@ class RAGService:
         }
 
 
-# Legacy functions for backward compatibility
-def search_cti_title(query: str) -> list[str]:
-    """Legacy function - use RAGService instead."""
-    if 'global_rag_service' in globals():
-        return global_rag_service.search_cti_title(query)
-    return ["RAG service not initialized"]
 
-def search_cti_data_by_title(name: str) -> str:
-    """Legacy function - use RAGService instead."""
-    if 'global_rag_service' in globals():
-        return global_rag_service.search_cti_data_by_title(name)
-    return "RAG service not initialized"
 
 
 # ---------------------------------------------------------------------------

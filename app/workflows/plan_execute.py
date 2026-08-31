@@ -152,13 +152,6 @@ class DSPyCalderaPlannerClientWithRAG(dspy.Signature):
 DSPyCalderaPlannerClient.__doc__ = PLAN_EXECUTE_AGENT_DOC
 DSPyCalderaPlannerClientWithRAG.__doc__ = PLAN_EXECUTE_AGENT_WITH_CTI_DOC
 
-# Factory function to create tool functions with proper closure
-def create_tool_function(session, tool_name, tool_description):
-    async def tool_function(**kwargs):
-        result = await session.call_tool(tool_name, kwargs)
-        return result
-    tool_function.__doc__ = tool_description
-    return tool_function
 
 async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None,
               run_id=None, enabled_servers=None, server_registry=None,
