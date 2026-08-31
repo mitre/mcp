@@ -14,8 +14,9 @@
 # To pin values on disk instead, set them in conf/local.yml. That file is
 # overlaid onto this one key by key, so it only needs the keys it changes.
 #
-# fields_locked declares which fields the deployment fixes; locked fields
-# ignore UI overrides and the UI greys out the corresponding inputs.
+# fields_locked declares which fields the deployment fixes. Locked fields
+# ignore UI overrides and are refused by the set_config endpoint. It is not
+# settable over the API, by design: a writable lock unlocks itself.
 llm:
   # Declared here rather than only on cti so every profile that layers over
   # this one inherits it. LLMClient.generate reads it with no default.
@@ -38,8 +39,12 @@ llm:
 # temperature 0 where the planner and chat profile want sampling. That is the
 # only real difference between the two workloads.
 #
-# To point extraction at a different model or endpoint entirely, set `model` or
-# `api_base` here and the override wins.
+# The connection cannot be changed here. provider, model, api_base, the
+# credentials and ssl_verify belong to `llm` alone, and this block may set only
+# generation settings: temperature, top_p, max_tokens, timeout, stream, offline
+# and embed_model. Anything else is dropped and logged, because extraction
+# quietly running against a different endpoint from everything else is the
+# failure this split exists to prevent.
 cti:
   temperature: 0.0
   top_p: 1.0
