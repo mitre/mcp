@@ -64,5 +64,7 @@ class TestSetConfigMerges:
         assert _local(api)["cti"]["temperature"] == 0.0
 
     def test_secrets_never_reach_the_file(self, api):
-        _save(api, {"cti": {"temperature": 0.0, "api_key": "sk-secret"}})
-        assert "api_key" not in _local(api)["cti"]
+        # api_key belongs to the connection, so it goes to 'llm'. On a
+        # workload profile the allowlist refuses it outright.
+        _save(api, {"llm": {"model": "m", "api_key": "sk-secret"}})
+        assert "api_key" not in _local(api)["llm"]
