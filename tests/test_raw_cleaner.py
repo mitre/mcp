@@ -59,4 +59,9 @@ class TestProcessRawFile:
         result = await process_raw_file(raw, clean, images)
 
         assert "[TEXT]" in result
-        assert (clean / "blackcat-report.md").read_text(encoding="utf-8").startswith("# ALPHV")
+        # Normalised to .txt like the html and pdf branches. Stage 1 globs
+        # clean/*.txt, so a .md left with its own extension is accepted by the
+        # uploader and then never parsed.
+        assert (clean / "blackcat-report.txt").read_text(encoding="utf-8").startswith("# ALPHV")
+        assert not (clean / "blackcat-report.md").exists()
+        assert list(clean.glob("*.txt")), "Stage 1 would find nothing to parse"

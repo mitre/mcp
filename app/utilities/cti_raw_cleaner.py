@@ -174,7 +174,11 @@ async def process_raw_file(path: Path, clean_dir: Path, images_dir: Path):
         if not re.search(r"[a-zA-Z]{3,}", stem):
             return f"[SKIP] Non-document filename: {path.name}"
 
-        out = clean_dir / path.name
+        # Normalised like the html and pdf branches. Keeping the original
+        # extension meant a .md upload landed in clean/ as .md, and Stage 1
+        # globs *.txt, so the file was accepted by three UI surfaces and never
+        # parsed.
+        out = clean_dir / (path.stem + ".txt")
         async with aiofiles.open(out, "w", encoding="utf-8") as f:
             await f.write(txt)
 
