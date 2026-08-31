@@ -242,7 +242,7 @@ CTI and RAG share the chat endpoint. Extraction differs from chat only in its ge
 
 Prefer environment variables for local values, and keep `conf/default.yml` limited to safe defaults.
 
-To pin values on disk instead, create `conf/local.yml`. That file is a **sparse overlay**, not a full config: it is deep-merged onto `conf/default.yml` key by key, so it needs only the keys it changes. A file containing one temperature is valid and complete.
+To pin values on disk instead, create `conf/local.yml`. That file is a **sparse overlay**, not a full config: it is deep-merged onto `conf/default.yml` key by key, so it needs only the keys it changes. A file containing one key is valid and complete.
 
 ```yaml
 llm:
@@ -251,13 +251,13 @@ llm:
   offline: false
 
 cti:
-  temperature: 0.0
-  max_tokens: 4000
+  timeout: 120
+  offline: false
 ```
 
 Three rules that are easy to trip over:
 
-- **`cti` layers over `llm`, but only for generation settings.** A workload profile may set `temperature`, `top_p`, `max_tokens`, `timeout`, `stream`, `offline` and `embed_model`. The connection, meaning `provider`, `model`, `api_base`, the credentials and `ssl_verify`, belongs to `llm` alone; anything else under `cti` is dropped and logged, and `set_config` rejects it outright. A connection left under `cti` by an older config is ignored, and the warning names the keys to move.
+- **`cti` layers over `llm`, but only for its own generation settings.** A workload profile may set `top_p`, `timeout`, `stream`, `offline` and `embed_model`. Everything else belongs to `llm`: the connection (`provider`, `model`, `api_base`, credentials, `ssl_verify`), and `temperature` and `max_tokens`, which two panels display and so are stored once. Anything else under `cti` is dropped and logged, and `set_config` rejects it outright.
 - **Precedence differs by field.** `api_key` resolves environment-first and is never read from this file. `api_base` resolves yaml-first, so a value here beats `MCP_LLM_API_BASE`; leave it empty to keep using the variable.
 - **A key with no value is `null`, and null overrides.** A bare `llm:` heading wipes the shipped block rather than falling through to it. Omit the block instead.
 
