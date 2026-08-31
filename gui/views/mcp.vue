@@ -535,7 +535,11 @@ function loadSelectedPath() {
 // one of the always-on cards: "history", "guide", "cti".
 const selectedPath = ref(loadSelectedPath())
 
-function setSelectedPath(path) {
+async function setSelectedPath(path) {
+  // The CTI panel reads the connection from the server when it mounts, and
+  // this sync is debounced. Navigating inside that window showed the panel
+  // the pre-edit endpoint until the next visit, so flush first.
+  await flushGlobalConfigSync()
   selectedPath.value = path
 }
 
@@ -717,12 +721,16 @@ function deleteSelectedEndpointProfile() {
   selectedEndpointProfileName.value = ''
 }
 
-// What /defaults reported, kept so the sync can tell an operator edit from a
-// value the server just handed us.
-let serverDefaults = {}
+// What the server is known to hold: seeded from /defaults, then updated after
+// every successful save. The sync diffs against this.
+const syncedToServer = reactive({})
 
 function applyServerDefaults(d) {
-  serverDefaults = d || {}
+  Object.assign(syncedToServer, {
+    model: d.model, api_base: d.api_base, ssl_verify: d.ssl_verify,
+    temperature: d.temperature, max_tokens: d.max_tokens,
+    max_tool_calls: d.max_tool_calls,
+  })
   // The connection is server state, so these overwrite rather than fill. A
   // browser-local copy taking precedence is what let this panel and the CTI
   // panel name two different models.
@@ -854,23 +862,30 @@ let hydrating = true
 const serverSyncState = ref(null)
 
 async function syncGlobalConfigToServer() {
-  // Only what the operator actually changed. /defaults reports api_base
-  // already resolved from MCP_LLM_API_BASE, and api_base is yaml-first, so
-  // echoing it back would pin the variable's current value into local.yml and
-  // kill the variable. The same applies to every numeric fallback.
+  // Diffed against what the server is known to hold, NOT against the mount
+  // time snapshot. Comparing to the snapshot meant editing a value away and
+  // back again sent nothing on the way back, so the server kept the
+  // intermediate value while this panel displayed the original.
+  //
+  // /defaults reports api_base already resolved from MCP_LLM_API_BASE, and
+  // api_base is yaml-first, so an unchanged field must not be echoed back or
+  // it pins the variable's current value into local.yml and kills the
+  // variable.
   const edited = {}
-  const put = (key, value, seeded) => {
+  const put = (key, value, known) => {
+    // undefined means never seeded. An empty string is a deliberate clear,
+    // for instance blanking api_base to fall back to the env var, and the
+    // watcher is armed only after hydration so every call here is a real edit.
     if (value === undefined) return
-    if (value === '' || value === null) return
-    if (seeded !== undefined && value === seeded) return
-    edited[key] = value
+    if (value === known) return
+    edited[key] = value === null ? '' : value
   }
-  put('model', globalConfig.modelName, serverDefaults.model)
-  put('api_base', globalConfig.apiBase, serverDefaults.api_base)
-  put('ssl_verify', globalConfig.sslVerify, serverDefaults.ssl_verify)
-  put('temperature', globalConfig.temperature, serverDefaults.temperature)
-  put('max_tokens', globalConfig.maxTokens, serverDefaults.max_tokens)
-  put('max_tool_calls', globalConfig.maxToolCalls, serverDefaults.max_tool_calls)
+  put('model', globalConfig.modelName, syncedToServer.model)
+  put('api_base', globalConfig.apiBase, syncedToServer.api_base)
+  put('ssl_verify', globalConfig.sslVerify, syncedToServer.ssl_verify)
+  put('temperature', globalConfig.temperature, syncedToServer.temperature)
+  put('max_tokens', globalConfig.maxTokens, syncedToServer.max_tokens)
+  put('max_tool_calls', globalConfig.maxToolCalls, syncedToServer.max_tool_calls)
 
   if (!Object.keys(edited).length) {
     serverSyncState.value = null
@@ -891,10 +906,23 @@ async function syncGlobalConfigToServer() {
       const body = await res.json().catch(() => null)
       throw new Error(body?.error || `HTTP ${res.status}`)
     }
+    // The server now holds these, so a later edit back to the previous value
+    // is a real change again. On failure this is deliberately not updated, so
+    // the next edit retries the whole diff rather than silently dropping it.
+    Object.assign(syncedToServer, edited)
     serverSyncState.value = { message: 'Saved to server', tone: 'has-text-success' }
   } catch (e) {
     serverSyncState.value = { message: `Not saved: ${e.message}`, tone: 'has-text-danger' }
   }
+}
+
+// Send a queued change now rather than at the end of the debounce. Used when
+// leaving the panel for a view that reads the connection from the server.
+async function flushGlobalConfigSync() {
+  if (!serverSyncTimer) return
+  clearTimeout(serverSyncTimer)
+  serverSyncTimer = null
+  await syncGlobalConfigToServer()
 }
 
 watch(
@@ -910,7 +938,10 @@ watch(
     if (hydrating) return
     serverSyncState.value = { message: 'Saving…', tone: 'has-text-grey' }
     clearTimeout(serverSyncTimer)
-    serverSyncTimer = setTimeout(syncGlobalConfigToServer, SERVER_SYNC_DEBOUNCE_MS)
+    serverSyncTimer = setTimeout(() => {
+      serverSyncTimer = null
+      syncGlobalConfigToServer()
+    }, SERVER_SYNC_DEBOUNCE_MS)
   },
 )
 
