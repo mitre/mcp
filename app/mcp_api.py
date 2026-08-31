@@ -8,7 +8,7 @@ import yaml
 import shutil
 import asyncio
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.service.auth_svc import for_all_public_methods, check_authorization
 
@@ -387,7 +387,7 @@ class McpAPI:
 
             target_path = base_dir / filename
             if target_path.exists():
-                ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
                 stem = Path(filename).stem
                 suffix = Path(filename).suffix
                 filename = f"{stem}_{ts}{suffix}"
@@ -676,7 +676,7 @@ class McpAPI:
             rag_dir.mkdir(parents=True, exist_ok=True)
             target_path = rag_dir / filename
             if target_path.exists():
-                ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
                 target_path = rag_dir / f"{target_path.stem}_{ts}.json"
 
             data = await part.read()

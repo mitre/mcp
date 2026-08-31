@@ -86,7 +86,7 @@ def load_ir(path: Path) -> dict:
 def compute_metrics(ir: dict, bundle: dict) -> dict:
     """Generate transformation quality metrics."""
     return {
-        "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z"),
         "input_counts": {
             "threat_actors": len(ir.get("threat_actors", [])),
             "attack_patterns": len(ir.get("attack_patterns", [])),
