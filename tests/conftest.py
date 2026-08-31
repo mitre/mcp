@@ -56,7 +56,8 @@ _TEST_UPLOAD_PREFIXES = ("pytest_", "test_cti.")
 @pytest.fixture(autouse=True)
 def _sweep_test_uploads():
     yield
-    for sub in ("raw/uploads", "raw/processed", "clean"):
+    for sub in ("raw/uploads", "raw/processed", "clean", "stix_cti",
+                "outputs_stix", "outputs_ir/complete"):
         d = DATA_DIR / sub
         if not d.is_dir():
             continue
