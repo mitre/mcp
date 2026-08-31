@@ -510,7 +510,7 @@ async function handleCustomSubmit() {
 </template>
 
 <script setup>
-import { ref, provide, reactive, watch, onMounted, computed } from 'vue'
+import { ref, provide, reactive, watch, onMounted, nextTick, computed } from 'vue'
 // Both built-in workflows render through the same chat-style component;
 // per-workflow behaviour (system prompt, accepted capabilities, chat
 // history opt-in) is driven entirely by the workflow's registration
@@ -706,7 +706,12 @@ function deleteSelectedEndpointProfile() {
   selectedEndpointProfileName.value = ''
 }
 
+// What /defaults reported, kept so the sync can tell an operator edit from a
+// value the server just handed us.
+let serverDefaults = {}
+
 function applyServerDefaults(d) {
+  serverDefaults = d || {}
   // Only fill fields the user hasn't already set.
   if (!globalConfig.modelName || LEGACY_CHAT_MODEL_DEFAULTS.has(globalConfig.modelName)) {
     globalConfig.modelName = d.model || ''
@@ -749,6 +754,11 @@ onMounted(async () => {
   } catch (e) {
     console.warn('[MCP] Failed to fetch /plugin/mcp/defaults:', e)
   }
+
+  // Seeding the fields above mutates the very refs the sync watches. Let that
+  // settle before arming it, or simply opening the page writes conf/local.yml.
+  await nextTick()
+  hydrating = false
 
   // Discover workflows, capabilities, and servers in parallel.
   try {
@@ -828,26 +838,48 @@ watch(globalConfig, (newConfig) => {
  * ============================================================ */
 const SERVER_SYNC_DEBOUNCE_MS = 800
 let serverSyncTimer = null
+// Armed only once the fields have been seeded from /defaults and localStorage.
+let hydrating = true
 const serverSyncState = ref(null)
 
 async function syncGlobalConfigToServer() {
-  const payload = {
-    llm: {
-      model: globalConfig.modelName,
-      api_base: globalConfig.apiBase || '',
-      ssl_verify: globalConfig.sslVerify,
-      temperature: globalConfig.temperature,
-      max_tokens: globalConfig.maxTokens,
-      max_tool_calls: globalConfig.maxToolCalls,
-    },
+  // Only what the operator actually changed. /defaults reports api_base
+  // already resolved from MCP_LLM_API_BASE, and api_base is yaml-first, so
+  // echoing it back would pin the variable's current value into local.yml and
+  // kill the variable. The same applies to every numeric fallback.
+  const edited = {}
+  const put = (key, value, seeded) => {
+    if (value === undefined) return
+    if (value === '' || value === null) return
+    if (seeded !== undefined && value === seeded) return
+    edited[key] = value
   }
+  put('model', globalConfig.modelName, serverDefaults.model)
+  put('api_base', globalConfig.apiBase, serverDefaults.api_base)
+  put('ssl_verify', globalConfig.sslVerify, serverDefaults.ssl_verify)
+  put('temperature', globalConfig.temperature, serverDefaults.temperature)
+  put('max_tokens', globalConfig.maxTokens, serverDefaults.max_tokens)
+  put('max_tool_calls', globalConfig.maxToolCalls, serverDefaults.max_tool_calls)
+
+  if (!Object.keys(edited).length) {
+    serverSyncState.value = null
+    return
+  }
+
+  const payload = { llm: edited }
   try {
     const res = await fetch('/plugin/mcp/set_config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    if (!res.ok) {
+      // The endpoint composes a specific message for a rejected key; throwing
+      // the status code alone discards the only thing that explains the
+      // refusal.
+      const body = await res.json().catch(() => null)
+      throw new Error(body?.error || `HTTP ${res.status}`)
+    }
     serverSyncState.value = { message: 'Saved to server', tone: 'has-text-success' }
   } catch (e) {
     serverSyncState.value = { message: `Not saved: ${e.message}`, tone: 'has-text-danger' }
@@ -864,6 +896,7 @@ watch(
     globalConfig.maxToolCalls,
   ],
   () => {
+    if (hydrating) return
     serverSyncState.value = { message: 'Saving…', tone: 'has-text-grey' }
     clearTimeout(serverSyncTimer)
     serverSyncTimer = setTimeout(syncGlobalConfigToServer, SERVER_SYNC_DEBOUNCE_MS)
