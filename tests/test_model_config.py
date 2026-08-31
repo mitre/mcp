@@ -59,12 +59,18 @@ class TestConfigStructure:
         for field in ("provider", "model"):
             assert field in resolved, f"cti must resolve {field}"
 
-    def test_cti_has_parameter_fields(self):
-        """The cti profile must carry the LM tunables llm_client reads."""
+    def test_cti_resolves_the_parameter_fields(self):
+        """Extraction must resolve every LM tunable llm_client reads.
+
+        Which section declares one is not the invariant: temperature and
+        max_tokens live on llm because two panels show them, and a workload
+        profile inheriting them is the point. What matters is that the
+        resolved profile carries all four.
+        """
         r = requests.get(f"{CALDERA_URL}/plugin/mcp/get_config", headers=HEADERS)
-        cti = r.json().get("config", r.json()).get("cti", {})
+        resolved = r.json().get("resolved", {}).get("cti", {})
         for field in ("temperature", "top_p", "max_tokens", "timeout"):
-            assert field in cti, f"Missing config field: {field}"
+            assert field in resolved, f"cti does not resolve {field}"
 
     def test_cti_carries_its_own_offline_toggle(self):
         """Offline stays per profile so extraction can be taken offline

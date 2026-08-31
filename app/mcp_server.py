@@ -11,13 +11,16 @@ import uuid
 import sys
 from pathlib import Path
 
-from dspy_env import CreateCommand
-
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from plugins.mcp.app.config import caldera_connection, _normalise_api_url
+# Both of these have to come after the path insert above. The first was a bare
+# "from dspy_env import" sitting before it, which resolved only when sys.path[0]
+# happened to be this directory, so importing this module any other way failed
+# with ModuleNotFoundError.
+from plugins.mcp.app.dspy_env import CreateCommand  # noqa: E402
+from plugins.mcp.app.config import caldera_connection, _normalise_api_url  # noqa: E402
 
 MCP_METADATA = {
     "display_name": "CALDERA Core",

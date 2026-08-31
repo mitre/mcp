@@ -358,7 +358,7 @@ class TestMcpHistory:
 
     def test_list_runs(self):
         """GET /history returns run list."""
-        r = requests.get(f"{CALDERA_URL}/plugin/mcp/history",
+        r = requests.get(f"{CALDERA_URL}/plugin/mcp/history/runs",
                         headers=HEADERS, timeout=5)
         assert r.status_code == 200
         data = r.json()
@@ -377,7 +377,7 @@ class TestAuthentication:
         ("GET", "/plugin/mcp/cti/raw"),
         ("GET", "/plugin/mcp/stix/list"),
         ("GET", "/plugin/mcp/get_config"),
-        ("GET", "/plugin/mcp/history"),
+        ("GET", "/plugin/mcp/history/runs"),
     ]
 
     @pytest.mark.parametrize("method,path", ENDPOINTS)

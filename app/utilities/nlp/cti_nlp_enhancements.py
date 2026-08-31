@@ -84,8 +84,18 @@ def is_valid_actor(name: str) -> bool:
         return False
     if any(cue in name_l for cue in VALID_ACTOR_CUES):
         return True
-    # if name is short and proper-noun-like, keep it
-    return len(name) <= 25 and name.isalpha()
+    # If it is short and proper-noun-like, keep it. isalpha() over the whole
+    # string is False as soon as there is a space, so every two-word actor was
+    # dropped: Berserk Bear, Wizard Spider, Fancy Bear and Cozy Bear included,
+    # two of which this docstring says to keep. Digits are allowed because
+    # FIN7 and TA505 are names, but a bare number is not.
+    parts = name.replace("-", " ").split()
+    return (
+        len(name) <= 25
+        and bool(parts)
+        and all(p.isalnum() for p in parts)
+        and any(c.isalpha() for c in name)
+    )
 
 def normalize_actor_name(name: str):
     """Remove possessives and common suffixes."""

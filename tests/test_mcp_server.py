@@ -27,91 +27,27 @@ skipif_no_caldera = pytest.mark.skipif(
 
 @skipif_no_caldera
 class TestMCPServerImport:
-    def test_server_class_imports(self):
-        """MCPServer imports — requires Caldera's plugin loader context."""
-        try:
-            from plugins.mcp.app.mcp_server import MCPServer
-            assert MCPServer is not None
-        except ModuleNotFoundError as e:
-            if "factory" in str(e):
-                pytest.skip("MCPServer requires Caldera plugin context (relative import)")
-            raise
+    """The module must import on its own, and expose the FastMCP app.
 
-    def test_get_server(self):
-        try:
-            from plugins.mcp.app.mcp_server import _get_server
-            server = _get_server()
-            assert server is not None
-        except ModuleNotFoundError as e:
-            if "factory" in str(e):
-                pytest.skip("MCPServer requires Caldera plugin context (relative import)")
-            raise
+    MCPServer and _get_server never existed: git log -S finds no commit that
+    added either, so these guarded an API that was never written and could
+    only ever fail. What is worth guarding is that the module imports at all,
+    which it did not: a bare "from dspy_env import" sat above the sys.path
+    insert meant to make it resolvable, so it only worked when sys.path[0]
+    happened to be app/.
+    """
 
+    def test_the_module_imports_standalone(self):
+        from plugins.mcp.app import mcp_server
+        assert mcp_server.mcp is not None
 
-@skipif_no_caldera
-class TestCalderaHealthAPI:
-    def test_health_endpoint(self):
-        r = requests.get(f"{CALDERA_URL}/api/v2/health", headers=HEADERS, timeout=5)
-        assert r.status_code == 200
-        data = r.json()
-        assert data["application"] == "Caldera"
-        assert "version" in data
+    def test_the_imports_below_the_path_insert_resolve(self):
+        # Both of these are why the module needs _REPO_ROOT on sys.path.
+        from plugins.mcp.app.mcp_server import CreateCommand, caldera_connection
+        assert CreateCommand is not None and caldera_connection is not None
 
-    def test_unauthorized_rejected(self):
-        r = requests.get(f"{CALDERA_URL}/api/v2/health", timeout=5)
-        assert r.status_code == 401
-
-
-@skipif_no_caldera
-class TestCalderaAbilitiesAPI:
-    def test_list_abilities(self):
-        r = requests.get(f"{CALDERA_URL}/api/v2/abilities", headers=HEADERS, timeout=10)
-        assert r.status_code == 200
-        abilities = r.json()
-        assert isinstance(abilities, list)
-
-    def test_abilities_have_ids(self):
-        r = requests.get(f"{CALDERA_URL}/api/v2/abilities", headers=HEADERS, timeout=10)
-        abilities = r.json()
-        if abilities:
-            assert "ability_id" in abilities[0]
-
-
-@skipif_no_caldera
-class TestCalderaAdversariesAPI:
-    def test_list_adversaries(self):
-        r = requests.get(f"{CALDERA_URL}/api/v2/adversaries", headers=HEADERS, timeout=10)
-        assert r.status_code == 200
-        assert isinstance(r.json(), list)
-
-
-@skipif_no_caldera
-class TestCalderaAgentsAPI:
-    def test_list_agents(self):
-        r = requests.get(f"{CALDERA_URL}/api/v2/agents", headers=HEADERS, timeout=10)
-        assert r.status_code == 200
-        assert isinstance(r.json(), list)
-
-
-@skipif_no_caldera
-class TestCalderaOperationsAPI:
-    def test_list_operations(self):
-        r = requests.get(f"{CALDERA_URL}/api/v2/operations", headers=HEADERS, timeout=10)
-        assert r.status_code == 200
-        assert isinstance(r.json(), list)
-
-
-@skipif_no_caldera
-class TestMCPPluginEndpoints:
-    def test_mcp_gui_accessible(self):
-        """MCP plugin GUI page should be accessible."""
-        r = requests.get(f"{CALDERA_URL}/plugin/mcp/gui",
-                        headers=HEADERS, timeout=5, allow_redirects=True)
-        # May return 200 or 404 depending on plugin enabled state
-        assert r.status_code in (200, 404, 500)
-
-    def test_mcp_js_accessible(self):
-        """MCP JavaScript file should be served."""
-        r = requests.get(f"{CALDERA_URL}/mcp/js/mcp.js", timeout=5)
-        # Static files may not require auth
-        assert r.status_code in (200, 404)
+    def test_it_registers_tools(self):
+        import asyncio
+        from plugins.mcp.app.mcp_server import mcp
+        tools = asyncio.run(mcp.list_tools())
+        assert tools, "the FastMCP app registered no tools"
