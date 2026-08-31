@@ -1,3 +1,4 @@
+import atexit
 import os
 import subprocess
 import socket
@@ -52,21 +53,41 @@ _MLFLOW_PORT = _mlflow['port']
 _MLFLOW_URI = _mlflow['tracking_uri']
 os.environ.setdefault('MLFLOW_TRACKING_URI', _MLFLOW_URI)
 
+# Only set when this process started MLflow, so shutdown never kills a server
+# the operator is running themselves.
+_mlflow_proc = None
+
+
+def _stop_mlflow_server():
+    if _mlflow_proc is None or _mlflow_proc.poll() is not None:
+        return
+    log.info("[MCP] Stopping the MLflow server this process started")
+    _mlflow_proc.terminate()
+    try:
+        _mlflow_proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        _mlflow_proc.kill()
+
+
 # Started from enable(), not at import: this spawns a process and blocks for
 # up to 10s, and importing the module should do neither.
 def _ensure_mlflow_server():
+    global _mlflow_proc
     if is_port_open(_MLFLOW_PORT, _MLFLOW_HOST):
         log.info(f"[MCP] MLflow already running on {_MLFLOW_HOST}:{_MLFLOW_PORT}")
         return
     try:
         plugin_dir = os.path.dirname(os.path.abspath(__file__))
-        subprocess.Popen([
+        _mlflow_proc = subprocess.Popen([
             "mlflow", "server",
             "--backend-store-uri", f"sqlite:///{os.path.join(plugin_dir, 'mlruns.db')}",
             "--default-artifact-root", os.path.join(plugin_dir, 'mlruns'),
             "--host", _MLFLOW_HOST,
             "--port", str(_MLFLOW_PORT),
         ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # Caldera has no plugin teardown hook, so without this the server is
+        # reparented to init and outlives every restart.
+        atexit.register(_stop_mlflow_server)
         log.debug(f"[MCP] Starting MLflow server at {_MLFLOW_URI}")
     except Exception as e:
         log.error(f"[MCP] Failed to start MLflow server: {e}")
