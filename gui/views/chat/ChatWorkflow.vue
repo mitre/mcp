@@ -2,7 +2,13 @@
   Top-level chat-style page for a single MCP workflow. Owns the message
   transcript and a single in-flight run; each user prompt triggers one
   /plugin/mcp/execute call and appends the resulting assistant message to
-  the transcript. The composer is disabled while a run is in progress.
+  the transcript.
+
+  A run belongs to the server, not to this component: leaving the page only
+  stops the poller. The run_id rides along on its assistant message, so a
+  remount re-attaches to a run that is still going. Navigation is never
+  blocked; only the composer is gated while a run is in flight, because the
+  view polls one run at a time.
 
   This component intentionally does not maintain a server-side session: the
   backend is still single-shot. The chat UI gives users a familiar Claude.ai
@@ -25,15 +31,16 @@
             class="back-button"
             @click="$emit('back')"
             type="button"
-            :disabled="run.isRunning.value"
-            :title="run.isRunning.value
-              ? 'Cannot leave while a run is in progress'
-              : 'Back to workflow list'"
+            title="Back to workflow list"
           >
             <font-awesome-icon :icon="backIcon" />
             <span>Back</span>
           </button>
-          <span v-if="run.isRunning.value" class="header-status running">
+          <span
+            v-if="run.isRunning.value"
+            class="header-status running"
+            title="This run continues on the server if you leave the page."
+          >
             <span class="status-dot"></span> Working
           </span>
           <span v-else-if="messages.length" class="header-status idle">
@@ -48,7 +55,6 @@
             class="header-action history-toggle"
             :class="{ 'is-on': historyEnabled }"
             @click="historyEnabled = !historyEnabled"
-            :disabled="run.isRunning.value"
             type="button"
             :title="historyEnabled
               ? 'Chat history is being threaded into each prompt. Click to disable for the rest of this session.'
@@ -61,9 +67,10 @@
             v-if="messages.length"
             class="header-action"
             @click="clearTranscript"
-            :disabled="run.isRunning.value"
             type="button"
-            title="Start a new chat"
+            :title="run.isRunning.value
+              ? 'Start a new chat. The run in progress keeps going on the server and stays in the History tab.'
+              : 'Start a new chat'"
           >
             <font-awesome-icon :icon="plusIcon" />
             <span>New chat</span>
@@ -183,6 +190,9 @@ onMounted(() => {
   // before the first render pass. Has to happen before the height sync so
   // the transcript scroll position settles correctly on a hydrated view.
   session.hydrate()
+  // A run that was in flight at the last unmount is still going server side,
+  // and hydrate() leaves its bubble RUNNING, so give it a fresh poller.
+  _resumeRunInFlight()
 
   prevBodyOverflow = document.body.style.overflow
   prevHtmlOverflow = document.documentElement.style.overflow
@@ -208,9 +218,14 @@ const { thoughts, adversary, abilityNames, splitSentences, isInjectedSentence } 
 // Sync the in-flight run into its assistant message as state changes. The
 // assistant message is created at submit time with a known id; we update
 // that message in place rather than re-pushing.
+//
+// runId is watched alongside the run state so the id reaches the persisted
+// transcript as soon as /execute answers. Waiting for the first poll would
+// leave a one-second window where clicking Back loses the handle on the run.
 let pendingAssistantId = null
 watch(
   () => ({
+    runId: run.runId.value,
     status: run.status.value,
     stage: run.stage.value,
     finalResult: run.finalResult.value,
@@ -222,6 +237,7 @@ watch(
     if (!pendingAssistantId) return
     const msg = messages.value.find(m => m.id === pendingAssistantId)
     if (!msg) return
+    msg.runId = run.runId.value
     msg.status = run.status.value
     msg.stage = run.stage.value
     msg.finalResult = run.finalResult.value
@@ -237,10 +253,30 @@ watch(
   { deep: true }
 )
 
+// Re-attach to a run that outlived the last unmount. Only the newest
+// assistant bubble can still own one: hydrate() has already failed every
+// older RUNNING message, and the composer admits one run at a time.
+function _resumeRunInFlight() {
+  const pending = [...messages.value]
+    .reverse()
+    .find(m => m.role === 'assistant' && m.status === 'RUNNING' && m.runId)
+  if (!pending) return
+  pendingAssistantId = pending.id
+  run.attach(pending.runId)
+}
+
+// Drop the poller on the way out. The run keeps going on the server and its
+// bubble stays RUNNING in localStorage, which is what _resumeRunInFlight
+// picks up on the next mount. Without this the 1s interval outlives the view.
+onBeforeUnmount(run.stop)
+
 // --- Workflow-derived UI bits ----------------------------------------------
 const examplePrompts = computed(() => props.workflow?.example_prompts || [])
 const composerPlaceholder = computed(() => {
-  if (run.isRunning.value) return 'Working on the previous request…'
+  // Says why the box is closed, and that closing it is not a page lock: the
+  // view polls one run at a time, but the run does not need the page open.
+  if (run.isRunning.value)
+    return 'Working on the previous request. You can leave this page, it keeps running…'
   if (messages.value.length) {
     if (historyActive.value) return 'Send a follow-up prompt in this session…'
     if (supportsChatHistory.value)
@@ -269,6 +305,9 @@ function handleSubmit() {
   messages.value.push({
     id: assistantId,
     role: 'assistant',
+    // Filled in by the run watcher once /execute answers. It is the handle
+    // a later mount uses to re-attach, so it is part of the stored message.
+    runId: null,
     status: 'RUNNING',
     stage: '',
     finalResult: '',
@@ -376,7 +415,10 @@ async function _startRun(text) {
 }
 
 function clearTranscript() {
-  if (run.isRunning.value) return
+  // Allowed mid-run: run.reset() drops the poller, and the run itself carries
+  // on server side and stays reachable in the History tab. What it loses is
+  // this view's link to it, which is the point of starting a new chat.
+  //
   // "New chat" is the only path that wipes durable session state. The
   // composable resets messages, sessionId, historyEnabled, and
   // selectedRag in memory AND removes this workflow's slice from

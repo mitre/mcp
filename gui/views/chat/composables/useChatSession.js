@@ -23,9 +23,10 @@
 // What it does not own:
 //   composerText, transient run-state (status/stage/finalResult on the
 //   in-flight assistant message). Composer text is intentionally not
-//   persisted — half-typed prompts surviving a remount is a worse UX
-//   than a clean text box. In-flight run state belongs to useMcpRun
-//   and is reconstructed from the polling endpoint, not localStorage.
+//   persisted: half-typed prompts surviving a remount is a worse UX
+//   than a clean text box. In-flight run state belongs to useMcpRun and
+//   is reconstructed from the polling endpoint; localStorage only keeps
+//   the run_id needed to ask for it again.
 //
 // Storage shape:
 //   localStorage key 'mcp_chat_sessions' holds:
@@ -36,11 +37,12 @@
 //   The schema version lets future changes drop incompatible blobs
 //   without confusing rehydration.
 //
-// On hydrate the composable also marks any message whose status is
-// still 'RUNNING' as FAILED with a "polling stopped" note. Polling
-// timers do not survive a component unmount; leaving the bubble
-// frozen on "Thinking" forever is misleading. The MLflow run is still
-// findable via the History tab if the user needs the result.
+// Assistant messages carry the run_id of the run that produced them, so
+// a bubble left mid-run survives a remount: the server keeps working and
+// ChatWorkflow re-attaches a poller to the newest RUNNING message. Older
+// RUNNING messages, and any that never captured a run_id, are marked
+// FAILED on hydrate with a pointer to the History tab, since nothing is
+// going to move them again.
 //
 // Limits:
 //   Per-workflow caps at MAX_MESSAGES messages and MAX_BYTES total
@@ -101,24 +103,27 @@ function _trimMessages(messages) {
   return trimmed
 }
 
-function _markStaleRunningAsFailed(messages) {
-  // A polling timer cannot survive a component unmount. Any message
-  // that was RUNNING when we last saved is no longer being updated;
-  // surfacing the stale state would lie to the user. Mark it FAILED
-  // with a hint so the user knows where to look (History tab).
-  return messages.map(m => {
-    if (m.status === 'RUNNING') {
-      return {
-        ...m,
-        status: 'FAILED',
-        stage: '',
-        errorMessage:
-          m.errorMessage
-          || 'Polling stopped when you navigated away. '
-             + 'Check the History tab for the final result.',
-      }
+function _markUnresumableRunning(messages) {
+  // The server keeps running after this view unmounts, so the newest
+  // RUNNING message can be re-attached by its runId. Anything older lost
+  // its poller for good (the view polls one run at a time), as did any
+  // message that never captured a runId, and a bubble left frozen on
+  // "Thinking" would lie to the user. Point those at the History tab.
+  const resumableIndex = messages.reduce(
+    (last, m, i) => (m.status === 'RUNNING' && m.runId ? i : last),
+    -1
+  )
+  return messages.map((m, i) => {
+    if (m.status !== 'RUNNING' || i === resumableIndex) return m
+    return {
+      ...m,
+      status: 'FAILED',
+      stage: '',
+      errorMessage:
+        m.errorMessage
+        || 'The page stopped tracking this run. '
+           + 'Check the History tab for the final result.',
     }
-    return m
   })
 }
 
@@ -131,7 +136,7 @@ export function useChatSession(workflowId) {
   function hydrate() {
     const slice = _readWorkflow(workflowId)
     if (!slice) return
-    messages.value = _markStaleRunningAsFailed(slice.messages || [])
+    messages.value = _markUnresumableRunning(slice.messages || [])
     sessionId.value = slice.sessionId ?? null
     historyEnabled.value =
       typeof slice.historyEnabled === 'boolean' ? slice.historyEnabled : true
