@@ -63,3 +63,41 @@ class TestGlobalProfileIsUntouched:
 
     def test_absent_workload_profile_is_empty(self):
         assert layered_profile({"llm": GLOBAL}, "cti") == {}
+
+
+class TestEmptyValuesFallThrough:
+    """A present-but-empty key must not defeat the value it layers over.
+
+    A cleared number input posts '', and a bare `timeout:` parses as None.
+    Copied verbatim, timeout=None reaches aiohttp as no timeout at all.
+    """
+
+    def test_none_does_not_override(self):
+        cfg = {"llm": {**GLOBAL, "timeout": 60}, "cti": {"timeout": None}}
+        assert layered_profile(cfg, "cti")["timeout"] == 60
+
+    def test_empty_string_does_not_override(self):
+        cfg = {"llm": {**GLOBAL, "max_tokens": 4000}, "cti": {"max_tokens": ""}}
+        assert layered_profile(cfg, "cti")["max_tokens"] == 4000
+
+    def test_zero_is_a_real_value_and_still_wins(self):
+        cfg = {"llm": {**GLOBAL, "temperature": 0.7}, "cti": {"temperature": 0}}
+        assert layered_profile(cfg, "cti")["temperature"] == 0
+
+    def test_false_is_a_real_value_and_still_wins(self):
+        cfg = {"llm": {**GLOBAL, "offline": True}, "cti": {"offline": False}}
+        assert layered_profile(cfg, "cti")["offline"] is False
+
+
+class TestWarningIsScopedToRealConflicts:
+    def test_a_key_matching_the_global_is_not_reported(self, caplog):
+        # The loader promotes a legacy connection onto llm, so the same key is
+        # then present on both. Reporting it as ignored contradicts that.
+        cfg = {"llm": {**GLOBAL, "model": "devstral"}, "cti": {"model": "devstral"}}
+        layered_profile(cfg, "cti")
+        assert "ignoring" not in caplog.text
+
+    def test_a_conflicting_key_is_still_reported(self, caplog):
+        cfg = {"llm": GLOBAL, "cti": {"model": "devstral"}}
+        layered_profile(cfg, "cti")
+        assert "ignoring model" in caplog.text

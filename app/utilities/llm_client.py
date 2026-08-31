@@ -101,17 +101,71 @@ def load_config() -> dict:
     if default_path.exists():
         with default_path.open("r", encoding="utf-8") as f:
             config = yaml.safe_load(f) or {}
+
+    local = {}
     if local_path.exists():
         with local_path.open("r", encoding="utf-8") as f:
-            config = deep_merge(config, unwrap_config_envelope(yaml.safe_load(f) or {}))
+            local = unwrap_config_envelope(yaml.safe_load(f) or {})
+        config = deep_merge(config, local)
 
     if not config:
         raise FileNotFoundError("No config found (default.yml or local.yml)")
+
+    return _promote_legacy_connection(config, local)
+
+def _promote_legacy_connection(config: dict, local: dict) -> dict:
+    """Move a pre-allowlist connection off a workload profile onto 'llm'.
+
+    Before the connection was centralised, conf/local.yml carried the endpoint
+    under the workload that used it, and some of those files were written by
+    the UI rather than by hand. Dropping those keys is correct for the new
+    model but silently retargets extraction at whatever default.yml ships,
+    which for a private gateway means sending report text somewhere else. So
+    when the operator never declared an 'llm' block, their workload connection
+    is the only connection they ever configured: honour it, and say so once.
+
+    Once local.yml has its own 'llm' block the operator has migrated, and a
+    leftover workload key is genuinely stale: layered_profile drops it.
+    """
+    if not local or "llm" in local:
+        return config
+
+    for profile, raw in local.items():
+        if profile == "llm" or profile not in LLM_PROFILES:
+            continue
+        if not isinstance(raw, dict):
+            continue
+        # Only an endpoint justifies this. A lone 'model' picks a different
+        # model at the same gateway, which is a preference the allowlist is
+        # entitled to drop. An api_base decides where the report text is sent,
+        # and silently changing that is the harm worth a migration.
+        if not (raw.get("api_base") or raw.get("api_base_env")):
+            continue
+        promoted = {k: v for k, v in raw.items() if k in CONNECTION_KEYS}
+        if not promoted:
+            continue
+        config["llm"] = {**(config.get("llm") or {}), **promoted}
+        logging.getLogger("plugins.mcp").warning(
+            "[MCP] conf/local.yml sets %s under '%s' and declares no 'llm' "
+            "block. The connection now belongs to 'llm', so these are being "
+            "read as the global connection for this run. Move them under an "
+            "'llm:' key in conf/local.yml to silence this.",
+            ", ".join(sorted(promoted)), profile,
+        )
     return config
 
+
 def reload_config():
-    """Force reload MCP config from disk."""
+    """Force reload MCP config from disk.
+
+    Also drops the LLMClient singleton. It snapshots the config at
+    construction, so without this a Save reached get_llm_provenance, which
+    reads fresh, but not generate(), which reads the snapshot: the bundle got
+    stamped with a model that did not produce it.
+    """
+    global _llm_client
     load_config.cache_clear()
+    _llm_client = None
     return load_config()
 
 
@@ -189,6 +243,25 @@ def _aiohttp_ssl_arg(ssl_verify):
 # pinned there beat the global one with nothing in the UI to show it, and the
 # panel that wrote those keys put them there by accident. One endpoint, one
 # model, and per-workload generation settings is the whole model now.
+# The connection. These belong to 'llm' and are what a workload profile may
+# not restate. Named here so the loader's migration and the filter below can
+# never drift apart.
+CONNECTION_KEYS = frozenset({
+    "provider",
+    "model",
+    "api_base",
+    "api_base_env",
+    "api_key",
+    "api_key_env",
+    "ssl_verify",
+    "extra_headers",
+    "fields_locked",
+})
+
+# The LLM profiles. conf/local.yml also holds unrelated sections such as
+# 'caldera' and 'mlflow', and the allowlist below must not be applied to those.
+LLM_PROFILES = frozenset({"llm", "cti"})
+
 WORKLOAD_OVERRIDABLE = frozenset({
     "temperature",
     "top_p",
@@ -215,15 +288,30 @@ def layered_profile(cfg: dict, profile: str) -> dict:
     if profile == "llm" or not raw:
         return raw
 
-    allowed = {k: v for k, v in raw.items() if k in WORKLOAD_OVERRIDABLE}
-    ignored = sorted(set(raw) - set(allowed))
+    # A key present but empty (a cleared number input sends '', a bare
+    # 'timeout:' parses as None) must fall through to the global value rather
+    # than override it with nothing. timeout=None means no timeout at all.
+    allowed = {
+        k: v for k, v in raw.items()
+        if k in WORKLOAD_OVERRIDABLE and v is not None and v != ""
+    }
+    glob = (cfg or {}).get("llm") or {}
+
+    # Only warn about a dropped key that would actually have changed something.
+    # A key the loader already promoted onto 'llm' now holds the same value, so
+    # reporting it as ignored contradicts the promotion notice.
+    ignored = sorted(
+        k for k in set(raw) - set(allowed)
+        if not (k in WORKLOAD_OVERRIDABLE and (raw[k] is None or raw[k] == ""))
+        and raw[k] != glob.get(k)
+    )
     if ignored:
         logging.getLogger("plugins.mcp").warning(
             "[MCP] %s: ignoring %s. The connection is configured once on the "
             "'llm' profile; remove these from conf/local.yml.",
             profile, ", ".join(ignored),
         )
-    return {**((cfg or {}).get("llm") or {}), **allowed}
+    return {**glob, **allowed}
 
 
 def get_llm_provenance(profile: str = "llm", *, runtime: bool = False) -> dict:
@@ -378,6 +466,11 @@ class LLMClient:
             "temperature": temperature,
             "max_tokens": llm_cfg.get("max_tokens", 1024),
         }
+        # Provenance stamps top_p into every bundle, so it has to actually be
+        # sent or the bundle documents a setting that never applied.
+        top_p = llm_cfg.get("top_p")
+        if top_p is not None:
+            payload["top_p"] = top_p
 
         timeout = aiohttp.ClientTimeout(total=llm_cfg.get("timeout", 60))
         ssl_arg = _aiohttp_ssl_arg(llm_cfg.get("ssl_verify", True))
