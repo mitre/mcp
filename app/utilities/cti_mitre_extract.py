@@ -16,7 +16,7 @@ import re
 import numpy as np
 
 from plugins.mcp.app.utilities.nlp_model import get_nlp
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 from functools import lru_cache
 from spacy.lang.en.stop_words import STOP_WORDS as SPACY_STOP_WORDS
@@ -316,11 +316,18 @@ def hashes_to_stix_observed_data(hashes, source_name="cti-report"):
             }
         }
 
+        stamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         observed = {
             "type": "observed-data",
+            "spec_version": "2.1",
             "id": obs_id,
-            "created": datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z"),
-            "modified": datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z"),
+            "created": stamp,
+            "modified": stamp,
+            # Required by the 2.1 spec. Without them stix2.parse raises
+            # MissingPropertiesError, so any bundle carrying a file hash could
+            # not be loaded by the reference parser at all.
+            "first_observed": stamp,
+            "last_observed": stamp,
             "number_observed": 1,
             "objects": {
                 "0": file_obj
