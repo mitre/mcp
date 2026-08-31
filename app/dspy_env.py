@@ -38,10 +38,13 @@ ENV_PROVIDER = "DSPY_PROVIDER"
 ENV_TIMEOUT = "DSPY_TIMEOUT"
 ENV_SSL_VERIFY = "DSPY_SSL_VERIFY"
 
+# Last-resort fallbacks when a setting reaches here unset. Kept equal to
+# conf/default.yml so the subprocess cannot run on different numbers from the
+# ones the UI displays.
 _DEFAULTS = {
     "model": "gpt-4o",
-    "temperature": 0.5,
-    "max_tokens": 10000,
+    "temperature": 0.0,
+    "max_tokens": 24000,
 }
 
 _LM_CONFIGURED = False

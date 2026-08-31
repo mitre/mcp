@@ -37,8 +37,14 @@ def get_env(lm_settings=None):
         env[ENV_API_KEY] = str(lm_settings.get('api_key') or '')
         env[ENV_API_BASE] = str(lm_settings.get('api_base') or '')
         env[ENV_PROVIDER] = str(lm_settings.get('provider') or 'openai_compatible')
-        env[ENV_TEMPERATURE] = str(lm_settings.get('temperature') or 0.5)
-        env[ENV_MAX_TOKENS] = str(lm_settings.get('max_tokens') or 24000)
+        # 0.0 is falsy, and it is the shipped value: default.yml sets
+        # temperature 0 because Stage 1 parses the model's own output as JSON.
+        # "or" silently exported 0.5 instead, so the setting never reached the
+        # subprocess. The two lines below already guard this correctly.
+        if lm_settings.get('temperature') is not None:
+            env[ENV_TEMPERATURE] = str(lm_settings.get('temperature'))
+        if lm_settings.get('max_tokens') is not None:
+            env[ENV_MAX_TOKENS] = str(lm_settings.get('max_tokens'))
         if lm_settings.get('timeout') is not None:
             env[ENV_TIMEOUT] = str(lm_settings.get('timeout'))
         if lm_settings.get('ssl_verify') is not None:

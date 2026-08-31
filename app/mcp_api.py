@@ -425,7 +425,7 @@ class McpAPI:
                         files.append({
                             "filename": p.name,
                             "size": stat.st_size,
-                            "modified": datetime.utcfromtimestamp(stat.st_mtime).isoformat() + "Z"
+                            "modified": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat().replace("+00:00", "Z")
                         })
                     except Exception:
                         continue
@@ -722,7 +722,7 @@ class McpAPI:
                     files.append({
                         "filename": p.name,
                         "size": stat.st_size,
-                        "modified": datetime.utcfromtimestamp(stat.st_mtime).isoformat() + "Z",
+                        "modified": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat().replace("+00:00", "Z"),
                         # Absent on an offline bundle, which credits no model.
                         "model": model,
                         "provider": provider,
