@@ -145,18 +145,6 @@ def _caldera_headers() -> dict:
     }
 
 
-def _caldera_root() -> str:
-    """Caldera HTTP root (without the /api/v2/ suffix) - used for plugin
-    endpoints that live outside the v2 API namespace.
-    """
-    api = _caldera_base_url()
-    # api looks like "http://host:port/api/v2/"; strip the trailing
-    # "api/v2/" to get the root.
-    for marker in ("api/v2/", "api/v2"):
-        if api.endswith(marker):
-            return api[: -len(marker)]
-    # Fallback - use the scheme+host only.
-    return api
 
 
 # ---------------------------------------------------------------------------

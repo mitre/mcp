@@ -18,7 +18,6 @@ from enum import Enum
 from pathlib import Path
 
 from plugins.mcp.app.cti_pipeline_stage1 import (
-    ensure_dirs,
     step_raw_to_clean,
     step_parse_to_ir
 )

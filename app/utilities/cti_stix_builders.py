@@ -26,8 +26,6 @@ avoids crashes, and keeps STIX output robust, flexible, and pipeline-friendly.
 import uuid
 import datetime
 import re
-from functools import lru_cache
-from pathlib import Path
 
 
 # ----------------------------------------------------------------------
@@ -44,35 +42,8 @@ def now():
     return datetime.datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z")
 
 
-# ----------------------------------------------------------------------
-# STIX 2.1 open-vocabulary loader (data-file driven, no static lists).
-# The YAML at app/utilities/data/stix_open_vocabs.yml records the
-# normative spec vocabularies; we load it once and use it to validate /
-# default vocab-typed values. If the file is missing we degrade to a
-# pass-through (the OASIS vocabularies are *open*, so unknown values are
-# legal — they just lose the "spec-known" badge).
-# ----------------------------------------------------------------------
-_STIX_VOCAB_PATH = Path(__file__).resolve().parent / "data" / "stix_open_vocabs.yml"
 
 
-@lru_cache(maxsize=1)
-def _stix_open_vocabs() -> dict:
-    """Return the STIX 2.1 open-vocabularies dict from the YAML data file."""
-    try:
-        import yaml  # type: ignore
-        with _STIX_VOCAB_PATH.open("r", encoding="utf-8") as fh:
-            doc = yaml.safe_load(fh) or {}
-        return {
-            "account_type_ov":     frozenset(doc.get("account_type_ov") or []),
-            "identity_class_ov":   frozenset(doc.get("identity_class_ov") or []),
-            "relationship_type_ov": frozenset(doc.get("relationship_type_ov") or []),
-        }
-    except Exception:
-        return {
-            "account_type_ov": frozenset(),
-            "identity_class_ov": frozenset(),
-            "relationship_type_ov": frozenset(),
-        }
 
 
 # ----------------------------------------------------------------------
@@ -153,54 +124,6 @@ def make_threat_actor(ta: dict, taxonomy: dict = None) -> dict:
     return obj
 
 
-# ----------------------------------------------------------------------
-# Infrastructure
-# ----------------------------------------------------------------------
-
-# STIX 2.1 'infrastructure-type-ov' vocabulary — verbatim from the spec
-# (https://docs.oasis-open.org/cti/stix/v2.1/os/stix-v2.1-os.html). The
-# trigger phrases for each term are derived from the spec's own description
-# text for that vocab member; we are not inventing categories. Misses
-# default to ['unknown'] which is also the spec's catch-all.
-#
-# If you want to extend or override these triggers, edit them here — but
-# the keys MUST stay in the spec vocab. Anything else won't validate.
-_STIX_INFRA_TYPE_TRIGGERS = {
-    "amplification":         ["dns amplif", "ntp amplif", "ssdp amplif", "reflection"],
-    "anonymization":         ["tor", "vpn", "proxy", "anonymis", "anonymiz", "tunnel"],
-    "botnet":                ["botnet", "zombie", "ddos node"],
-    "command-and-control":   ["command-and-control", "command and control", "c2 ", "c&c", "beacon"],
-    "control-system":        ["scada", "ics", "industrial control", "plc"],
-    "exfiltration":          ["exfil", "data extraction", "stealer drop"],
-    "firewall":              ["firewall", "waf"],
-    "hosting-malware":       ["staging", "payload host", "malware host", "exploit kit", "vulnerable", "unpatched", "exposed"],
-    "hosting-target-lists":  ["target list", "victim list"],
-    "phishing":              ["phishing", "credential harvest", "smishing", "spear-phish", "spearphish"],
-    "reconnaissance":        ["recon", "scanning", "enumeration"],
-    "routers-switches":      ["router", "switch", "bgp"],
-    "staging":               ["staging server", "stager", "loader"],
-    "workstation":           ["workstation", "endpoint", "user host", "domain-joined"],
-    # 'unknown' is implicit fallback — never used as a trigger key
-}
-def _resolve_tactic_from_taxonomy(ap_id: str, taxonomy: dict) -> list:
-    """
-    Look up an attack-pattern's tactic phase names via ATT&CK taxonomy.
-
-    ATT&CK STIX entries carry tactics as `kill_chain_phases` directly on
-    the attack-pattern object (kill_chain_name='mitre-attack', phase_name=
-    the tactic). Pulling tactic from the taxonomy entry is pure ontology
-    lookup — no string parsing, no static technique->tactic table.
-    """
-    if not (ap_id and taxonomy):
-        return []
-    entry = taxonomy.get("attack_id_index", {}).get(ap_id)
-    if not entry:
-        return []
-    return [
-        kcp.get("phase_name")
-        for kcp in entry.get("kill_chain_phases", [])
-        if kcp.get("kill_chain_name") == "mitre-attack" and kcp.get("phase_name")
-    ]
 def make_attack_pattern(ttp_text, taxonomy: dict):
     """
     Create attack-pattern SDO using MITRE taxonomy first.

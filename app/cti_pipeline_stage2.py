@@ -22,7 +22,6 @@ Debug / Observability:
 
 import json
 from pathlib import Path
-import uuid
 
 import datetime
 
@@ -279,8 +278,3 @@ def run_phase2(base_dir: Path):
 
 
 
-def new_stix_id(stix_type: str) -> str:
-    """
-    Generate a valid STIX 2.1 ID using UUIDv4.
-    """
-    return f"{stix_type}--{uuid.uuid4()}"

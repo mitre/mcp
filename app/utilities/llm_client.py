@@ -13,47 +13,15 @@ import os
 import ssl
 import aiohttp
 import yaml
-import dspy
 from functools import lru_cache
 from urllib.parse import urlsplit, urlunsplit
 
 from plugins.mcp.app.dspy_env import (
     apply_litellm_ssl_verify,
     coerce_optional_bool,
-    dspy_lm_kwargs_from_settings,
 )
 from plugins.mcp.app.utilities.paths import get_mcp_root
 
-def init_mlflow(profile: str):
-    """
-    Initialize MLflow deterministically from config.
-    Safe to call multiple times.
-    Must only be called at runtime (never import-time).
-    """
-    import mlflow
-    import dspy
-    cfg = load_config()
-    mlflow_cfg = cfg.get("mlflow", {})
-
-    if not mlflow_cfg.get("enabled", False):
-        return
-
-    tracking_uri = mlflow_cfg.get("tracking_uri")
-    if tracking_uri:
-        mlflow.set_tracking_uri(tracking_uri)
-
-    experiment_cfg = mlflow_cfg.get("experiment", {})
-    experiment_name = experiment_cfg.get(profile)
-    if experiment_name:
-        mlflow.set_experiment(experiment_name)
-
-    autolog_cfg = mlflow_cfg.get("autolog", {})
-    # DSPy autolog is NOT safe in async / multi-task execution.
-    # DSPy must be controlled via dspy.context() only.
-    if autolog_cfg.get("dspy", False):
-        logging.getLogger("plugins.mcp").warning(
-            "[MCP] mlflow.dspy.autolog() is disabled (unsafe with async tasks)"
-        )
 
 # ------------------------------------------------------
 # Config loader (local, explicit, deterministic)
@@ -322,20 +290,6 @@ def get_llm_provenance(profile: str = "llm", *, runtime: bool = False) -> dict:
 
     return base
 
-def build_dspy_lm(profile: str = "llm") -> dspy.LM:
-    """
-    Build a DSPy LM instance from MCP config.
-    Must only be called at runtime.
-    """
-    llm_rt = get_llm_provenance(profile, runtime=True)
-
-    # Deterministic early exit
-    if llm_rt.get("offline"):
-        raise RuntimeError(f"LLM profile '{profile}' is offline; cannot build DSPy LM")
-
-    kwargs = dspy_lm_kwargs_from_settings(llm_rt)
-
-    return dspy.LM(**kwargs)
 
 # ------------------------------------------------------
 # Central LLM Client

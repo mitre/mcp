@@ -146,13 +146,6 @@ class DSPyCalderaFactoryClientWithRAG(dspy.Signature):
         )
     )
 
-# Factory function to create tool functions with proper closure
-def create_tool_function(session, tool_name, tool_description):
-    async def tool_function(**kwargs):
-        result = await session.call_tool(tool_name, kwargs)
-        return result
-    tool_function.__doc__ = tool_description
-    return tool_function
 
 def format_rag_context(rag_context):
     """Format RAG context into a string for the DSPy signature."""

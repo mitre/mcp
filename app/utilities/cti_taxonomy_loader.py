@@ -182,9 +182,6 @@ def _load_mitre_taxonomy():
                 "source": obj.get("source_ref"),
                 "target": obj.get("target_ref")
             }
-            rel_type = obj.get("relationship_type")
-            src_ref  = obj.get("source_ref")
-            tgt_ref  = obj.get("target_ref")
 
 
     # ---------------------------------------------------------
