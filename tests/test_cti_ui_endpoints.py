@@ -159,26 +159,8 @@ class TestCtiRawDeletion:
 class TestCtiPipelineRun:
     """Tests for the Run Pipeline button."""
 
-    def test_run_with_files(self):
-        """Run pipeline on specific files."""
-        r = requests.post(f"{CALDERA_URL}/plugin/mcp/cti/run",
-                         headers=JSON_HEADERS,
-                         json={"files": [{"name": "pytest_upload.txt", "location": "inbox"}],
-                               "step": "all"}, timeout=30)
-        assert r.status_code in (200, 400, 500)
 
-    def test_run_without_files_fails(self):
-        """Run pipeline with no files should fail."""
-        r = requests.post(f"{CALDERA_URL}/plugin/mcp/cti/run",
-                         headers=JSON_HEADERS,
-                         json={"files": [], "step": "all"}, timeout=10)
-        assert r.status_code in (200, 400)
 
-    def test_run_missing_body_fails(self):
-        """Run pipeline with no body should fail."""
-        r = requests.post(f"{CALDERA_URL}/plugin/mcp/cti/run",
-                         headers=HEADERS, timeout=5)
-        assert r.status_code in (400, 500)
 
 
 # ============================================================

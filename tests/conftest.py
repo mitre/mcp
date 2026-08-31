@@ -47,6 +47,24 @@ def _preserve_local_yml():
             LOCAL_YML.write_text(before, encoding="utf-8")
 
 
+# The live suites upload through the running server, so their fixtures land in
+# the operator's real data/. Named pytest_* or test_* by convention; this
+# sweeps whatever they leave.
+_TEST_UPLOAD_PREFIXES = ("pytest_", "test_cti.")
+
+
+@pytest.fixture(autouse=True)
+def _sweep_test_uploads():
+    yield
+    for sub in ("raw/uploads", "raw/processed", "clean"):
+        d = DATA_DIR / sub
+        if not d.is_dir():
+            continue
+        for f in d.iterdir():
+            if f.is_file() and f.name.startswith(_TEST_UPLOAD_PREFIXES):
+                f.unlink(missing_ok=True)
+
+
 @pytest.fixture(scope="session")
 def nlp():
     """Shared spaCy model (loaded once per test session)."""

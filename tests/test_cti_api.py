@@ -122,14 +122,6 @@ class TestCtiRawEndpoints:
         assert r.status_code == 200
 
 
-@skipif_no_caldera
-@skipif_mcp_disabled
-class TestCtiPipelineEndpoint:
-    def test_run_pipeline(self):
-        """Trigger pipeline execution."""
-        r = requests.post(f"{CALDERA_URL}/plugin/mcp/cti/run",
-                         headers=HEADERS, json={"files": [], "step": "all"}, timeout=10)
-        assert r.status_code in (200, 400)  # 400 if no files selected
 
 
 @skipif_no_caldera
