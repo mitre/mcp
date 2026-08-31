@@ -45,12 +45,16 @@
         <label class="label">Temperature</label>
         <input class="input" type="number" step="0.1" min="0" max="1"
                v-model.number="local.temperature" />
-        <p class="help">0 keeps extraction repeatable across runs.</p>
+        <p class="help">
+          Shared with <strong>Global Model Config</strong>. 0 keeps extraction
+          repeatable, because Stage 1 parses the model's own output as JSON.
+        </p>
       </div>
 
       <div class="field">
         <label class="label">Max Tokens</label>
         <input class="input" type="number" v-model.number="local.max_tokens" />
+        <p class="help">Shared with <strong>Global Model Config</strong>.</p>
       </div>
 
       <div class="field">
@@ -166,12 +170,18 @@ async function save() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        // Connection fields are deliberately absent. Writing them back would
-        // pin a copy of the global endpoint into local.yml, which is the
-        // duplication this profile now inherits its way out of.
-        [props.configKey]: {
+        // temperature and max_tokens go to the global profile, so editing them
+        // here is editing the same value Global Model Config shows. Two copies
+        // drifted: this panel read 0 and 8192 while that one read 0.5 and
+        // 24000, and nothing said which a run would use.
+        llm: {
           temperature: local.temperature,
-          max_tokens: local.max_tokens,
+          max_tokens: local.max_tokens
+        },
+        // The connection is deliberately absent. Writing it back would pin a
+        // copy of the global endpoint into local.yml, which is the duplication
+        // this profile now inherits its way out of.
+        [props.configKey]: {
           timeout: local.timeout,
           offline: local.offline
         }

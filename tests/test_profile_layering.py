@@ -37,12 +37,21 @@ class TestConnectionIsNotOverridable:
 
 
 class TestGenerationSettingsStillApply:
-    def test_temperature_and_tokens_override(self):
+    def test_the_workload_settings_override(self):
+        cfg = {"llm": {**GLOBAL, "timeout": 60, "top_p": 1.0},
+               "cti": {"timeout": 120, "top_p": 0.9}}
+        r = layered_profile(cfg, "cti")
+        assert r["timeout"] == 120
+        assert r["top_p"] == 0.9
+
+    def test_temperature_and_max_tokens_are_not_overridable(self):
+        # Two panels show these, and two stored copies drifted: the CTI panel
+        # read 0 and 8192 while the global panel read 0.5 and 24000.
         cfg = {"llm": {**GLOBAL, "temperature": 0.5, "max_tokens": 24000},
                "cti": {"temperature": 0.0, "max_tokens": 4000}}
         r = layered_profile(cfg, "cti")
-        assert r["temperature"] == 0.0
-        assert r["max_tokens"] == 4000
+        assert r["temperature"] == 0.5
+        assert r["max_tokens"] == 24000
 
     def test_offline_is_per_workload(self):
         """Extraction can go offline without silencing chat."""
@@ -96,8 +105,8 @@ class TestEmptyValuesFallThrough:
         assert layered_profile(cfg, "cti")["max_tokens"] == 4000
 
     def test_zero_is_a_real_value_and_still_wins(self):
-        cfg = {"llm": {**GLOBAL, "temperature": 0.7}, "cti": {"temperature": 0}}
-        assert layered_profile(cfg, "cti")["temperature"] == 0
+        cfg = {"llm": {**GLOBAL, "top_p": 0.7}, "cti": {"top_p": 0}}
+        assert layered_profile(cfg, "cti")["top_p"] == 0
 
     def test_false_is_a_real_value_and_still_wins(self):
         cfg = {"llm": {**GLOBAL, "offline": True}, "cti": {"offline": False}}

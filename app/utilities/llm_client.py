@@ -202,10 +202,14 @@ def _aiohttp_ssl_arg(ssl_verify):
 # 'caldera' and 'mlflow', and the allowlist below must not be applied to those.
 LLM_PROFILES = frozenset({"llm", "cti"})
 
+# temperature and max_tokens are deliberately NOT here. They are displayed and
+# edited by two panels, and two stored copies drift: the CTI panel showed 0 and
+# 8192 while the global panel showed 0.5 and 24000, with nothing to say which
+# one a run would use. They live on 'llm' so there is one value to disagree
+# about.
 WORKLOAD_OVERRIDABLE = frozenset({
-    "temperature",
     "top_p",
-    "max_tokens",
+    # Extraction legitimately waits longer than an interactive chat turn.
     "timeout",
     "stream",
     # Per-workload run mode: extraction can go offline without silencing chat.
@@ -253,8 +257,8 @@ def layered_profile(cfg: dict, profile: str) -> dict:
     )
     if ignored:
         logging.getLogger("plugins.mcp").warning(
-            "[MCP] %s: ignoring %s. The connection is configured once on the "
-            "'llm' profile; remove these from conf/local.yml.",
+            "[MCP] %s: ignoring %s. These are set once on the 'llm' profile; "
+            "remove them from conf/local.yml.",
             profile, ", ".join(ignored),
         )
     return {**glob, **allowed}

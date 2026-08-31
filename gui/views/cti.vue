@@ -442,8 +442,10 @@ async function loadBackendConfig() {
     api_key_env: resolved.api_key_env ?? null,
     // The editable generation settings, resolved so the inputs show what is
     // actually in force rather than only what local.yml happens to restate.
-    temperature: resolved.temperature ?? 0.0,
-    max_tokens: resolved.max_tokens ?? 4000,
+    // Shared with the global profile, so whatever the server resolved is the
+    // number both panels must show.
+    temperature: resolved.temperature,
+    max_tokens: resolved.max_tokens,
     timeout: resolved.timeout ?? 120,
     offline: resolved.offline ?? false,
     // Read-only. A workload profile cannot override the connection, so this

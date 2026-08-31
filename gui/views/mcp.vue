@@ -541,6 +541,10 @@ async function setSelectedPath(path) {
   // the pre-edit endpoint until the next visit, so flush first.
   await flushGlobalConfigSync()
   selectedPath.value = path
+  // This view is only hidden while a sub-view is open, never unmounted, so
+  // returning to it would otherwise show whatever it held on first mount.
+  // The CTI panel edits temperature and max_tokens on the same profile.
+  if (!path) await refreshServerDefaults()
 }
 
 function selectedPathExists(path) {
@@ -764,6 +768,22 @@ function resolveWorkflowComponent(wf) {
 const activeWorkflow = computed(() =>
   availableWorkflows.value.find(w => w.id === selectedPath.value) || null
 )
+
+async function refreshServerDefaults() {
+  try {
+    const resp = await fetch('/plugin/mcp/defaults')
+    if (!resp.ok) return
+    // Re-seeding assigns the watched refs, which would queue a save of values
+    // the server just gave us.
+    hydrating = true
+    applyServerDefaults(await resp.json())
+    await nextTick()
+  } catch (e) {
+    console.warn('[MCP] Failed to refresh /plugin/mcp/defaults:', e)
+  } finally {
+    hydrating = false
+  }
+}
 
 onMounted(async () => {
   // Backend-driven defaults so the UI never duplicates yaml values.
