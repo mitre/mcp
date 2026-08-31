@@ -58,7 +58,7 @@ class TestWorkloadProfilesRefuseTheConnection:
     @pytest.mark.parametrize(
         "key,value",
         [("model", "devstral"), ("api_base", "https://gw/v1"),
-         ("provider", "ollama"), ("ssl_verify", False), ("api_key", "sk-x"),
+         ("provider", "ollama"), ("ssl_verify", False),
          # Shown by two panels, so stored once on llm.
          ("temperature", 0.0), ("max_tokens", 4000)],
     )
@@ -66,6 +66,17 @@ class TestWorkloadProfilesRefuseTheConnection:
         resp = await api.set_config(_FakeRequest({"cti": {key: value}}))
         assert resp.status == 400
         assert not (tmp_path / "conf" / "local.yml").exists()
+
+    @pytest.mark.asyncio
+    async def test_a_credential_is_stripped_rather_than_refused(self, api, tmp_path):
+        # An older cached bundle still posts api_key. Refusing the whole
+        # payload would stop it saving anything; the scrub is what protects
+        # the file.
+        resp = await api.set_config(_FakeRequest(
+            {"cti": {"timeout": 120, "api_key": "sk-x"}}))
+        assert resp.status == 200
+        assert "sk-x" not in (tmp_path / "conf" / "local.yml").read_text()
+        assert _saved(tmp_path)["cti"]["timeout"] == 120
 
     @pytest.mark.asyncio
     async def test_the_message_names_the_key_and_the_owner(self, api):
@@ -166,3 +177,78 @@ class TestGetConfigResolvesServerSide:
 
         resp = await api.get_config(None)
         assert "sk-live" not in resp.text
+
+
+class TestOnlyKnownSectionsAndKeys:
+    """The llm section used to accept any key at all, and any section was new.
+
+    A gateway credential arrives as an Authorization or x-api-key header, and
+    conf/local.yml is plaintext beside tracked config.
+    """
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("key", ["extra_headers", "not_a_setting"])
+    async def test_an_unknown_llm_key_is_refused(self, api, tmp_path, key):
+        resp = await api.set_config(_FakeRequest({"llm": {key: "x"}}))
+        assert resp.status == 400
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("key", ["Authorization", "x-api-key"])
+    async def test_a_header_credential_never_reaches_the_file(self, api, tmp_path, key):
+        await api.set_config(_FakeRequest({"llm": {"model": "m", key: "sk-live"}}))
+        assert "sk-live" not in (tmp_path / "conf" / "local.yml").read_text()
+
+    @pytest.mark.asyncio
+    async def test_an_unknown_section_is_refused(self, api):
+        resp = await api.set_config(_FakeRequest({"totally_new": {"password": "x"}}))
+        assert resp.status == 400
+        assert "unknown config section" in resp.text
+
+    @pytest.mark.asyncio
+    async def test_the_get_config_envelope_does_not_bypass_validation(self, api):
+        # get_config returns {"config": ..., "resolved": ...}. That sibling key
+        # made the envelope test fail, so a round trip was treated as a literal
+        # payload and slipped past the per-section rules.
+        resp = await api.set_config(_FakeRequest(
+            {"config": {"cti": {"model": "sneaky"}}, "resolved": {}}))
+        assert resp.status == 400
+
+    @pytest.mark.asyncio
+    async def test_a_round_trip_does_not_persist_the_envelope(self, api, tmp_path):
+        resp = await api.set_config(_FakeRequest(
+            {"config": {"cti": {"timeout": 120}}, "resolved": {"cti": {}}}))
+        assert resp.status == 200
+        saved = _saved(tmp_path)
+        assert saved["cti"]["timeout"] == 120
+        assert "config" not in saved and "resolved" not in saved
+
+
+class TestMlflowStaysOnLoopback:
+    """hook.py passes mlflow.host to 'mlflow server --host'.
+
+    That server holds every prompt and response the plugin has logged, with no
+    authentication, so rebinding it off loopback is a deployment decision
+    rather than something one authenticated POST should do.
+    """
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("host", ["0.0.0.0", "10.0.0.5", "::"])
+    async def test_a_non_loopback_bind_is_refused(self, api, host):
+        resp = await api.set_config(_FakeRequest({"mlflow": {"host": host}}))
+        assert resp.status == 400
+        assert "tracking server" in resp.text
+
+    @pytest.mark.asyncio
+    async def test_loopback_and_port_are_fine(self, api, tmp_path):
+        resp = await api.set_config(
+            _FakeRequest({"mlflow": {"host": "127.0.0.1", "port": 5050}}))
+        assert resp.status == 200
+        assert _saved(tmp_path)["mlflow"]["port"] == 5050
+
+
+def test_max_tokens_is_not_mistaken_for_a_credential():
+    # The widened secret pattern matches "token"; max_tokens is a generation
+    # setting, and dropping it silently is worse than not matching a secret.
+    from plugins.mcp.app.mcp_api import _is_secret
+    assert not _is_secret("max_tokens")
+    assert _is_secret("access_token")
