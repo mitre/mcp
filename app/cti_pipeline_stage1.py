@@ -46,7 +46,7 @@ from plugins.mcp.app.utilities.cti_taxonomy_loader import (
     load_mitre_taxonomy,
 )
 
-from plugins.mcp.app.utilities.cti_linguistics import extract_commands, extract_hashes
+from plugins.mcp.app.utilities.cti_linguistics import extract_hashes
 from plugins.mcp.app.utilities.cti_technique_grounding import (
     ground_techniques,
     detect_platforms,
@@ -272,16 +272,6 @@ async def process_file(
     # Commands Extraction (Linguistic)
     # ---------------------------------------------------------
 
-    commands = extract_commands(text)
-    if commands:
-        for m in ir.get("malware", []):
-            if m.get("name", "").lower() in text.lower():
-                _merge_commands(m, commands)
-
-        for t in ir.get("tools", []):
-            if t.get("name", "").lower() in text.lower():
-                _merge_commands(t, commands)
-
     # ---------------------------------------------------------
     # Hash Extraction (File Observables)
     # ---------------------------------------------------------
@@ -467,11 +457,6 @@ async def load_or_extract_ir(path: Path, text: str, ir_dir: Path) -> dict:
     print(f"[IR] Extracted {path.stem}")
     return ir
 
-def _merge_commands(entity, commands):
-    existing = {c["command"] for c in entity.get("x_cti_commands", [])}
-    for c in commands:
-        if c["command"] not in existing:
-            entity.setdefault("x_cti_commands", []).append(c)
 
 
 def prepare_raw_uploads(base_dir: Path, selected: list[dict]):

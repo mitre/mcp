@@ -32,22 +32,6 @@ def _build_mitre_entity_index():
 
     index = {}
 
-    for obj_id, obj in tax.get("tools", {}).items():
-        name = obj.get("name", "").strip()
-        desc = obj.get("description", "")[:200] if obj.get("description") else ""
-        if name:
-            index[name.lower()] = ("tools", name, desc)
-            for alias in obj.get("x_mitre_aliases", []):
-                index[alias.lower()] = ("tools", alias, desc)
-
-    for obj_id, obj in tax.get("malware", {}).items():
-        name = obj.get("name", "").strip()
-        desc = obj.get("description", "")[:200] if obj.get("description") else ""
-        if name:
-            index[name.lower()] = ("malware", name, desc)
-            for alias in obj.get("x_mitre_aliases", []):
-                index[alias.lower()] = ("malware", alias, desc)
-
     for obj_id, obj in tax.get("groups", {}).items():
         name = obj.get("name", "").strip()
         desc = obj.get("description", "")[:200] if obj.get("description") else ""
@@ -64,23 +48,7 @@ def _build_mitre_entity_index():
 # ============================================================
 
 # Tools commonly seen in CTI that may not be in MITRE taxonomy
-WELL_KNOWN_TOOLS = {
-    "anydesk", "teamviewer", "megasync", "rclone", "winrar", "7zip",
-    "winscp", "filezilla", "ngrok", "chisel", "ligolo", "rsync",
-    "veeam", "acronis", "nmap", "masscan", "advanced ip scanner",
-    "sharphound", "bloodhound", "rubeus", "seatbelt", "certutil",
-    "bitsadmin", "wevtutil", "bcdedit", "vssadmin", "fsutil",
-    "wmic", "net.exe", "sc.exe", "reg.exe", "tasklist",
-    "procdump", "dumpert", "nanodump", "ppldump",
-}
-
 # Infrastructure patterns (regex)
-INFRA_PATTERNS = [
-    (r"\b(?:\d{1,3}\.){3}\d{1,3}\b", "IPv4 address"),
-    (r"\b[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.[a-z]{2,}\b", "domain"),
-    (r"\b(?:https?://\S+)\b", "URL"),
-]
-
 
 # ============================================================
 # OFFLINE IR EXTRACTION
@@ -104,9 +72,6 @@ def extract_ir_offline(text: str) -> dict:
 
     ir = {
         "threat_actors": [],
-        "malware": [],
-        "tools": [],
-        "infrastructure": [],
         "attack_patterns": [],
         "behaviors": [],
         "relationships": [],
@@ -185,80 +150,14 @@ def extract_ir_offline(text: str) -> dict:
                 "source": "frequency-inference",
             })
 
-    mitre_found = sum(len(ir[k]) for k in ("threat_actors", "malware", "tools"))
-    print(f"[OFFLINE-IR] MITRE taxonomy matches: {mitre_found}")
+    print(f"[OFFLINE-IR] MITRE taxonomy matches: {len(ir['threat_actors'])}")
 
     # ---------------------------------------------------------
-    # 2. Well-known tools scan
-    # ---------------------------------------------------------
-    for tool in WELL_KNOWN_TOOLS:
-        pattern = r"\b" + re.escape(tool) + r"\b"
-        if re.search(pattern, text_lower):
-            key = ("tools", tool)
-            if key not in seen_entities:
-                seen_entities.add(key)
-                # Find the sentence containing the tool for description
-                for sent in text.split("."):
-                    if tool in sent.lower():
-                        desc = sent.strip()[:150]
-                        break
-                else:
-                    desc = ""
-                ir["tools"].append({
-                    "name": tool.title() if not any(c.isupper() for c in tool) else tool,
-                    "description": desc,
-                    "source": "well-known",
-                })
-
-    # ---------------------------------------------------------
-    # 3. spaCy NER - catch entities MITRE/well-known missed
+    # 2. Behavior extraction (spaCy dependency parsing)
     # ---------------------------------------------------------
     nlp = get_nlp()
     doc = nlp(text[:nlp.max_length])
 
-    for ent in doc.ents:
-        if ent.label_ in ("ORG", "PRODUCT"):
-            name = ent.text.strip()
-            if len(name) < 3 or len(name) > 40:
-                continue
-            # Skip if already found
-            name_lower_ent = name.lower()
-            if any(name_lower_ent in k[1] for k in seen_entities):
-                continue
-            # Check if it looks like a CTI entity (not a media company, etc.)
-            if _is_likely_cti_entity(name, text):
-                key = ("tools", name_lower_ent)
-                if key not in seen_entities:
-                    seen_entities.add(key)
-                    ir["tools"].append({
-                        "name": name,
-                        "description": "",
-                        "source": "spacy-ner",
-                    })
-
-    # ---------------------------------------------------------
-    # 4. Infrastructure extraction (regex)
-    # ---------------------------------------------------------
-    for pattern, infra_type in INFRA_PATTERNS:
-        for match in re.finditer(pattern, text):
-            value = match.group(0)
-            # Skip common false positives
-            if infra_type == "domain" and value in ("example.com", "attack.mitre.org"):
-                continue
-            if infra_type == "IPv4 address" and value.startswith(("0.", "127.", "255.")):
-                continue
-            key = ("infrastructure", value.lower())
-            if key not in seen_entities:
-                seen_entities.add(key)
-                ir["infrastructure"].append({
-                    "name": value,
-                    "description": infra_type,
-                    "source": "regex",
-                })
-
-    # ---------------------------------------------------------
-    # 5. Behavior extraction (spaCy dependency parsing)
-    # ---------------------------------------------------------
     for sent in doc.sents:
         root = sent.root
         if root.pos_ != "VERB":
@@ -297,37 +196,9 @@ def extract_ir_offline(text: str) -> dict:
 
     total = sum(len(ir[k]) for k in ir if isinstance(ir[k], list))
     print(f"[OFFLINE-IR] Total entities: {total} "
-          f"(actors={len(ir['threat_actors'])} malware={len(ir['malware'])} "
-          f"tools={len(ir['tools'])} infra={len(ir['infrastructure'])} "
+          f"(actors={len(ir['threat_actors'])} "
           f"behaviors={len(ir['behaviors'])})")
 
     return ir
 
 
-def _is_likely_cti_entity(name: str, context: str) -> bool:
-    """
-    Heuristic: is this spaCy NER entity likely a CTI-relevant tool/malware?
-    """
-    name_lower = name.lower()
-
-    # Skip common non-CTI organizations
-    SKIP = {
-        "palo alto", "symantec", "microsoft", "sophos", "cisco",
-        "trend micro", "kroll", "group-ib", "varonis", "unit 42",
-        "talos", "mitre", "nist",
-    }
-    for skip in SKIP:
-        if skip in name_lower:
-            return False
-
-    # CTI-relevant if near attack-related words
-    context_lower = context.lower()
-    idx = context_lower.find(name_lower)
-    if idx >= 0:
-        window = context_lower[max(0, idx - 100):idx + len(name) + 100]
-        cti_cues = ["malware", "tool", "ransomware", "exploit", "attack",
-                    "deploy", "execute", "lateral", "credential", "encrypt"]
-        if any(cue in window for cue in cti_cues):
-            return True
-
-    return False

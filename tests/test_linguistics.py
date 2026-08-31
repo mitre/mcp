@@ -2,32 +2,6 @@
 import numpy as np
 
 
-class TestExtractCommands:
-    def test_finds_windows_commands(self):
-        from plugins.mcp.app.utilities.cti_linguistics import extract_commands
-        text = "The attacker ran cmd.exe /c whoami on the target system."
-        cmds = extract_commands(text)
-        assert len(cmds) >= 1
-        assert any("cmd.exe" in c["command"] for c in cmds)
-
-    def test_finds_linux_commands(self):
-        from plugins.mcp.app.utilities.cti_linguistics import extract_commands
-        text = "Used chmod 777 /tmp/backdoor to set permissions."
-        cmds = extract_commands(text)
-        assert len(cmds) >= 1
-
-    def test_empty_text(self):
-        from plugins.mcp.app.utilities.cti_linguistics import extract_commands
-        assert extract_commands("") == []
-        assert extract_commands(None) == []
-
-    def test_single_word_skipped(self):
-        from plugins.mcp.app.utilities.cti_linguistics import extract_commands
-        text = "The powershell.exe was found."
-        cmds = extract_commands(text)
-        # Single word commands should be skipped (need at least 2 words)
-        assert all(len(c["command"].split()) >= 2 for c in cmds)
-
 
 class TestExtractHashes:
     def test_finds_sha256(self):

@@ -39,43 +39,6 @@ COMMAND_REGEXES = [
     # Linux-style commands
     r"\b(?:bash|sh|curl|wget|chmod|chown|systemctl)\b[^\n\r\"']{0,200}",
 ]
-def extract_commands(text: str) -> list[dict]:
-    """
-    Extract exact command-line invocations from CTI text.
-
-    Returns:
-        [
-          {
-            "command": "...",
-            "confidence": 0.9,
-            "source": "report-text",
-            "evidence": "sentence containing command"
-          }
-        ]
-    """
-    commands = []
-    if not text:
-        return commands
-
-    for regex in COMMAND_REGEXES:
-        for m in re.finditer(regex, text, flags=re.IGNORECASE):
-            cmd = m.group(0).strip()
-            if len(cmd.split()) < 2:
-                continue
-
-            # grab surrounding evidence sentence
-            start = max(0, m.start() - 120)
-            end = min(len(text), m.end() + 120)
-            evidence = text[start:end].replace("\n", " ").strip()
-
-            commands.append({
-                "command": cmd,
-                "confidence": 0.9,
-                "source": "report-text",
-                "evidence": evidence,
-            })
-
-    return commands
 # ===========================================================
 # Attempt to capture hash-like strings
 # ===========================================================
@@ -85,6 +48,8 @@ HASH_PATTERNS = {
     "SHA256": re.compile(r"\b[a-fA-F0-9]{64}\b"),
     "SHA512": re.compile(r"\b[a-fA-F0-9]{128}\b"),
 }
+
+
 def extract_hashes(text: str) -> list[dict]:
     """
     Extract cryptographic hashes from CTI text.
