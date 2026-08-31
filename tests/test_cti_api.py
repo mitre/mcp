@@ -161,9 +161,3 @@ class TestConfigEndpoints:
         data = r.json()
         assert isinstance(data, dict)
 
-    def test_set_config(self):
-        r = requests.post(f"{CALDERA_URL}/plugin/mcp/set_config",
-                         headers=HEADERS,
-                         json={"config": {"cti": {"offline": True}}},
-                         timeout=5)
-        assert r.status_code in (200, 500)

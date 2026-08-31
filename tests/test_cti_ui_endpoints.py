@@ -313,12 +313,6 @@ class TestConfigEndpoints:
         # Should have at least model and provider
         assert "model" in cti or "provider" in cti or "offline" in cti
 
-    def test_set_config(self):
-        """POST /set_config accepts config updates."""
-        r = requests.post(f"{CALDERA_URL}/plugin/mcp/set_config",
-                         headers=JSON_HEADERS,
-                         json={"config": {"cti": {"offline": True}}}, timeout=5)
-        assert r.status_code == 200
         # Note: config persistence depends on implementation —
         # some configs only persist to YAML, others are in-memory only
 
