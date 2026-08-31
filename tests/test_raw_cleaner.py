@@ -59,9 +59,50 @@ class TestProcessRawFile:
         result = await process_raw_file(raw, clean, images)
 
         assert "[TEXT]" in result
-        # Normalised to .txt like the html and pdf branches. Stage 1 globs
-        # clean/*.txt, so a .md left with its own extension is accepted by the
-        # uploader and then never parsed.
-        assert (clean / "blackcat-report.txt").read_text(encoding="utf-8").startswith("# ALPHV")
+        # Normalised to .txt so Stage 1, which globs clean/*.txt, can find it,
+        # and carrying the source extension so it cannot collide with a
+        # same-named .txt or .pdf report.
+        out = clean / "blackcat-report_md.txt"
+        assert out.read_text(encoding="utf-8").startswith("# ALPHV")
         assert not (clean / "blackcat-report.md").exists()
         assert list(clean.glob("*.txt")), "Stage 1 would find nothing to parse"
+
+
+class TestCleanNamesAreInjective:
+    """Two sources must never clean to one file.
+
+    Every branch wrote <stem>.txt, so report.md and report.txt both became
+    report.txt. The cleaner gathers files concurrently, so whichever finished
+    second replaced the other and an interleaved pair could produce text
+    belonging to neither. Everything downstream is keyed on this stem, so the
+    two reports also collapsed onto one IR and one bundle.
+    """
+
+    def test_the_extension_is_folded_in(self):
+        from plugins.mcp.app.utilities.cti_raw_cleaner import clean_stem
+        assert clean_stem("report.md") != clean_stem("report.txt")
+        assert clean_stem("report.html") != clean_stem("report.pdf")
+
+    @pytest.mark.asyncio
+    async def test_a_md_and_txt_pair_both_survive(self, tmp_path):
+        from plugins.mcp.app.utilities.cti_raw_cleaner import clean_raw_directory_async
+
+        raw = tmp_path / "raw"
+        clean = tmp_path / "clean"
+        images = tmp_path / "images"
+        for d in (raw, clean, images):
+            d.mkdir()
+
+        # Distinct sizes so a truncated or spliced result is detectable.
+        (raw / "delta-report.md").write_text("M" * 6000, encoding="utf-8")
+        (raw / "delta-report.txt").write_text("T" * 4000, encoding="utf-8")
+
+        await clean_raw_directory_async(raw, clean, images)
+
+        produced = sorted(p.name for p in clean.glob("*.txt"))
+        assert len(produced) == 2, f"one source was lost: {produced}"
+
+        bodies = {p.name: p.read_text(encoding="utf-8") for p in clean.glob("*.txt")}
+        for name, body in bodies.items():
+            assert set(body) in ({"M"}, {"T"}), f"{name} is spliced from both sources"
+        assert {len(b) for b in bodies.values()} == {6000, 4000}
