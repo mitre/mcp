@@ -421,6 +421,77 @@ function clearCtiStatus() {
   ctiStatus.text = ''
 }
 
+/**
+ * Report a failure without burying a message the operator has not read.
+ *
+ * A list refresh runs on the poll loop's schedule rather than the operator's,
+ * so a background one may only write over an empty banner or a spent success:
+ * progress means work is still in flight, and a failure was left up on
+ * purpose. Without this a single transient refresh error replaced the running
+ * indicator for the rest of the run.
+ */
+function reportFailure(message, { background = false } = {}) {
+  if (background && ctiStatus.text && ctiStatus.tone !== 'success') return
+  setCtiStatus(message, 'danger')
+}
+
+/* ============================================================
+ * Requests
+ * ============================================================ */
+// Caldera gates plugin routes per handler, and check_permissions answers an
+// expired session by raising HTTPFound('/login'). fetch follows that
+// redirect, so the reply lands here as a 200 carrying the login page:
+// res.ok is true, res.json() throws on the HTML, and the operator was left
+// looking at an empty table with nothing to explain it. Every call goes
+// through these two so no site can forget the check.
+const SESSION_EXPIRED =
+  'Session expired. Sign in to CALDERA again, then reload this page.'
+
+function isLoginPage(res) {
+  return res.redirected && new URL(res.url).pathname.startsWith('/login')
+}
+
+/**
+ * Call a plugin endpoint and return the response.
+ *
+ * Rejects with a message written for the status banner, so callers report
+ * `e.message` rather than assembling their own.
+ *
+ * @param {string} what how to name the failure: "Could not load the list"
+ */
+async function request(what, url, options) {
+  let res
+  try {
+    res = await fetch(url, options)
+  } catch (e) {
+    throw new Error(`Could not reach the server: ${e.message}`)
+  }
+
+  // A non-default login handler answers 401/403 instead of redirecting.
+  if (isLoginPage(res) || res.status === 401 || res.status === 403) {
+    throw new Error(SESSION_EXPIRED)
+  }
+
+  if (!res.ok) {
+    // The API states its own refusals in an "error" key; a 500 has none.
+    let detail = ''
+    try { detail = (await res.json()).error || '' } catch { /* non-JSON body */ }
+    throw new Error(`${what} (${res.status})${detail ? ': ' + detail : ''}.`)
+  }
+
+  return res
+}
+
+/** As `request`, decoding the body that every endpoint but download returns. */
+async function requestJson(what, url, options) {
+  const res = await request(what, url, options)
+  try {
+    return await res.json()
+  } catch {
+    throw new Error(`${what}: the server sent a reply this page cannot read.`)
+  }
+}
+
 /* ============================================================
  * Helpers
  * ============================================================ */
@@ -469,10 +540,17 @@ function toggleStixSelection(name) {
  * Config
  * ============================================================ */
 async function loadBackendConfig() {
-  const res = await fetch('/plugin/mcp/get_config')
-  if (!res.ok) throw new Error('Failed to load config')
+  let data
+  try {
+    data = await requestJson(
+      'Could not load the extraction model settings',
+      '/plugin/mcp/get_config',
+    )
+  } catch (e) {
+    setCtiStatus(e.message, 'danger')
+    return
+  }
 
-  const data = await res.json()
   const cfg = data?.config ?? data ?? {}
   const cti = cfg?.cti ?? {}
   // The server resolves this now: it layers the profiles and applies the env
@@ -502,9 +580,14 @@ async function loadBackendConfig() {
 /* ============================================================
  * API: Raw CTI
  * ============================================================ */
-async function loadRawFiles() {
-  const res = await fetch('/plugin/mcp/cti/raw')
-  const data = await res.json()
+async function loadRawFiles({ background = false } = {}) {
+  let data
+  try {
+    data = await requestJson('Could not load the CTI file list', '/plugin/mcp/cti/raw')
+  } catch (e) {
+    reportFailure(e.message, { background })
+    return
+  }
 
   rawFiles.value = (data.items || []).sort((a, b) => {
     if (a.type !== b.type) return a.type === 'dir' ? -1 : 1
@@ -513,11 +596,17 @@ async function loadRawFiles() {
 }
 
 async function deleteSelectedRaw() {
-  await fetch('/plugin/mcp/cti/raw/delete', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ files: Array.from(selectedRaw) })
-  })
+  try {
+    await request('Could not delete the selected files', '/plugin/mcp/cti/raw/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: Array.from(selectedRaw) })
+    })
+  } catch (e) {
+    // The selection survives, so the operator can retry without re-picking.
+    setCtiStatus(e.message, 'danger')
+    return
+  }
 
   selectedRaw.clear()
   loadRawFiles()
@@ -583,21 +672,13 @@ async function uploadCti() {
 
   setCtiStatus('Uploading CTI…')
 
-  // Without this the banner sat on "Uploading CTI…" forever when the
-  // server was unreachable, since the rejection never reached the operator.
-  let res
   try {
-    res = await fetch('/plugin/mcp/cti/upload', {
+    await request('Upload failed', '/plugin/mcp/cti/upload', {
       method: 'POST',
       body: form
     })
   } catch (e) {
-    setCtiStatus(`Could not reach the server: ${e.message}`, 'danger')
-    return
-  }
-
-  if (!res.ok) {
-    setCtiStatus(`Upload failed (${res.status}).`, 'danger')
+    setCtiStatus(e.message, 'danger')
     return
   }
 
@@ -613,9 +694,14 @@ async function uploadCti() {
 /* ============================================================
  * API: STIX
  * ============================================================ */
-async function loadStixFiles() {
-  const res = await fetch('/plugin/mcp/stix/list')
-  const data = await res.json()
+async function loadStixFiles({ background = false } = {}) {
+  let data
+  try {
+    data = await requestJson('Could not load the STIX bundle list', '/plugin/mcp/stix/list')
+  } catch (e) {
+    reportFailure(e.message, { background })
+    return
+  }
 
   stixFiles.value = (data.files || [])
     .filter(f => f.filename.endsWith('.json'))
@@ -629,23 +715,43 @@ async function loadStixFiles() {
 }
 
 async function deleteStix() {
-  await fetch('/plugin/mcp/stix/delete', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ files: Array.from(selectedStix) })
-  })
+  try {
+    await request('Could not delete the selected bundles', '/plugin/mcp/stix/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: Array.from(selectedStix) })
+    })
+  } catch (e) {
+    setCtiStatus(e.message, 'danger')
+    return
+  }
 
   selectedStix.clear()
   loadStixFiles()
 }
 
 async function downloadStix(files) {
+  // Unchecked, an expired session saved the login page as the bundle.
+  const failed = []
+
   for (const filename of files) {
-    const res = await fetch('/plugin/mcp/stix/download', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename })
-    })
+    let res
+    try {
+      res = await request(`Could not download ${filename}`, '/plugin/mcp/stix/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename })
+      })
+    } catch (e) {
+      // A bundle deleted from disk answers 404, which says nothing about the
+      // rest of the selection. Only an expired session fails all of them.
+      if (e.message === SESSION_EXPIRED) {
+        setCtiStatus(e.message, 'danger')
+        return
+      }
+      failed.push(filename)
+      continue
+    }
 
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
@@ -656,6 +762,10 @@ async function downloadStix(files) {
     a.click()
 
     URL.revokeObjectURL(url)
+  }
+
+  if (failed.length) {
+    setCtiStatus(`Could not download ${failed.join(', ')}.`, 'danger')
   }
 }
 
@@ -669,13 +779,11 @@ async function viewRaw(row) {
   showRawModal.value = true
 
   try {
-    const res = await fetch('/plugin/mcp/cti/raw/view', {
+    const data = await requestJson(`Could not open ${name}`, '/plugin/mcp/cti/raw/view', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ filename: name })
     })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
     Object.assign(rawViewer, {
       kind: data.kind, size: data.size, text: data.text, loading: false,
     })
@@ -685,13 +793,19 @@ async function viewRaw(row) {
 }
 
 async function viewStix(filename) {
-  const res = await fetch('/plugin/mcp/stix/get_stix', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ filename })
-  })
+  let out
+  try {
+    out = await requestJson(`Could not open ${filename}`, '/plugin/mcp/stix/get_stix', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename })
+    })
+  } catch (e) {
+    // Returning leaves the modal shut rather than opening it on no data.
+    setCtiStatus(e.message, 'danger')
+    return
+  }
 
-  const out = await res.json()
   stixData.value = out.data
   stixFilename.value = out.filename
   showStixModal.value = true
@@ -709,24 +823,16 @@ async function runPipelineForSelected() {
 
   setCtiStatus('Starting pipeline…')
 
-  let res
+  // The handler rejects an empty or malformed file list with a 400, which
+  // this used to report as success.
   try {
-    res = await fetch('/plugin/mcp/cti/run', {
+    await request('Pipeline did not start', '/plugin/mcp/cti/run', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ files: Array.from(selectedRaw), step: 'all' })
     })
   } catch (e) {
-    setCtiStatus(`Could not reach the server: ${e.message}`, 'danger')
-    return
-  }
-
-  // The handler rejects an empty or malformed file list with a 400, which
-  // this used to report as success.
-  if (!res.ok) {
-    let detail = ''
-    try { detail = (await res.json()).error || '' } catch { /* non-JSON body */ }
-    setCtiStatus(`Pipeline did not start (${res.status})${detail ? ': ' + detail : ''}.`, 'danger')
+    setCtiStatus(e.message, 'danger')
     return
   }
 
@@ -757,16 +863,14 @@ async function pollCtiStatus(attempt = 0) {
 
   let data
   try {
-    const res = await fetch('/plugin/mcp/cti/status')
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    data = await res.json()
+    data = await requestJson('Lost contact with the server', '/plugin/mcp/cti/status')
   } catch (e) {
-    setCtiStatus(`Lost contact with the server: ${e.message}`, 'danger')
+    setCtiStatus(e.message, 'danger')
     return
   }
 
   if (data.state === 'running') {
-    loadRawFiles()
+    loadRawFiles({ background: true })
     return pollCtiStatus(attempt + 1)
   }
 
@@ -776,8 +880,10 @@ async function pollCtiStatus(attempt = 0) {
     setCtiStatus('Pipeline complete.', 'success')
   }
 
-  loadRawFiles()
-  loadStixFiles()
+  // Background: the outcome just set above is what the operator is waiting
+  // for, and a refresh error must not take its place.
+  loadRawFiles({ background: true })
+  loadStixFiles({ background: true })
 }
 
 /* ============================================================
