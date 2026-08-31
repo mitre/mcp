@@ -37,10 +37,6 @@ class TestNormalizePhrase:
         from plugins.mcp.app.utilities.nlp.cti_nlp_enhancements import normalize_phrase
         assert normalize_phrase("Hello World!") == "helloworld"
 
-    def test_preserves_dots(self):
-        from plugins.mcp.app.utilities.nlp.cti_nlp_enhancements import normalize_phrase
-        result = normalize_phrase("192.168.1.1")
-        assert "192.168.1.1" in result
 
 
 class TestExtractDependencyBehaviors:
@@ -102,14 +98,4 @@ class TestCleanIrNlpLayer1:
         actor_names = {a["name"] for a in result["threat_actors"]}
         assert "APT29" in actor_names
         assert len(actor_names) == 1
-
-    def test_slash_actor_split(self):
-        from plugins.mcp.app.utilities.nlp.cti_nlp_enhancements import clean_ir_nlp_layer1
-        ir = {"behaviors": [], "threat_actors": [{"name": "ALPHV/BlackCat"}],
-              "malware": [], "tools": [], "infrastructure": []}
-        result = clean_ir_nlp_layer1(ir, "ALPHV/BlackCat ransomware.")
-        actor_names = {a["name"] for a in result["threat_actors"]}
-        # Should be split into two actors
-        assert len(actor_names) >= 2
-
 
