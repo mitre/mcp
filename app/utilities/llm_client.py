@@ -285,8 +285,16 @@ def layered_profile(cfg: dict, profile: str) -> dict:
     it is how extraction ended up on a different endpoint from everything else.
     """
     raw = (cfg or {}).get(profile) or {}
-    if profile == "llm" or not raw:
+    if profile == "llm":
         return raw
+
+    glob = (cfg or {}).get("llm") or {}
+
+    # An absent or empty workload profile inherits outright. Returning {} here
+    # meant a deployment that deleted its cti block got "No LLM profile 'cti'"
+    # rather than the global connection the UI promises it shares.
+    if not raw:
+        return dict(glob)
 
     # A key present but empty (a cleared number input sends '', a bare
     # 'timeout:' parses as None) must fall through to the global value rather
@@ -295,8 +303,6 @@ def layered_profile(cfg: dict, profile: str) -> dict:
         k: v for k, v in raw.items()
         if k in WORKLOAD_OVERRIDABLE and v is not None and v != ""
     }
-    glob = (cfg or {}).get("llm") or {}
-
     # Only warn about a dropped key that would actually have changed something.
     # A key the loader already promoted onto 'llm' now holds the same value, so
     # reporting it as ignored contradicts the promotion notice.
