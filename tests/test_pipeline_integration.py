@@ -161,38 +161,20 @@ def test_full_pipeline_offline():
 # 10. STIX OUTPUT COMPLIANCE
 # ============================================================
 
-def test_stix_output_compliance():
-    """Verify STIX output objects have required fields."""
-    base = Path(__file__).resolve().parents[1] / "data"
+# Built by our own builders, not read from data/, which is gitignored: on a
+# clean checkout the old glob was empty and the test returned without asserting.
+def test_stix_output_compliance(sample_stix_bundle):
+    """The emitted bundle must satisfy the 2.1 spec, per the reference parser."""
+    import stix2
 
-    # Find any STIX output
-    stix_files = list((base / "outputs_stix").glob("*.stix.json")) if (base / "outputs_stix").exists() else []
+    stix2.parse(sample_stix_bundle, allow_custom=True)
 
-    # Also check pipeline test output
-    for d in (base / "outputs_ir").iterdir() if (base / "outputs_ir").exists() else []:
-        if d.is_dir():
-            stix_files.extend(d.glob("complete/*.json"))
-
-    if not stix_files:
-        print("  ⚠ No STIX outputs found, skipping compliance test")
-        return
-
-    f = stix_files[0]
-    data = json.loads(f.read_text())
-
-    # Check it's a valid IR/STIX structure
-    if "objects" in data:
-        # It's a STIX bundle
-        for obj in data["objects"][:5]:
-            assert "type" in obj
-            if obj["type"] == "threat-actor":
-                assert "spec_version" in obj, f"Missing spec_version in {obj['type']}"
-                assert obj["spec_version"] == "2.1"
-    else:
-        # It's an IR
-        assert "attack_patterns" in data or "threat_actors" in data
-
-    print(f"  ✓ STIX compliance verified on {f.name}")
+    assert sample_stix_bundle["type"] == "bundle"
+    assert sample_stix_bundle["objects"], "bundle carries no objects"
+    for obj in sample_stix_bundle["objects"]:
+        assert obj["spec_version"] == "2.1", f"{obj['type']} is not 2.1"
+        for prop in ("id", "created", "modified"):
+            assert prop in obj, f"{obj['type']} is missing {prop}"
 
 
 # ============================================================
