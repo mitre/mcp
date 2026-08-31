@@ -554,7 +554,16 @@ const LOCAL_STORAGE_KEY = 'mcp_global_config'
 // apiBase: the endpoint moved out of the repo into MCP_LLM_API_BASE, and a
 // value saved before that outranks it on every request, silently routing to
 // an endpoint the deployment no longer configures.
-const CONFIG_SCHEMA_VERSION = 2
+// v3 drops the whole connection. It is server state now: conf/local.yml is
+// what every workflow reads, and a browser-local copy shadowing it is why the
+// Global panel and the CTI panel could name two different models. Whatever
+// this browser holds is pushed to the server once, then dropped.
+const CONFIG_SCHEMA_VERSION = 3
+
+// Mirrors the llm profile the server owns. Never persisted locally again.
+const CONNECTION_FIELDS = [
+  'modelName', 'apiBase', 'sslVerify', 'temperature', 'maxTokens', 'maxToolCalls',
+]
 
 // localStorage is readable by anything on this origin, so keys live in memory
 // for the session only. Matched by name at any depth: a fixed list missed
@@ -581,6 +590,21 @@ function migrate(config) {
   return { ...rest, schemaVersion: CONFIG_SCHEMA_VERSION }
 }
 
+// Connection fields are no longer written to localStorage, but a browser
+// upgrading from v2 still has them and they may be the only place the
+// operator's endpoint exists. Hand them to the migration before they are
+// dropped.
+function strandedConnection(config) {
+  if (!config || config.schemaVersion === CONFIG_SCHEMA_VERSION) return null
+  const held = {}
+  for (const key of CONNECTION_FIELDS) {
+    if (config[key] !== undefined && config[key] !== null && config[key] !== '') {
+      held[key] = config[key]
+    }
+  }
+  return Object.keys(held).length ? held : null
+}
+
 function loadConfig() {
   try {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY)
@@ -598,8 +622,12 @@ function loadConfig() {
 
 function saveConfig(config) {
   try {
+    const persisted = stripSecrets(config)
+    // The server owns these. Keeping a copy here is what let the two panels
+    // disagree, and a stale copy outranks the server on the next load.
+    for (const key of CONNECTION_FIELDS) delete persisted[key]
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
-      ...stripSecrets(config),
+      ...persisted,
       schemaVersion: CONFIG_SCHEMA_VERSION,
     }))
   } catch (e) {
@@ -619,11 +647,14 @@ function saveConfig(config) {
 // RAG-specific fields (topk, embed_model) live under capabilitySettings.rag,
 // not in the global LM config, since they belong to the RAG capability and
 // are settable per workflow run.
+const rawSavedConfig = (() => {
+  try {
+    const t = localStorage.getItem(LOCAL_STORAGE_KEY)
+    return t ? JSON.parse(t) : null
+  } catch { return null }
+})()
+const strandedConnectionConfig = strandedConnection(rawSavedConfig)
 const savedConfig = loadConfig()
-const LEGACY_CHAT_MODEL_DEFAULTS = new Set([
-  'openai/nemotron-3-super',
-  'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8',
-])
 const globalConfig = reactive({
   modelName: savedConfig?.modelName || '',
   temperature: savedConfig?.temperature,
@@ -712,15 +743,15 @@ let serverDefaults = {}
 
 function applyServerDefaults(d) {
   serverDefaults = d || {}
-  // Only fill fields the user hasn't already set.
-  if (!globalConfig.modelName || LEGACY_CHAT_MODEL_DEFAULTS.has(globalConfig.modelName)) {
-    globalConfig.modelName = d.model || ''
-  }
-  if (!globalConfig.apiBase)              globalConfig.apiBase       = d.api_base || ''
-  if (globalConfig.sslVerify == null)     globalConfig.sslVerify     = d.ssl_verify ?? true
-  if (globalConfig.temperature   == null) globalConfig.temperature   = d.temperature
-  if (!globalConfig.maxToolCalls)         globalConfig.maxToolCalls  = d.max_tool_calls
-  if (!globalConfig.maxTokens)            globalConfig.maxTokens     = d.max_tokens
+  // The connection is server state, so these overwrite rather than fill. A
+  // browser-local copy taking precedence is what let this panel and the CTI
+  // panel name two different models.
+  globalConfig.modelName    = d.model || ''
+  globalConfig.apiBase      = d.api_base || ''
+  globalConfig.sslVerify    = d.ssl_verify ?? true
+  globalConfig.temperature  = d.temperature
+  globalConfig.maxToolCalls = d.max_tool_calls
+  globalConfig.maxTokens    = d.max_tokens
   // Seed RAG capability defaults from the backend the first time around.
   if (!globalConfig.capabilitySettings.rag) globalConfig.capabilitySettings.rag = {}
   const rag = globalConfig.capabilitySettings.rag
@@ -747,6 +778,29 @@ const activeWorkflow = computed(() =>
 )
 
 onMounted(async () => {
+  // A browser upgrading from v2 may hold the only copy of the operator's
+  // endpoint. Hand it to the server before reading defaults back, or the
+  // upgrade would silently replace it with whatever default.yml ships.
+  if (strandedConnectionConfig) {
+    const c = strandedConnectionConfig
+    const llm = {}
+    if (c.modelName)                 llm.model         = c.modelName
+    if (c.apiBase)                   llm.api_base      = c.apiBase
+    if (c.sslVerify    !== undefined) llm.ssl_verify    = c.sslVerify
+    if (c.temperature  !== undefined) llm.temperature   = c.temperature
+    if (c.maxTokens    !== undefined) llm.max_tokens    = c.maxTokens
+    if (c.maxToolCalls !== undefined) llm.max_tool_calls = c.maxToolCalls
+    try {
+      await fetch('/plugin/mcp/set_config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ llm }),
+      })
+    } catch (e) {
+      console.warn('[MCP] Could not migrate the stored connection:', e)
+    }
+  }
+
   // Backend-driven defaults so the UI never duplicates yaml values.
   try {
     const resp = await fetch('/plugin/mcp/defaults')

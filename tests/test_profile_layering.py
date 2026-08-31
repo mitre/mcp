@@ -61,8 +61,23 @@ class TestGlobalProfileIsUntouched:
         cfg = {"llm": GLOBAL, "cti": {"temperature": 0.0}}
         assert layered_profile(cfg, "llm") == GLOBAL
 
-    def test_absent_workload_profile_is_empty(self):
-        assert layered_profile({"llm": GLOBAL}, "cti") == {}
+    def test_an_absent_workload_profile_inherits(self):
+        # Returning {} here meant a deployment that deleted its cti block got
+        # "No LLM profile 'cti'" instead of the connection the UI says it
+        # shares with chat.
+        r = layered_profile({"llm": GLOBAL}, "cti")
+        assert r["model"] == GLOBAL["model"]
+        assert r["api_base"] == GLOBAL["api_base"]
+
+    def test_an_empty_workload_profile_inherits(self):
+        r = layered_profile({"llm": GLOBAL, "cti": {}}, "cti")
+        assert r["model"] == GLOBAL["model"]
+
+    def test_inheriting_does_not_alias_the_global(self):
+        cfg = {"llm": dict(GLOBAL)}
+        layered_profile(cfg, "cti")["model"] = "mutated"
+        assert cfg["llm"]["model"] == GLOBAL["model"]
+
 
 
 class TestEmptyValuesFallThrough:

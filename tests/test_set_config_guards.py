@@ -119,3 +119,48 @@ class TestTheLockIsNotSelfDefeating:
             {"llm": {"api_base": "https://gw/v1"}}))
         assert resp.status == 200
         assert _saved(tmp_path)["llm"]["api_base"] == "https://gw/v1"
+
+
+class TestGetConfigResolvesServerSide:
+    """The panel must not re-implement the resolver in JavaScript.
+
+    It layered the profiles itself over raw yaml and skipped the env
+    indirection, so it displayed "not set" for an endpoint that came from
+    MCP_LLM_API_BASE while extraction dialled it correctly.
+    """
+
+    @pytest.mark.asyncio
+    async def test_the_connection_is_resolved_onto_the_workload(self, api, tmp_path):
+        (tmp_path / "conf" / "local.yml").write_text(yaml.safe_dump(
+            {"llm": {"model": "devstral", "api_base": "https://gw/v1"},
+             "cti": {"temperature": 0.0}}))
+        llm_client.load_config.cache_clear()
+
+        resp = await api.get_config(None)
+        body = __import__("json").loads(resp.text)
+
+        assert body["resolved"]["cti"]["model"] == "devstral"
+        assert body["resolved"]["cti"]["api_base"] == "https://gw/v1"
+        assert body["resolved"]["cti"]["temperature"] == 0.0
+
+    @pytest.mark.asyncio
+    async def test_the_env_indirection_is_applied(self, api, tmp_path, monkeypatch):
+        monkeypatch.setenv("MY_GATEWAY", "https://from-env/v1")
+        (tmp_path / "conf" / "local.yml").write_text(yaml.safe_dump(
+            {"llm": {"model": "m", "api_base": "", "api_base_env": "MY_GATEWAY"}}))
+        llm_client.load_config.cache_clear()
+
+        resp = await api.get_config(None)
+        body = __import__("json").loads(resp.text)
+        assert body["resolved"]["cti"]["api_base"] == "https://from-env/v1"
+
+    @pytest.mark.asyncio
+    async def test_no_credential_reaches_the_browser(self, api, tmp_path, monkeypatch):
+        monkeypatch.setenv("MCP_LLM_API_KEY", "sk-live")
+        (tmp_path / "conf" / "local.yml").write_text(yaml.safe_dump(
+            {"llm": {"model": "m", "api_base": "https://gw/v1",
+                     "api_key_env": "MCP_LLM_API_KEY"}}))
+        llm_client.load_config.cache_clear()
+
+        resp = await api.get_config(None)
+        assert "sk-live" not in resp.text

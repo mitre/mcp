@@ -17,8 +17,10 @@ from plugins.mcp.app.utilities.llm_client import (
     LLM_PROFILES,
     WORKLOAD_OVERRIDABLE,
     deep_merge,
+    layered_profile,
     load_config,
     reload_config,
+    resolve_env_indirection,
     unwrap_config_envelope,
 )
 from plugins.mcp.app.utilities.paths import get_mcp_data_dir, get_mcp_root
@@ -1013,8 +1015,25 @@ class McpAPI:
     async def get_config(self, request):
         try:
             cfg = load_config()
+
+            # The panel used to layer the profiles itself, in JavaScript, over
+            # this raw yaml. It duplicated the allowlist and skipped env
+            # resolution, so it displayed "not set" for an endpoint that came
+            # from MCP_LLM_API_BASE while extraction dialled it correctly.
+            # Resolve it here, where the rule already lives.
+            resolved = {}
+            # Every LLM profile, declared or not: an absent workload profile
+            # inherits the connection, and the panel has to show that.
+            for profile in sorted(LLM_PROFILES):
+                resolved[profile] = _without_secrets(
+                    resolve_env_indirection(layered_profile(cfg, profile))
+                )
+
             self.log.info("[MCP] get_config returning effective config")
-            return web.json_response({"config": cfg})
+            return web.json_response({
+                "config": _without_secrets(cfg),
+                "resolved": resolved,
+            })
         except Exception as e:
             self.log.error(f"[MCP] get_config failed: {e}")
             return web.json_response({"error": str(e)}, status=500)

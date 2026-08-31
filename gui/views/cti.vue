@@ -430,29 +430,24 @@ async function loadBackendConfig() {
   const data = await res.json()
   const cfg = data?.config ?? data ?? {}
   const cti = cfg?.cti ?? {}
-  // Mirrors llm_client.layered_profile: the connection comes from llm and a
-  // workload profile may only adjust generation settings.
-  const WORKLOAD_KEYS = ['temperature', 'top_p', 'max_tokens', 'timeout', 'stream', 'offline', 'embed_model']
-  const overrides = Object.fromEntries(
-    Object.entries(cti).filter(([k]) => WORKLOAD_KEYS.includes(k))
-  )
-  const resolved = { ...(cfg?.llm ?? {}), ...overrides }
+  // The server resolves this now: it layers the profiles and applies the env
+  // indirection with the same code extraction runs. Doing it here meant a
+  // second copy of the allowlist and no env resolution at all, so the panel
+  // printed "not set" for an endpoint that came from MCP_LLM_API_BASE.
+  const resolved = data?.resolved?.cti ?? {}
 
-  // api_key is deliberately absent: get_config never returns one. The
-  // *_env names are surfaced so the panel can say where the key and the
-  // endpoint actually come from.
+  // api_key is deliberately absent: the server strips it from both payloads.
   backendConfig.value = {
-    provider: cti.provider ?? null,
-    model: cti.model ?? null,
-    api_base: cti.api_base ?? '',
-    api_base_env: cti.api_base_env ?? null,
-    api_key_env: cti.api_key_env ?? null,
-    temperature: cti.temperature ?? 0.0,
-    max_tokens: cti.max_tokens ?? 4000,
-    timeout: cti.timeout ?? 120,
-    offline: cti.offline ?? false,
-    // Read-only, for display. A workload profile cannot override the
-    // connection, so this is always what will run.
+    api_base_env: resolved.api_base_env ?? null,
+    api_key_env: resolved.api_key_env ?? null,
+    // The editable generation settings, resolved so the inputs show what is
+    // actually in force rather than only what local.yml happens to restate.
+    temperature: resolved.temperature ?? 0.0,
+    max_tokens: resolved.max_tokens ?? 4000,
+    timeout: resolved.timeout ?? 120,
+    offline: resolved.offline ?? false,
+    // Read-only. A workload profile cannot override the connection, so this
+    // is always what will run.
     resolved_model: resolved.model ?? null,
     resolved_api_base: resolved.api_base || null,
   }
