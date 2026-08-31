@@ -236,7 +236,7 @@ MCP supports saved endpoint profiles in the UI. Profiles can carry:
 - Maximum tool calls
 - Maximum tokens
 
-CTI/RAG model settings can use the chat endpoint by default or a separate saved profile when CTI extraction benefits from a different model.
+CTI and RAG share the chat endpoint. Extraction differs from chat only in its generation settings, which the CTI Extraction Model panel edits.
 
 ### Local Settings
 
@@ -257,11 +257,11 @@ cti:
 
 Three rules that are easy to trip over:
 
-- **`cti` layers over `llm`.** Any key set under `cti` wins for extraction. Pinning `model` or `api_base` there means extraction ignores the `llm` profile, which is usually not intended. The CTI Extraction Model panel shows the resolved values and marks them `pinned` when this is happening.
+- **`cti` layers over `llm`, but only for generation settings.** A workload profile may set `temperature`, `top_p`, `max_tokens`, `timeout`, `stream`, `offline` and `embed_model`. The connection, meaning `provider`, `model`, `api_base`, the credentials and `ssl_verify`, belongs to `llm` alone; anything else under `cti` is dropped and logged, and `set_config` rejects it outright. If an older `conf/local.yml` carries a connection under `cti` and declares no `llm` block, it is read as the global connection for that run and a warning names the edit to make.
 - **Precedence differs by field.** `api_key` resolves environment-first and is never read from this file. `api_base` resolves yaml-first, so a value here beats `MCP_LLM_API_BASE`; leave it empty to keep using the variable.
 - **A key with no value is `null`, and null overrides.** A bare `llm:` heading wipes the shipped block rather than falling through to it. Omit the block instead.
 
-The GUI's **Global Model Config** panel is browser-local: it is stored in `localStorage` and sent only with chat and planning requests. It does not configure the CTI pipeline, which reads this file server-side.
+The GUI's **Global Model Config** panel writes the connection to the `llm` profile in `conf/local.yml`, so it configures every workload including CTI extraction. Only fields you change are written, so a value still coming from `MCP_LLM_API_BASE` is left alone rather than pinned to disk. The API key is the exception: it stays in `localStorage` and rides each request, and `set_config` strips credentials before writing.
 
 ## API Surface
 
