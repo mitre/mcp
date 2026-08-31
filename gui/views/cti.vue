@@ -22,8 +22,9 @@
           </div>
 
           <p class="mb-4">
-            Upload raw Cyber Threat Intelligence reports. The pipeline extracts
-            entities, behaviors, MITRE techniques, and produces STIX for RAG.
+            Upload raw Cyber Threat Intelligence reports. The pipeline
+            extracts ATT&amp;CK techniques, the named threat actor and file hash
+            observables, and emits a STIX 2.1 bundle.
           </p>
 
           <!-- Upload. The whole zone is a drop target; the hidden input is
