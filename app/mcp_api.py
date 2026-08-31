@@ -556,7 +556,10 @@ class McpAPI:
             processed.mkdir(parents=True, exist_ok=True)
 
             # 1️⃣ Rehydrate selected items (for re-runs)
-            svc = CTIIngestService()
+            # The selection has to reach the service: clean/ accumulates, so
+            # without it Stage 1 re-extracts every report ever ingested while
+            # the browser reports the count the operator picked.
+            svc = CTIIngestService(selected=files)
 
             uploads_dir = self.base_dir / "raw" / "uploads"
             processed_dir = self.base_dir / "raw" / "processed"

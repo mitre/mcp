@@ -64,14 +64,14 @@ class CTIIngestService:
                     step_raw_to_clean(base_dir)
 
                 case "debug-ir":
-                    step_parse_to_ir(base_dir, stop_after="ir")
+                    step_parse_to_ir(base_dir, stop_after="ir", only=self.selected)
 
                 case "stage2":
                     self.run_stage2(base_dir)
 
                 case "all":
                     step_raw_to_clean(base_dir)
-                    step_parse_to_ir(base_dir)
+                    step_parse_to_ir(base_dir, only=self.selected)
 
                     # Only run Stage 2 if IR exists
                     ir_dir = base_dir / "outputs_ir" / "complete"

@@ -127,7 +127,8 @@ def move_raw_to_processed(raw_path: Path, processed_dir: Path):
 # Stage 1.2 — Clean → IR (PARALLEL)
 # =============================================================
 
-def step_parse_to_ir(base_dir: Path, stop_after: str | None = None):
+def step_parse_to_ir(base_dir: Path, stop_after: str | None = None,
+                     only: list[str] | None = None):
     """
     Process all cleaned TXT files into IR + MITRE techniques.
 
@@ -148,6 +149,15 @@ def step_parse_to_ir(base_dir: Path, stop_after: str | None = None):
     final_dir.mkdir(parents=True, exist_ok=True)
 
     files = list(clean_dir.glob("*.txt"))
+
+    # clean/ is never emptied, so it holds every report ever ingested. Without
+    # this, selecting one row re-ran LLM extraction over the whole corpus while
+    # the UI reported one file. An empty selection still means everything, which
+    # is what the CLI and a full re-run want.
+    if only:
+        wanted = {Path(name).stem for name in only}
+        files = [f for f in files if f.stem in wanted]
+
     if not files:
         print("[!] No clean files found.")
         return
