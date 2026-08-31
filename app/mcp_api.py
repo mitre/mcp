@@ -14,6 +14,8 @@ from app.service.auth_svc import for_all_public_methods, check_authorization
 
 from plugins.mcp.app.config import llm_defaults
 from plugins.mcp.app.utilities.llm_client import (
+    LLM_PROFILES,
+    WORKLOAD_OVERRIDABLE,
     deep_merge,
     load_config,
     reload_config,
@@ -1041,6 +1043,52 @@ class McpAPI:
                 return web.json_response({
                     "error": f"unsupported provider: {', '.join(invalid)}. "
                              f"Valid: {', '.join(sorted(_VALID_PROVIDERS))}"
+                }, status=400)
+
+            # The reader drops any connection key on a workload profile, so
+            # accepting one here and answering "saved" persists a setting that
+            # will never be read. Refuse it while the operator is still looking
+            # at the field, and name the profile that does own it.
+            misplaced = [
+                f"{section}.{key}"
+                for section, cfg in unwrap_config_envelope(data).items()
+                if section != "llm" and section in LLM_PROFILES
+                and isinstance(cfg, dict)
+                for key in sorted(cfg)
+                if key not in WORKLOAD_OVERRIDABLE
+            ]
+            if misplaced:
+                return web.json_response({
+                    "error": f"{', '.join(misplaced)} cannot be set on a "
+                             f"workload profile. The connection belongs to "
+                             f"'llm'. A workload profile may set: "
+                             f"{', '.join(sorted(WORKLOAD_OVERRIDABLE))}."
+                }, status=400)
+
+            # fields_locked is the lock itself. Writable, it unlocks itself,
+            # so it is editable only by hand in conf/local.yml.
+            locked_write = [
+                section for section, cfg in unwrap_config_envelope(data).items()
+                if isinstance(cfg, dict) and "fields_locked" in cfg
+            ]
+            if locked_write:
+                return web.json_response({
+                    "error": "fields_locked cannot be set over the API; "
+                             "edit conf/local.yml directly."
+                }, status=400)
+
+            # Honour the lock this endpoint used to ignore entirely.
+            effective = load_config()
+            blocked = [
+                f"{section}.{key}"
+                for section, cfg in unwrap_config_envelope(data).items()
+                if isinstance(cfg, dict)
+                for key in sorted(cfg)
+                if ((effective.get(section) or {}).get("fields_locked") or {}).get(key)
+            ]
+            if blocked:
+                return web.json_response({
+                    "error": f"locked by conf/local.yml: {', '.join(blocked)}"
                 }, status=400)
 
             conf_dir = self.root_dir / "conf"
