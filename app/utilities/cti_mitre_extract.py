@@ -319,8 +319,8 @@ def hashes_to_stix_observed_data(hashes, source_name="cti-report"):
         observed = {
             "type": "observed-data",
             "id": obs_id,
-            "created": datetime.utcnow().isoformat() + "Z",
-            "modified": datetime.utcnow().isoformat() + "Z",
+            "created": datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z"),
+            "modified": datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z"),
             "number_observed": 1,
             "objects": {
                 "0": file_obj

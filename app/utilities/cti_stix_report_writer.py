@@ -23,7 +23,7 @@ def render_section(title: str, lines: list) -> str:
 
 def render_stix_report(bundle: dict, ir_name: str) -> str:
     objects = bundle.get("objects", [])
-    now = datetime.datetime.utcnow().isoformat() + "Z"
+    now = datetime.datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z")
 
     malware = []
     tools = []
