@@ -74,11 +74,22 @@ def deep_merge(base: dict, override: dict) -> dict:
     return merged
 
 
+# get_config returns the raw file alongside a server-resolved view, so a
+# GET-edit-POST round trip carries both. Only 'config' is the payload.
+_ENVELOPE_SIBLINGS = frozenset({"config", "resolved"})
+
+
 def unwrap_config_envelope(local: dict) -> dict:
     """get_config returns {"config": cfg}, so a GET-edit-POST round trip used
-    to persist that envelope as a literal `config:` root the overlay ignored."""
+    to persist that envelope as a literal `config:` root the overlay ignored.
+
+    The response grew a sibling 'resolved' key, which made the exact-key-set
+    test below fail, so a round trip stopped being recognised as an envelope:
+    it wrote two inert top-level sections and slipped past the per-section
+    validation that set_config applies to the unwrapped form.
+    """
     inner = local.get("config")
-    if isinstance(inner, dict) and set(local) == {"config"}:
+    if isinstance(inner, dict) and set(local) <= _ENVELOPE_SIBLINGS:
         return inner
     return local
 
@@ -207,6 +218,16 @@ LLM_PROFILES = frozenset({"llm", "cti"})
 # 8192 while the global panel showed 0.5 and 24000, with nothing to say which
 # one a run would use. They live on 'llm' so there is one value to disagree
 # about.
+# What the 'llm' profile itself accepts over the API. Anything not here is
+# either meaningless or belongs in .env, and set_config used to take any key
+# in this section at all.
+LLM_OVERRIDABLE = frozenset({
+    "provider", "model", "api_base", "api_base_env", "api_key_env",
+    "ssl_verify", "offline", "temperature", "top_p", "max_tokens",
+    "max_tool_calls", "timeout", "stream", "embed_model",
+    "rag_topk", "rag_embed_model",
+})
+
 WORKLOAD_OVERRIDABLE = frozenset({
     "top_p",
     # Extraction legitimately waits longer than an interactive chat turn.

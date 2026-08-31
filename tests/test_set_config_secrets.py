@@ -91,12 +91,16 @@ async def test_envelope_round_trip_does_not_nest(api, tmp_path):
     assert "config" not in saved
 
 
-@pytest.mark.asyncio
-async def test_strips_secrets_inside_lists(api, tmp_path):
-    await api.set_config(_FakeRequest({
-        "llm": {"profiles": [{"name": "a", "api_key": "sk-in-list"}]},
-    }))
-    assert "sk-in-list" not in (tmp_path / "conf" / "local.yml").read_text()
+def test_strips_secrets_inside_lists():
+    # The scrub is tested directly here because the endpoint refuses an
+    # unknown key outright, so no payload with a nested list survives to the
+    # file. The recursion still has to hold for anything that does.
+    from plugins.mcp.app.mcp_api import _without_secrets
+
+    cleaned = _without_secrets(
+        {"llm": {"profiles": [{"name": "a", "api_key": "sk-in-list"}]}}
+    )
+    assert cleaned["llm"]["profiles"][0] == {"name": "a"}
 
 
 @pytest.mark.asyncio
