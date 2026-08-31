@@ -41,7 +41,7 @@ def new_stix_id(obj_type: str) -> str:
 
 def now():
     """ISO timestamp."""
-    return datetime.datetime.utcnow().isoformat() + "Z"
+    return datetime.datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z")
 
 
 # ----------------------------------------------------------------------
@@ -251,6 +251,8 @@ def make_attack_pattern(ttp_text, taxonomy: dict):
             "type": "attack-pattern",
             "spec_version": "2.1",
             "id": obj["id"],
+            "created": obj.get("created") or now(),
+            "modified": obj.get("modified") or now(),
             "name": obj.get("name"),
             "description": obj.get("description", ""),
             "external_references": obj.get("external_references", []),
@@ -267,7 +269,11 @@ def make_attack_pattern(ttp_text, taxonomy: dict):
     # ----------------------------
     # 2) Name-based lookup (ontology-driven, no guessing)
     # ----------------------------
-    name_key = t.lower()
+    # name_index is keyed '<kind>:<lowername>' (see the builder above), so a
+    # bare name matched nothing and every name-only technique fell to the
+    # non-enriched fallback, which carries no external_references and is
+    # therefore invisible to adversary authoring.
+    name_key = f"attack-pattern:{t.strip().lower()}"
     if name_key in taxonomy.get("name_index", {}):
         stype, sid, sobj = taxonomy["name_index"][name_key]
         if stype == "attack-pattern":
@@ -275,6 +281,8 @@ def make_attack_pattern(ttp_text, taxonomy: dict):
                 "type": "attack-pattern",
                 "spec_version": "2.1",
                 "id": sid,
+                "created": sobj.get("created") or now(),
+                "modified": sobj.get("modified") or now(),
                 "name": sobj.get("name"),
                 "description": sobj.get("description", ""),
                 "external_references": sobj.get("external_references", []),
