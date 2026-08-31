@@ -109,12 +109,25 @@ class CTIIngestService:
         }
 
     def finalize_run(self, base_dir: Path, selected: list[str]):
+        """Retire the reports this run actually processed.
+
+        This moved everything in uploads/ and never read its own argument, so
+        a report the operator did not select was retired having never been
+        cleaned or extracted. list_cti_raw stamps a literal "processed" on
+        that directory, so it then rendered green.
+
+        An empty selection still means everything, matching the convention
+        step_parse_to_ir uses for the same reason.
+        """
         uploads = base_dir / "raw" / "uploads"
         processed = base_dir / "raw" / "processed"
 
         processed.mkdir(parents=True, exist_ok=True)
 
+        names = set(selected or [])
         for f in uploads.iterdir():
+            if names and f.name not in names:
+                continue
             shutil.move(str(f), processed / f.name)
 
     @staticmethod

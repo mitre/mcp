@@ -14,6 +14,7 @@ from app.service.auth_svc import for_all_public_methods, check_authorization
 
 from plugins.mcp.app.config import llm_defaults
 from plugins.mcp.app.utilities.llm_client import (
+    LLM_OVERRIDABLE,
     LLM_PROFILES,
     WORKLOAD_OVERRIDABLE,
     deep_merge,
@@ -23,6 +24,7 @@ from plugins.mcp.app.utilities.llm_client import (
     resolve_env_indirection,
     unwrap_config_envelope,
 )
+from plugins.mcp.app.utilities.cti_raw_cleaner import clean_stem
 from plugins.mcp.app.utilities.paths import get_mcp_data_dir, get_mcp_root
 from plugins.mcp.app.cti_ingest_svc import CTIIngestService
 
@@ -43,7 +45,33 @@ _RAG_DEFAULTS = {
 # Matched by name rather than listed: the UI keeps growing key fields
 # (embed_api_key, plan_api_key, cti_rag_api_key) and a list keeps missing them.
 # api_key_env names a variable, not a value, so it is kept.
-_SECRET_KEY_NAME = re.compile(r"api_?key", re.IGNORECASE)
+# Widened past api_key: a gateway credential also arrives as an Authorization
+# or x-api-key header, and the llm section used to accept any key at all, so
+# all three reached the file in plaintext.
+# max_tokens contains "token" and is a generation setting, not a credential,
+# so the token alternative excludes it explicitly. Dropping it silently is
+# worse than not matching a credential, because the operator sees a saved
+# value vanish with no error.
+_SECRET_KEY_NAME = re.compile(
+    r"(api[-_]?key|authorization|bearer|(?<!max_)token"
+    r"|secret|password|passwd|credential)",
+    re.IGNORECASE,
+)
+
+# The only top-level sections conf/local.yml has meaning for. An unknown one
+# is either a typo or an attempt to write something nothing reads.
+_KNOWN_SECTIONS = LLM_PROFILES | {"caldera", "mlflow"}
+
+# The non-LLM sections, which the profile allowlists do not cover.
+_SECTION_OVERRIDABLE = {
+    "mlflow": frozenset({"host", "port"}),
+    "caldera": frozenset({"url_env", "api_key_env"}),
+}
+
+# hook.py passes mlflow.host straight to "mlflow server --host", and that
+# server holds every prompt and response the plugin has logged, unauthenticated.
+# Rebinding it off loopback is a deployment decision, not a UI one.
+_LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
 # Mirrors the dispatch in llm_client.LLMClient.generate.
 _VALID_PROVIDERS = {"openai_compatible", "ollama"}
@@ -797,7 +825,13 @@ class McpAPI:
             seen = set()
 
             def file_status(p: Path) -> str:
-                ir_path = ir_complete / f"{p.stem}.json"
+                """Processed means an IR exists and is no older than the file.
+
+                The listing used to stamp a literal "processed" on everything
+                in that directory, so a report that was never selected, never
+                cleaned and never extracted still rendered green.
+                """
+                ir_path = ir_complete / f"{clean_stem(p.name)}.json"
                 if not ir_path.exists():
                     return "pending"
                 return (
@@ -806,7 +840,7 @@ class McpAPI:
                     else "pending"
                 )
 
-            def collect(dir_path: Path, status_for_files: str | None):
+            def collect(dir_path: Path):
                 out = []
                 if not dir_path.exists():
                     return out
@@ -824,7 +858,7 @@ class McpAPI:
                                 "name": c.name,
                                 "size": c.stat().st_size,
                                 "type": "file",
-                                "status": status_for_files,
+                                "status": file_status(c),
                             })
                         out.append({
                             "name": p.name,
@@ -837,18 +871,22 @@ class McpAPI:
                     # -------------------------
                     # FILE
                     # -------------------------
+                    if p.name in seen:
+                        continue
+                    seen.add(p.name)
                     out.append({
                         "name": p.name,
                         "type": "file",
                         "size": p.stat().st_size,
-                        "status": status_for_files,
+                        # Computed, not assumed from which directory it sits in.
+                        "status": file_status(p),
                     })
 
                 return out
 
             # uploads first, processed second (UI expectation)
-            items.extend(collect(uploads_dir, "pending"))
-            items.extend(collect(processed_dir, "processed"))
+            items.extend(collect(uploads_dir))
+            items.extend(collect(processed_dir))
 
             return web.json_response({"items": items})
 
@@ -972,7 +1010,7 @@ class McpAPI:
 
             suffix = target.suffix.lower()
             if suffix == ".pdf":
-                clean = self.base_dir / "clean" / f"{target.stem}.txt"
+                clean = self.base_dir / "clean" / f"{clean_stem(target.name)}.txt"
                 if clean.is_file():
                     text = clean.read_text(encoding="utf-8", errors="replace")
                 else:
@@ -1051,13 +1089,15 @@ class McpAPI:
                     status=400
                 )
 
+            payload = unwrap_config_envelope(data)
+
             # llm_client dispatches on an exact provider string and raises
             # "Unsupported model provider" otherwise. Catching it here names
             # the field while the operator is still looking at it, rather
             # than failing on every document at extraction time.
             invalid = [
                 f"{section}.provider={cfg['provider']!r}"
-                for section, cfg in unwrap_config_envelope(data).items()
+                for section, cfg in payload.items()
                 if isinstance(cfg, dict) and cfg.get("provider")
                 and cfg["provider"] not in _VALID_PROVIDERS
             ]
@@ -1067,30 +1107,58 @@ class McpAPI:
                              f"Valid: {', '.join(sorted(_VALID_PROVIDERS))}"
                 }, status=400)
 
+            unknown = sorted(set(payload) - _KNOWN_SECTIONS)
+            if unknown:
+                return web.json_response({
+                    "error": f"unknown config section: {', '.join(unknown)}. "
+                             f"Valid: {', '.join(sorted(_KNOWN_SECTIONS))}."
+                }, status=400)
+
             # The reader drops any connection key on a workload profile, so
             # accepting one here and answering "saved" persists a setting that
             # will never be read. Refuse it while the operator is still looking
-            # at the field, and name the profile that does own it.
+            # at the field, and name the profile that does own it. The llm
+            # profile has its own allowlist: it used to take any key, so an
+            # Authorization header or an mlflow host landed in the file.
+            def _allowed(section):
+                if section in _SECTION_OVERRIDABLE:
+                    return _SECTION_OVERRIDABLE[section]
+                return LLM_OVERRIDABLE if section == "llm" else WORKLOAD_OVERRIDABLE
+
+            # A credential-named key is stripped by _without_secrets below
+            # rather than refused, so an older cached bundle that still posts
+            # api_key can save the rest of its payload instead of failing
+            # outright. Everything else outside the allowlist is a structural
+            # mistake worth naming.
             misplaced = [
                 f"{section}.{key}"
-                for section, cfg in unwrap_config_envelope(data).items()
-                if section != "llm" and section in LLM_PROFILES
-                and isinstance(cfg, dict)
+                for section, cfg in payload.items()
+                if isinstance(cfg, dict)
                 for key in sorted(cfg)
-                if key not in WORKLOAD_OVERRIDABLE
+                if key not in _allowed(section) and not _is_secret(key)
             ]
             if misplaced:
                 return web.json_response({
-                    "error": f"{', '.join(misplaced)} cannot be set on a "
-                             f"workload profile. The connection belongs to "
-                             f"'llm'. A workload profile may set: "
-                             f"{', '.join(sorted(WORKLOAD_OVERRIDABLE))}."
+                    "error": f"not settable here: {', '.join(misplaced)}. "
+                             f"The connection belongs to 'llm'; a workload "
+                             f"profile may set "
+                             f"{', '.join(sorted(WORKLOAD_OVERRIDABLE))}. "
+                             f"Credentials belong in plugins/mcp/.env."
+                }, status=400)
+
+            bind = (payload.get("mlflow") or {}).get("host")
+            if bind is not None and str(bind) not in _LOOPBACK_HOSTS:
+                return web.json_response({
+                    "error": f"mlflow.host {bind!r} would expose the tracking "
+                             f"server, which holds every logged prompt and "
+                             f"response, on a non-loopback interface. Edit "
+                             f"conf/local.yml directly if that is intended."
                 }, status=400)
 
             # fields_locked is the lock itself. Writable, it unlocks itself,
             # so it is editable only by hand in conf/local.yml.
             locked_write = [
-                section for section, cfg in unwrap_config_envelope(data).items()
+                section for section, cfg in payload.items()
                 if isinstance(cfg, dict) and "fields_locked" in cfg
             ]
             if locked_write:
@@ -1103,7 +1171,7 @@ class McpAPI:
             effective = load_config()
             blocked = [
                 f"{section}.{key}"
-                for section, cfg in unwrap_config_envelope(data).items()
+                for section, cfg in payload.items()
                 if isinstance(cfg, dict)
                 for key in sorted(cfg)
                 if ((effective.get(section) or {}).get("fields_locked") or {}).get(key)
@@ -1135,7 +1203,7 @@ class McpAPI:
             # one Save deleted a hand-pinned model, api_base or ssl_verify.
             # Removing a key is still a file edit; a POST only ever adds or
             # updates.
-            for section, cfg in unwrap_config_envelope(data).items():
+            for section, cfg in payload.items():
                 if isinstance(cfg, dict):
                     current = existing.get(section)
                     existing[section] = (
