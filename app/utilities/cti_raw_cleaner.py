@@ -11,7 +11,7 @@ Async-capable raw → clean extractor used across Stage1.
 
 import re
 import asyncio
-from pathlib import Path
+from pathlib import Path, PurePath
 import trafilatura
 from bs4 import BeautifulSoup
 import aiofiles
@@ -104,6 +104,23 @@ async def pdf_to_text(path: Path) -> str:
 # Process a single raw file
 # ============================================================
 
+def clean_stem(src_name: str) -> str:
+    """The clean-file stem for a source filename, one source to one stem.
+
+    Every branch used to write <stem>.txt, so report.md and report.txt both
+    became report.txt: whichever finished second replaced the other, and
+    because the cleaner gathers files concurrently a pair could interleave
+    into text belonging to neither. Everything downstream is keyed on this
+    stem, so the two reports also collapsed onto one IR and one bundle.
+
+    Folding the extension in keeps it injective for any two distinct source
+    names that both carry an extension, which upload enforces.
+    """
+    src = PurePath(src_name)
+    ext = src.suffix.lstrip(".").lower()
+    return f"{src.stem}_{ext}" if ext else src.stem
+
+
 async def process_raw_file(path: Path, clean_dir: Path, images_dir: Path):
     ext = path.suffix.lower()
 
@@ -124,7 +141,7 @@ async def process_raw_file(path: Path, clean_dir: Path, images_dir: Path):
         if not cleaned.strip():
             return f"[SKIP] Empty HTML: {path.name}"
 
-        out = clean_dir / (path.stem + ".txt")
+        out = clean_dir / (clean_stem(path.name) + ".txt")
         async with aiofiles.open(out, "w", encoding="utf-8") as f:
             await f.write(cleaned)
 
@@ -145,7 +162,7 @@ async def process_raw_file(path: Path, clean_dir: Path, images_dir: Path):
         if not cleaned.strip():
             return f"[SKIP] Empty PDF: {path.name}"
 
-        out = clean_dir / (path.stem + ".txt")
+        out = clean_dir / (clean_stem(path.name) + ".txt")
         async with aiofiles.open(out, "w", encoding="utf-8") as f:
             await f.write(cleaned)
 
@@ -178,7 +195,7 @@ async def process_raw_file(path: Path, clean_dir: Path, images_dir: Path):
         # extension meant a .md upload landed in clean/ as .md, and Stage 1
         # globs *.txt, so the file was accepted by three UI surfaces and never
         # parsed.
-        out = clean_dir / (path.stem + ".txt")
+        out = clean_dir / (clean_stem(path.name) + ".txt")
         async with aiofiles.open(out, "w", encoding="utf-8") as f:
             await f.write(txt)
 

@@ -38,7 +38,7 @@ from concurrent.futures import as_completed
 # Core Utilities
 # =============================================================
 
-from plugins.mcp.app.utilities.cti_raw_cleaner import clean_raw_directory
+from plugins.mcp.app.utilities.cti_raw_cleaner import clean_raw_directory, clean_stem
 from plugins.mcp.app.utilities.cti_parsing import extract_ir, render_ir_summary
 from plugins.mcp.app.utilities.cti_mitre_extract import extract_mitre_techniques, convert_sets
 from plugins.mcp.app.utilities.cti_taxonomy_loader import (
@@ -155,7 +155,7 @@ def step_parse_to_ir(base_dir: Path, stop_after: str | None = None,
     # the UI reported one file. An empty selection still means everything, which
     # is what the CLI and a full re-run want.
     if only:
-        wanted = {Path(name).stem for name in only}
+        wanted = {clean_stem(name) for name in only}
         files = [f for f in files if f.stem in wanted]
 
     if not files:
@@ -200,7 +200,10 @@ def step_parse_to_ir(base_dir: Path, stop_after: str | None = None,
             clean_path = futures[fut]
             raw_path = None
             for p in raw_uploads.iterdir():
-                if p.is_file() and p.stem == clean_path.stem:
+                # Matching on the bare stem paired report.md with the clean
+                # file report.txt actually produced from report.txt, so the
+                # wrong raw file was moved to processed.
+                if p.is_file() and clean_stem(p.name) == clean_path.stem:
                     raw_path = p
                     break
             try:
