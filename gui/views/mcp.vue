@@ -554,10 +554,9 @@ const LOCAL_STORAGE_KEY = 'mcp_global_config'
 // apiBase: the endpoint moved out of the repo into MCP_LLM_API_BASE, and a
 // value saved before that outranks it on every request, silently routing to
 // an endpoint the deployment no longer configures.
-// v3 drops the whole connection. It is server state now: conf/local.yml is
-// what every workflow reads, and a browser-local copy shadowing it is why the
-// Global panel and the CTI panel could name two different models. Whatever
-// this browser holds is pushed to the server once, then dropped.
+// v3 drops the connection. It is server state now: conf/local.yml is what
+// every workflow reads, and a browser-local copy shadowing it is why the
+// Global panel and the CTI panel could name two different models.
 const CONFIG_SCHEMA_VERSION = 3
 
 // Mirrors the llm profile the server owns. Never persisted locally again.
@@ -586,23 +585,9 @@ function stripSecrets(value) {
 // artifacts, applied deliberately. Only the ambient default is dropped.
 function migrate(config) {
   if (config.schemaVersion === CONFIG_SCHEMA_VERSION) return config
-  const { apiBase, ...rest } = config
+  const rest = { ...config }
+  for (const key of CONNECTION_FIELDS) delete rest[key]
   return { ...rest, schemaVersion: CONFIG_SCHEMA_VERSION }
-}
-
-// Connection fields are no longer written to localStorage, but a browser
-// upgrading from v2 still has them and they may be the only place the
-// operator's endpoint exists. Hand them to the migration before they are
-// dropped.
-function strandedConnection(config) {
-  if (!config || config.schemaVersion === CONFIG_SCHEMA_VERSION) return null
-  const held = {}
-  for (const key of CONNECTION_FIELDS) {
-    if (config[key] !== undefined && config[key] !== null && config[key] !== '') {
-      held[key] = config[key]
-    }
-  }
-  return Object.keys(held).length ? held : null
 }
 
 function loadConfig() {
@@ -647,22 +632,17 @@ function saveConfig(config) {
 // RAG-specific fields (topk, embed_model) live under capabilitySettings.rag,
 // not in the global LM config, since they belong to the RAG capability and
 // are settable per workflow run.
-const rawSavedConfig = (() => {
-  try {
-    const t = localStorage.getItem(LOCAL_STORAGE_KEY)
-    return t ? JSON.parse(t) : null
-  } catch { return null }
-})()
-const strandedConnectionConfig = strandedConnection(rawSavedConfig)
 const savedConfig = loadConfig()
 const globalConfig = reactive({
-  modelName: savedConfig?.modelName || '',
-  temperature: savedConfig?.temperature,
-  apiBase: savedConfig?.apiBase || '',
+  // The connection comes from the server on mount. Seeding it from
+  // localStorage is what let this panel and the CTI panel disagree.
+  modelName: '',
+  temperature: undefined,
+  apiBase: '',
   apiKey: savedConfig?.apiKey || '',
-  sslVerify: savedConfig?.sslVerify,
-  maxToolCalls: savedConfig?.maxToolCalls,
-  maxTokens: savedConfig?.maxTokens,
+  sslVerify: undefined,
+  maxToolCalls: undefined,
+  maxTokens: undefined,
   serversByWorkflow: savedConfig?.serversByWorkflow || {},
   capabilitiesByWorkflow: savedConfig?.capabilitiesByWorkflow || {},
   capabilitySettings: savedConfig?.capabilitySettings || {},
@@ -778,29 +758,6 @@ const activeWorkflow = computed(() =>
 )
 
 onMounted(async () => {
-  // A browser upgrading from v2 may hold the only copy of the operator's
-  // endpoint. Hand it to the server before reading defaults back, or the
-  // upgrade would silently replace it with whatever default.yml ships.
-  if (strandedConnectionConfig) {
-    const c = strandedConnectionConfig
-    const llm = {}
-    if (c.modelName)                 llm.model         = c.modelName
-    if (c.apiBase)                   llm.api_base      = c.apiBase
-    if (c.sslVerify    !== undefined) llm.ssl_verify    = c.sslVerify
-    if (c.temperature  !== undefined) llm.temperature   = c.temperature
-    if (c.maxTokens    !== undefined) llm.max_tokens    = c.maxTokens
-    if (c.maxToolCalls !== undefined) llm.max_tool_calls = c.maxToolCalls
-    try {
-      await fetch('/plugin/mcp/set_config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ llm }),
-      })
-    } catch (e) {
-      console.warn('[MCP] Could not migrate the stored connection:', e)
-    }
-  }
-
   // Backend-driven defaults so the UI never duplicates yaml values.
   try {
     const resp = await fetch('/plugin/mcp/defaults')
