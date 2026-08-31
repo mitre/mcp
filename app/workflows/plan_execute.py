@@ -11,7 +11,7 @@ import asyncio
 from contextlib import AsyncExitStack
 
 from plugins.mcp.app.config import caldera_connection, llm_defaults, mlflow_settings
-from plugins.mcp.app.mlflow_run import RunTracker
+from plugins.mcp.app.mlflow_run import RunTracker, summarize_exception
 from plugins.mcp.app.dspy_env import (
     ENV_API_BASE,
     ENV_API_KEY,
@@ -348,7 +348,7 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None,
         print(tb)
         tracker.set_tag("status", "failed")
         tracker.set_tag("stage", "error")
-        tracker.log_param("error", str(e))
+        tracker.log_param("error", summarize_exception(e))
         tracker.log_param("traceback", tb)
         if created_local_run:
             tracker.terminate("FAILED")
