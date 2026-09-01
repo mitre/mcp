@@ -817,7 +817,13 @@ async function runPipelineForSelected() {
   pipelineRunning.value = true
   setCtiStatus(`Pipeline running on ${count} file${count === 1 ? '' : 's'}…`)
   selectedRaw.clear()
-  pollCtiStatus(0, pollGeneration)
+  // The chain is not awaited, so its failure has to be caught here: an
+  // unexpected throw would otherwise leave the flag set and the button dead
+  // for the rest of the session.
+  pollCtiStatus(0, pollGeneration).catch(e => {
+    pipelineRunning.value = false
+    setCtiStatus(`Lost track of the run: ${e.message}`, 'danger')
+  })
 }
 
 // Bounded so a wedged run stops the poll rather than hitting the endpoint
