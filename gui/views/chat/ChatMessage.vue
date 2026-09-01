@@ -36,8 +36,8 @@
         <p class="mt-1">{{ message.errorMessage || STOPPED_NOTE }}</p>
       </div>
 
-      <!-- Assistant: finished -->
-      <div v-else class="assistant-body">
+      <!-- Assistant: delivered an answer -->
+      <div v-else-if="isDelivered" class="assistant-body">
         <div
           v-if="formattedResult"
           class="result-content"
@@ -45,6 +45,9 @@
         ></div>
         <p v-else class="muted">No result returned.</p>
       </div>
+
+      <!-- Assistant: an undelivered status with no branch of its own -->
+      <p v-else class="muted">No result returned.</p>
 
       <!-- Thoughts panel for assistant messages with trajectory data -->
       <ChatThoughts
@@ -63,6 +66,7 @@
 <script setup>
 import { computed } from 'vue'
 import { formatProcessResult } from '../format_result.js'
+import { isDeliveredResponse } from './messageState.js'
 import ChatLoadingState from './ChatLoadingState.vue'
 import ChatThoughts from './ChatThoughts.vue'
 
@@ -79,6 +83,8 @@ const props = defineProps({
 const STOPPED_NOTE = 'Anything already created in CALDERA stays.'
 
 const role = computed(() => props.message.role || 'assistant')
+// Shared with the header's response count so the two cannot disagree.
+const isDelivered = computed(() => isDeliveredResponse(props.message))
 const formattedResult = computed(() => formatProcessResult(props.message.finalResult || ''))
 
 const formattedTime = computed(() => {

@@ -125,6 +125,7 @@ import ChatComposer from './ChatComposer.vue'
 import { useMcpRun } from './composables/useMcpRun.js'
 import { useTrajectory } from './composables/useTrajectory.js'
 import { useChatSession } from './composables/useChatSession.js'
+import { isDeliveredResponse } from './messageState.js'
 
 const props = defineProps({
   workflow: { type: Object, default: () => ({}) },
@@ -285,12 +286,11 @@ function requestStop() {
   if (!run.isStopping.value) run.requestStop()
 }
 
-// Only a run that produced one. A stopped or failed run is not a response,
-// and counting it as one reports a kill as a delivered answer.
+// Same predicate ChatMessage renders by, so the header can never claim a
+// count the transcript disagrees with. A stopped or failed run is not a
+// response; counting one would report a kill as a delivered answer.
 const responseCount = computed(
-  () => messages.value.filter(
-    m => m.role === 'assistant' && m.status === 'FINISHED'
-  ).length
+  () => messages.value.filter(isDeliveredResponse).length
 )
 
 const examplePrompts = computed(() => props.workflow?.example_prompts || [])
