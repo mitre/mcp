@@ -77,9 +77,9 @@ def test_cancel_leaves_the_run_killed_not_failed(svc):
     snapshot = svc.get_run(run_id)
     assert snapshot["status"] == "KILLED"
     assert snapshot["stage"] == "stopped by user"
-    # The bubble says plainly that a cancel cannot undo CALDERA writes.
-    assert snapshot["error"].startswith("Stopped by user.")
-    assert "cannot be rolled back" in snapshot["error"]
+    # The bubble heading already says it stopped; this line says what remains.
+    assert snapshot["error"].startswith("Anything already created in CALDERA stays")
+    assert "operation" in snapshot["error"]
 
     run = MlflowClient().get_run(run_id)
     assert run.info.status == "KILLED"

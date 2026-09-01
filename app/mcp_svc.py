@@ -70,13 +70,10 @@ _SESSION_TURN_CAP = 8
 # Shown on a run that was cancelled. Cancelling unwinds our own task; it
 # cannot undo the CALDERA writes the agent already made.
 _CANCELLED_BY_USER = (
-    "Stopped by user. Anything already created in CALDERA remains, including "
-    "an operation that was started, which may still be tasking agents. This "
-    "cannot be rolled back."
+    "Anything already created in CALDERA stays, including a running operation."
 )
 _CANCELLED_BY_SERVER = (
-    "Stopped when the server shut down. Anything already created in CALDERA "
-    "remains."
+    "The server shut down. Anything already created in CALDERA stays."
 )
 
 
