@@ -46,6 +46,11 @@ export function useMcpRun($api) {
   // Bumped by reset(). runId cannot mark supersession on its own: it is null
   // for the whole /execute POST, which is the window "New chat" opens.
   let generation = 0
+  // Stop pressed before the run had an id. That window is not small: /execute
+  // mints the MLflow run before it answers, so a slow tracking server holds it
+  // open for as long as its retries last, which is exactly when a user reaches
+  // for Stop. start() sends the cancel once the id arrives.
+  let stopPending = false
 
   function _clearTimer() {
     if (pollTimer) {
@@ -64,6 +69,7 @@ export function useMcpRun($api) {
     trajectory.value = {}
     errorMessage.value = ''
     stopping.value = false
+    stopPending = false
     consecutivePollErrors = 0
     detached = false
     generation += 1
@@ -85,6 +91,10 @@ export function useMcpRun($api) {
       const response = await $api.post('/plugin/mcp/execute', payload)
       if (gen !== generation) return null
       runId.value = response.data.run_id
+      if (stopPending) {
+        stopPending = false
+        _sendCancel(runId.value)
+      }
       if (!detached) _beginPolling(runId.value)
       // The caller needs fields above the per-run scope, like session_id.
       return response.data
@@ -186,21 +196,29 @@ export function useMcpRun($api) {
     pollTimer = timer
   }
 
-  /**
-   * Ask the server to cancel this run. Polling carries on: the run reaches
-   * KILLED only once its workflow has unwound, which is what the caller
-   * waits for. Pressing twice, or after it finished, is a harmless no-op.
-   */
-  async function requestStop() {
-    const id = runId.value
-    if (!id || !isRunning.value) return
-    stopping.value = true
+  async function _sendCancel(id) {
     try {
       await $api.post('/plugin/mcp/cancel', { run_id: id })
     } catch {
       // The run is still whatever it was; let the poller report it.
       stopping.value = false
     }
+  }
+
+  /**
+   * Ask the server to cancel this run. Usable for the whole life of the run,
+   * including before /execute has answered with an id. Polling carries on: the
+   * run reaches KILLED only once its workflow has unwound, which is what the
+   * caller waits for. Pressing twice is a harmless no-op.
+   */
+  async function requestStop() {
+    if (!isRunning.value) return
+    stopping.value = true
+    if (!runId.value) {
+      stopPending = true
+      return
+    }
+    await _sendCancel(runId.value)
   }
 
   /** Stop polling without touching run state; the server run keeps going. */

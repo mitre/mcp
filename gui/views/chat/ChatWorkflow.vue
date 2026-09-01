@@ -49,7 +49,7 @@
           <button
             v-if="run.isRunning.value"
             class="stop-button"
-            :disabled="!run.runId.value || run.isStopping.value"
+            :disabled="run.isStopping.value"
             @click="run.requestStop()"
             type="button"
             :title="stopTitle"
@@ -274,11 +274,11 @@ function _resumeRunInFlight() {
 onBeforeUnmount(run.stop)
 
 // --- Workflow-derived UI bits ----------------------------------------------
-const stopTitle = computed(() => {
-  if (run.isStopping.value) return 'Stopping. The agent loop takes a few seconds to unwind.'
-  if (!run.runId.value) return 'Starting. The run can be stopped once it has an id.'
-  return 'Stop this run. Anything already created in CALDERA stays.'
-})
+const stopTitle = computed(() =>
+  run.isStopping.value
+    ? 'Stopping. The agent loop takes a few seconds to unwind.'
+    : 'Stop this run. Anything already created in CALDERA stays.'
+)
 
 const examplePrompts = computed(() => props.workflow?.example_prompts || [])
 const composerPlaceholder = computed(() => {
