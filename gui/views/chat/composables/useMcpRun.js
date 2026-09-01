@@ -197,11 +197,15 @@ export function useMcpRun($api) {
   }
 
   async function _sendCancel(id) {
+    const gen = generation
     try {
       await $api.post('/plugin/mcp/cancel', { run_id: id })
     } catch {
-      // The run is still whatever it was; let the poller report it.
-      stopping.value = false
+      // The run is still whatever it was; let the poller report it. Guarded
+      // like every other post-await write here: a cancel that rejects only
+      // after a newer run started would otherwise clear that run's badge
+      // back to "Working" while its own stop is still in flight.
+      if (gen === generation && runId.value === id) stopping.value = false
     }
   }
 

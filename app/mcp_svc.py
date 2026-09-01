@@ -691,7 +691,10 @@ class MCPService(BaseService):
                 raise
 
             error_summary = summarize_exception(e)
-            self.log.error(f"[MCP] Execution failed: {error_summary}")
+            # exc_info because the workflow no longer prints the stack and
+            # the traceback param below is best-effort: a dead tracking
+            # store would otherwise leave one summary line and nothing else.
+            self.log.error(f"[MCP] Execution failed: {error_summary}", exc_info=e)
             tracker.set_tag("stage", "error")
             tracker.set_tag("status", "error")
             tracker.log_param("error", error_summary)
