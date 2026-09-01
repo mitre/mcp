@@ -75,8 +75,21 @@
             </button>
           </div>
 
-          <div v-if="ctiStatus" class="notification is-info mt-4">
-            {{ ctiStatus }}
+          <!-- One banner for progress, success and failure, so the tone
+               picks the Bulma class and the operator can close it. -->
+          <div
+            v-if="ctiStatus.text"
+            class="notification mt-4"
+            :class="`is-${ctiStatus.tone}`"
+            :role="ctiStatus.tone === 'danger' ? 'alert' : 'status'"
+            :key="ctiStatus.tone"
+          >
+            <button
+              class="delete"
+              aria-label="Dismiss status"
+              @click="clearCtiStatus"
+            />
+            {{ ctiStatus.text }}
           </div>
         </div>
 
@@ -176,7 +189,7 @@
       <div class="buttons">
         <button
           class="button is-primary is-small"
-          :disabled="!selectedRaw.size"
+          :disabled="!selectedRaw.size || pipelineRunning"
           @click="runPipelineForSelected"
         >
           Run Pipeline
@@ -326,9 +339,10 @@
 /* ============================================================
  * Imports
  * ============================================================ */
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import StixViewerModal from '../components/stixViewer.vue'
 import McpModelConfigPanel from '../components/modelSelector.vue'
+import { SESSION_EXPIRED, request, requestJson } from '../composables/request.js'
 
 /* ============================================================
  * State (Alphabetical)
@@ -339,7 +353,8 @@ const ctiFileInput = ref(null)
 const isDragging = ref(false)
 const dragDepth = ref(0)
 const ctiDropError = ref('')
-const ctiStatus = ref('')
+const ctiStatus = reactive({ text: '', tone: 'info' })
+const pipelineRunning = ref(false)
 const expandedDirs = ref({})
 const rawFiles = ref([])
 const selectedRaw = reactive(new Set())
@@ -376,6 +391,57 @@ const visibleRows = computed(() => {
   }
   return rows
 })
+
+/* ============================================================
+ * Status Banner
+ * ============================================================ */
+// Long enough to read a confirmation without it outliving the action that
+// produced it.
+const CTI_STATUS_FADE_MS = 6000
+
+let ctiStatusTimer = null
+
+/**
+ * Show a status message. Tone is a Bulma modifier: info for work in
+ * flight, success for a finished action, warning for a nudge, danger for
+ * a failure.
+ */
+function setCtiStatus(text, tone = 'info') {
+  clearTimeout(ctiStatusTimer)
+  ctiStatusTimer = null
+  ctiStatus.text = text
+  ctiStatus.tone = tone
+  // Only a success fades on its own. Progress is replaced by its own
+  // outcome, and a failure is the one message the operator needs to read.
+  if (tone === 'success') {
+    ctiStatusTimer = setTimeout(clearCtiStatus, CTI_STATUS_FADE_MS)
+  }
+}
+
+function clearCtiStatus() {
+  clearTimeout(ctiStatusTimer)
+  ctiStatusTimer = null
+  ctiStatus.text = ''
+}
+
+/**
+ * Report a failure without burying a message the operator has not read.
+ *
+ * A list refresh runs on the poll loop's schedule rather than the operator's,
+ * so a background one may only write over an empty banner or a spent success:
+ * progress means work is still in flight, and a failure was left up on
+ * purpose. Without this a single transient refresh error replaced the running
+ * indicator for the rest of the run.
+ */
+function reportFailure(message, { background = false } = {}) {
+  if (background && ctiStatus.text && ctiStatus.tone !== 'success') {
+    // Kept out of the banner, not thrown away: without this a run whose
+    // refreshes all failed left nothing to diagnose from.
+    console.warn('[cti] suppressed background failure:', message)
+    return
+  }
+  setCtiStatus(message, 'danger')
+}
 
 /* ============================================================
  * Helpers
@@ -425,10 +491,19 @@ function toggleStixSelection(name) {
  * Config
  * ============================================================ */
 async function loadBackendConfig() {
-  const res = await fetch('/plugin/mcp/get_config')
-  if (!res.ok) throw new Error('Failed to load config')
+  let data
+  try {
+    data = await requestJson(
+      'Could not load the extraction model settings',
+      '/plugin/mcp/get_config',
+    )
+  } catch (e) {
+    // Reaches here from mount and from the panel's saved event, so it can
+    // land mid-run; the panel reports its own save outcome either way.
+    reportFailure(e.message, { background: true })
+    return
+  }
 
-  const data = await res.json()
   const cfg = data?.config ?? data ?? {}
   const cti = cfg?.cti ?? {}
   // The server resolves this now: it layers the profiles and applies the env
@@ -458,9 +533,14 @@ async function loadBackendConfig() {
 /* ============================================================
  * API: Raw CTI
  * ============================================================ */
-async function loadRawFiles() {
-  const res = await fetch('/plugin/mcp/cti/raw')
-  const data = await res.json()
+async function loadRawFiles({ background = false } = {}) {
+  let data
+  try {
+    data = await requestJson('Could not load the CTI file list', '/plugin/mcp/cti/raw')
+  } catch (e) {
+    reportFailure(e.message, { background })
+    return
+  }
 
   rawFiles.value = (data.items || []).sort((a, b) => {
     if (a.type !== b.type) return a.type === 'dir' ? -1 : 1
@@ -469,11 +549,17 @@ async function loadRawFiles() {
 }
 
 async function deleteSelectedRaw() {
-  await fetch('/plugin/mcp/cti/raw/delete', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ files: Array.from(selectedRaw) })
-  })
+  try {
+    await request('Could not delete the selected files', '/plugin/mcp/cti/raw/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: Array.from(selectedRaw) })
+    })
+  } catch (e) {
+    // The selection survives, so the operator can retry without re-picking.
+    setCtiStatus(e.message, 'danger')
+    return
+  }
 
   selectedRaw.clear()
   loadRawFiles()
@@ -492,6 +578,10 @@ function acceptCtiFile(file) {
     ctiFile.value = null
     return
   }
+  // Only a spent confirmation is retired, and only once the file is really
+  // staged. Clearing unconditionally wiped the running indicator, and the
+  // failure the operator staged this file to retry.
+  if (ctiStatus.tone === 'success') clearCtiStatus()
   ctiFile.value = file
 }
 
@@ -533,20 +623,20 @@ async function uploadCti() {
   const form = new FormData()
   form.append('file', ctiFile.value)
 
-  ctiStatus.value = 'Uploading CTI…'
+  setCtiStatus('Uploading CTI…')
 
-  const res = await fetch('/plugin/mcp/cti/upload', {
-    method: 'POST',
-    body: form
-  })
-
-  if (!res.ok) {
-    ctiStatus.value = `Upload failed (${res.status}).`
+  try {
+    await request('Upload failed', '/plugin/mcp/cti/upload', {
+      method: 'POST',
+      body: form
+    })
+  } catch (e) {
+    setCtiStatus(e.message, 'danger')
     return
   }
 
   // Staged only. Nothing is extracted until Run Pipeline.
-  ctiStatus.value = 'File staged. Select it and press Run Pipeline to extract.'
+  setCtiStatus('File staged. Select it and press Run Pipeline to extract.', 'success')
   ctiFile.value = null
   ctiDropError.value = ''
   if (ctiFileInput.value) ctiFileInput.value.value = ''
@@ -557,9 +647,14 @@ async function uploadCti() {
 /* ============================================================
  * API: STIX
  * ============================================================ */
-async function loadStixFiles() {
-  const res = await fetch('/plugin/mcp/stix/list')
-  const data = await res.json()
+async function loadStixFiles({ background = false } = {}) {
+  let data
+  try {
+    data = await requestJson('Could not load the STIX bundle list', '/plugin/mcp/stix/list')
+  } catch (e) {
+    reportFailure(e.message, { background })
+    return
+  }
 
   stixFiles.value = (data.files || [])
     .filter(f => f.filename.endsWith('.json'))
@@ -573,33 +668,59 @@ async function loadStixFiles() {
 }
 
 async function deleteStix() {
-  await fetch('/plugin/mcp/stix/delete', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ files: Array.from(selectedStix) })
-  })
+  try {
+    await request('Could not delete the selected bundles', '/plugin/mcp/stix/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: Array.from(selectedStix) })
+    })
+  } catch (e) {
+    setCtiStatus(e.message, 'danger')
+    return
+  }
 
   selectedStix.clear()
   loadStixFiles()
 }
 
 async function downloadStix(files) {
+  // Unchecked, an expired session saved the login page as the bundle.
+  const failed = []
+
   for (const filename of files) {
-    const res = await fetch('/plugin/mcp/stix/download', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename })
-    })
+    // The body is read inside the try: a connection dropped mid-transfer
+    // rejects here, not at request(), and outside it that reached no one.
+    try {
+      const res = await request(`Could not download ${filename}`, '/plugin/mcp/stix/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename })
+      })
 
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
+      const url = URL.createObjectURL(await res.blob())
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      // Attached before the click, and revoked a tick later: a detached
+      // anchor does not download in every browser, and revoking in the same
+      // turn can cancel a transfer that started asynchronously.
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 0)
+    } catch (e) {
+      // A bundle deleted from disk answers 404, which says nothing about the
+      // rest of the selection. Only an expired session fails all of them.
+      if (e.message === SESSION_EXPIRED) {
+        setCtiStatus(e.message, 'danger')
+        return
+      }
+      failed.push(filename)
+    }
+  }
 
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.click()
-
-    URL.revokeObjectURL(url)
+  if (failed.length) {
+    setCtiStatus(`Could not download ${failed.join(', ')}.`, 'danger')
   }
 }
 
@@ -613,13 +734,11 @@ async function viewRaw(row) {
   showRawModal.value = true
 
   try {
-    const res = await fetch('/plugin/mcp/cti/raw/view', {
+    const data = await requestJson(`Could not open ${name}`, '/plugin/mcp/cti/raw/view', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ filename: name })
     })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
     Object.assign(rawViewer, {
       kind: data.kind, size: data.size, text: data.text, loading: false,
     })
@@ -629,13 +748,19 @@ async function viewRaw(row) {
 }
 
 async function viewStix(filename) {
-  const res = await fetch('/plugin/mcp/stix/get_stix', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ filename })
-  })
+  let out
+  try {
+    out = await requestJson(`Could not open ${filename}`, '/plugin/mcp/stix/get_stix', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename })
+    })
+  } catch (e) {
+    // Returning leaves the modal shut rather than opening it on no data.
+    setCtiStatus(e.message, 'danger')
+    return
+  }
 
-  const out = await res.json()
   stixData.value = out.data
   stixFilename.value = out.filename
   showStixModal.value = true
@@ -645,41 +770,60 @@ async function viewStix(filename) {
  * Pipeline Execution
  * ============================================================ */
 async function runPipelineForSelected() {
-  const count = selectedRaw.size
-  if (!count) {
-    ctiStatus.value = 'Select a file first.'
+  if (pipelineRunning.value) return
+
+  const selected = Array.from(selectedRaw)
+  if (!selected.length) {
+    setCtiStatus('Select a file first.', 'warning')
     return
   }
 
-  ctiStatus.value = 'Starting pipeline…'
-
-  let res
-  try {
-    res = await fetch('/plugin/mcp/cti/run', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ files: Array.from(selectedRaw), step: 'all' })
-    })
-  } catch (e) {
-    ctiStatus.value = `Could not reach the server: ${e.message}`
+  // cti_run takes bare filenames only, so a directory and a nested child are
+  // both unrunnable. Sending a directory used to extract nothing, move the
+  // reports out of uploads, and still report "Pipeline complete."
+  const isDir = n => rawFiles.value.some(f => f.name === n && f.type === 'dir')
+  const unrunnable = selected.filter(n => isDir(n) || n.includes('/'))
+  if (unrunnable.length) {
+    setCtiStatus(
+      `Cannot run ${unrunnable.join(', ')}: the pipeline takes single ` +
+      'uploaded reports, not folders or their contents. Deselect them and ' +
+      'try again.',
+      'warning',
+    )
     return
   }
+
+  const count = selected.length
+  setCtiStatus('Starting pipeline…')
 
   // The handler rejects an empty or malformed file list with a 400, which
   // this used to report as success.
-  if (!res.ok) {
-    let detail = ''
-    try { detail = (await res.json()).error || '' } catch { /* non-JSON body */ }
-    ctiStatus.value = `Pipeline did not start (${res.status})${detail ? ': ' + detail : ''}.`
+  try {
+    await request('Pipeline did not start', '/plugin/mcp/cti/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: selected, step: 'all' })
+    })
+  } catch (e) {
+    setCtiStatus(e.message, 'danger')
     return
   }
 
   // Accepted, not finished. The run happens in a background executor, so the
   // outcome is polled rather than awaited; without this a failure only ever
   // reached the server log and the row sat on "pending" forever.
-  ctiStatus.value = `Pipeline running on ${count} file${count === 1 ? '' : 's'}…`
+  // Held until the poll settles, so a second click cannot start a run whose
+  // outcome the first poll would swallow: both read one server-wide status.
+  pipelineRunning.value = true
+  setCtiStatus(`Pipeline running on ${count} file${count === 1 ? '' : 's'}…`)
   selectedRaw.clear()
-  pollCtiStatus()
+  // The chain is not awaited, so its failure has to be caught here: an
+  // unexpected throw would otherwise leave the flag set and the button dead
+  // for the rest of the session.
+  pollCtiStatus(0, pollGeneration).catch(e => {
+    pipelineRunning.value = false
+    setCtiStatus(`Lost track of the run: ${e.message}`, 'danger')
+  })
 }
 
 // Bounded so a wedged run stops the poll rather than hitting the endpoint
@@ -687,39 +831,56 @@ async function runPipelineForSelected() {
 const CTI_POLL_INTERVAL_MS = 2000
 const CTI_POLL_LIMIT = 150
 
-async function pollCtiStatus(attempt = 0) {
+// Bumped on unmount so an orphaned chain stops instead of polling for five
+// minutes and writing into a component that is gone.
+let pollGeneration = 0
+
+async function pollCtiStatus(attempt = 0, generation = pollGeneration) {
+  const stale = () => generation !== pollGeneration
+  const settle = () => { if (!stale()) pipelineRunning.value = false }
+
   if (attempt >= CTI_POLL_LIMIT) {
-    ctiStatus.value =
+    settle()
+    setCtiStatus(
       'Still running after 5 minutes. Check the server log; the page will not ' +
-      'update further.'
+      'update further.',
+      'warning',
+    )
     return
   }
 
   await new Promise(r => setTimeout(r, CTI_POLL_INTERVAL_MS))
+  if (stale()) return
 
   let data
   try {
-    const res = await fetch('/plugin/mcp/cti/status')
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    data = await res.json()
+    data = await requestJson('Lost contact with the server', '/plugin/mcp/cti/status')
   } catch (e) {
-    ctiStatus.value = `Lost contact with the server: ${e.message}`
+    if (stale()) return
+    settle()
+    setCtiStatus(e.message, 'danger')
     return
   }
 
+  if (stale()) return
+
   if (data.state === 'running') {
-    loadRawFiles()
-    return pollCtiStatus(attempt + 1)
+    loadRawFiles({ background: true })
+    return pollCtiStatus(attempt + 1, generation)
   }
+
+  settle()
 
   if (data.state === 'failed') {
-    ctiStatus.value = `Pipeline failed: ${data.error || 'no detail reported'}`
+    setCtiStatus(`Pipeline failed: ${data.error || 'no detail reported'}`, 'danger')
   } else {
-    ctiStatus.value = 'Pipeline complete.'
+    setCtiStatus('Pipeline complete.', 'success')
   }
 
-  loadRawFiles()
-  loadStixFiles()
+  // Background: the outcome just set above is what the operator is waiting
+  // for, and a refresh error must not take its place.
+  loadRawFiles({ background: true })
+  loadStixFiles({ background: true })
 }
 
 /* ============================================================
@@ -729,6 +890,11 @@ onMounted(() => {
   loadRawFiles()
   loadStixFiles()
   loadBackendConfig()
+})
+
+onUnmounted(() => {
+  clearTimeout(ctiStatusTimer)
+  pollGeneration += 1
 })
 </script>
 

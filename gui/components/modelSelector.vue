@@ -53,9 +53,13 @@
 
       <div class="field">
         <label class="label">Max Tokens</label>
-        <input class="input" type="number" v-model.number="local.max_tokens" />
+        <input class="input" type="number" min="1" v-model.number="local.max_tokens" />
         <p class="help">Shared with <strong>Global Model Config</strong>.</p>
       </div>
+
+      <p v-if="validationError" class="help is-danger" role="alert">
+        {{ validationError }}
+      </p>
 
       <div class="field">
         <label class="checkbox">
@@ -97,6 +101,7 @@
  * Imports
  * ============================================================ */
 import { computed, reactive, ref, watch } from 'vue'
+import { request } from '../composables/request.js'
 
 /* ============================================================
  * Props / Emits
@@ -130,11 +135,22 @@ const resolvedModel = computed(
 const resolvedApiBase = computed(
   () => props.backendConfig?.resolved_api_base || 'not set'
 )
-const isValid = computed(
-  () => local.temperature === null || local.temperature === undefined
-    ? true
-    : local.temperature >= 0 && local.temperature <= 1
-)
+// An emptied number input yields '', and '' >= 0 && '' <= 1 is true, so a
+// cleared box passed validation and saved a blank into the shared llm
+// profile, which has no empty-value guard of its own.
+const blank = v => v === '' || v === null || v === undefined
+
+const validationError = computed(() => {
+  const t = local.temperature
+  const m = local.max_tokens
+  if (blank(t)) return 'Temperature is required.'
+  if (!Number.isFinite(t) || t < 0 || t > 1) return 'Temperature must be between 0 and 1.'
+  if (blank(m)) return 'Max Tokens is required.'
+  if (!Number.isFinite(m) || m < 1) return 'Max Tokens must be 1 or more.'
+  return ''
+})
+
+const isValid = computed(() => !validationError.value)
 
 
 /* ============================================================
@@ -154,6 +170,14 @@ watch(
   { deep: true, immediate: true }
 )
 
+// The success message described the values as they were sent, so any edit
+// after it retires it rather than letting it vouch for unsaved changes.
+watch(
+  () => ({ ...local }),
+  () => { if (saveState.value?.tone === 'has-text-success') saveState.value = null },
+  { deep: true }
+)
+
 /* ============================================================
  * Persist
  * ============================================================ */
@@ -166,7 +190,7 @@ async function save() {
   try {
     // Only the fields this panel edits. conf/local.yml is deep-merged over
     // default.yml, so omitted keys keep their shipped defaults.
-    const res = await fetch('/plugin/mcp/set_config', {
+    await request('Save failed', '/plugin/mcp/set_config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -188,12 +212,12 @@ async function save() {
       })
     })
 
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-
     saveState.value = { message: 'Saved', tone: 'has-text-success' }
     emit('saved')
   } catch (e) {
-    saveState.value = { message: `Save failed: ${e.message}`, tone: 'has-text-danger' }
+    // request() already phrases this for the operator, including the expired
+    // session that used to report a green "Saved" for a save that never ran.
+    saveState.value = { message: e.message, tone: 'has-text-danger' }
   } finally {
     saving.value = false
   }

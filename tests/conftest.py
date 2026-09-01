@@ -56,11 +56,14 @@ _TEST_UPLOAD_PREFIXES = ("pytest_", "test_cti.")
 @pytest.fixture(autouse=True)
 def _sweep_test_uploads():
     yield
-    for sub in ("raw/uploads", "raw/processed", "clean"):
+    for sub in ("raw/uploads", "raw/processed", "clean", "stix_cti",
+                "outputs_stix", "outputs_ir/complete"):
         d = DATA_DIR / sub
         if not d.is_dir():
             continue
-        for f in d.iterdir():
+        # rglob, not iterdir: stage 2 writes its per-report debug copies to
+        # outputs_stix/debug/, which a top-level sweep left behind.
+        for f in d.rglob("*"):
             if f.is_file() and f.name.startswith(_TEST_UPLOAD_PREFIXES):
                 f.unlink(missing_ok=True)
 
