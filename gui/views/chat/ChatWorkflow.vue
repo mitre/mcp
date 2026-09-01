@@ -46,6 +46,17 @@
               messages.filter(m => m.role === 'assistant').length === 1 ? '' : 's'
             }}
           </span>
+          <button
+            v-if="run.isRunning.value"
+            class="stop-button"
+            :disabled="!run.runId.value || run.isStopping.value"
+            @click="run.requestStop()"
+            type="button"
+            :title="stopTitle"
+          >
+            <font-awesome-icon :icon="stopIcon" />
+            <span>{{ run.isStopping.value ? 'Stopping…' : 'Stop' }}</span>
+          </button>
         </div>
         <div class="header-right">
           <button
@@ -108,7 +119,7 @@
 <script setup>
 import { ref, computed, inject, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { faAngleLeft, faPlus } from '@fortawesome/free-solid-svg-icons'
+import { faAngleLeft, faPlus, faStop } from '@fortawesome/free-solid-svg-icons'
 import ChatSidebar from './ChatSidebar.vue'
 import ChatTranscript from './ChatTranscript.vue'
 import ChatComposer from './ChatComposer.vue'
@@ -127,6 +138,7 @@ const globalConfig = inject('mcpGlobalConfig')
 const availableServers = inject('mcpAvailableServers', ref([]))
 const backIcon = faAngleLeft
 const plusIcon = faPlus
+const stopIcon = faStop
 
 // --- Persistent per-workflow chat state -------------------------------------
 // useChatSession owns messages / sessionId / historyEnabled / selectedRag
@@ -240,7 +252,7 @@ watch(
     msg.thoughts = thoughts.value
     msg.adversary = adversary.value
     msg.abilityNames = abilityNames.value
-    if (msg.status === 'FINISHED' || msg.status === 'FAILED') {
+    if (['FINISHED', 'FAILED', 'KILLED'].includes(msg.status)) {
       pendingAssistantId = null
     }
   },
@@ -262,6 +274,12 @@ function _resumeRunInFlight() {
 onBeforeUnmount(run.stop)
 
 // --- Workflow-derived UI bits ----------------------------------------------
+const stopTitle = computed(() => {
+  if (run.isStopping.value) return 'Stopping. The agent loop takes a few seconds to unwind.'
+  if (!run.runId.value) return 'Starting. The run can be stopped once it has an id.'
+  return 'Stop this run. Anything already created in CALDERA stays.'
+})
+
 const examplePrompts = computed(() => props.workflow?.example_prompts || [])
 const composerPlaceholder = computed(() => {
   // The box is closed, but the page is not: say so.
@@ -554,6 +572,30 @@ function clearTranscript() {
   color: #c9b8ff;
   background-color: rgba(139, 92, 246, 0.12);
   border-color: rgba(169, 112, 255, 0.28);
+}
+.stop-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 28px;
+  padding: 0 0.7rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #ffd7c2;
+  background-color: rgba(239, 108, 68, 0.14);
+  border: 1px solid rgba(239, 108, 68, 0.5);
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+.stop-button:hover:not(:disabled) {
+  color: #ffffff;
+  background-color: rgba(239, 108, 68, 0.28);
+  border-color: #ef6c44;
+}
+.stop-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .status-dot {
   width: 7px;

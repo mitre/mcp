@@ -77,6 +77,15 @@ _LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
 _VALID_PROVIDERS = {"openai_compatible", "ollama"}
 
 
+def _stop_reason(tags) -> str:
+    """Why a KILLED run stopped: "user", "orphaned", or "" for anything else."""
+    if tags.get("mcp.cancelled") == "user":
+        return "user"
+    if tags.get("mcp.reconciled") == "orphaned":
+        return "orphaned"
+    return ""
+
+
 def _is_secret(name) -> bool:
     return bool(_SECRET_KEY_NAME.search(str(name))) and not str(name).endswith("_env")
 
@@ -337,6 +346,35 @@ class McpAPI:
             self.log.error(f"[MCP] Error listing feature catalog: {e}")
             return web.json_response({"error": str(e)}, status=500)
 
+    async def cancel(self, request):
+        """POST /plugin/mcp/cancel {"run_id": ...}. Stop one in-flight run.
+
+        Always answers 200 for a well-formed body: pressing Stop twice, or
+        after the run already finished, is a no-op reported as
+        cancelling=false. The caller keeps polling /status to see the run
+        reach KILLED, which takes as long as the workflow needs to unwind.
+        """
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response({"error": "Body must be JSON"}, status=400)
+        if not isinstance(data, dict):
+            return web.json_response({"error": "Body must be a JSON object"}, status=400)
+
+        run_id = data.get("run_id")
+        # Typed, not just present: run_id is used as a dict key, and an
+        # unhashable one would answer a bad request with a 500.
+        if not run_id or not isinstance(run_id, str):
+            return web.json_response({"error": "Missing run_id"}, status=400)
+
+        cancelling = self.mcp_svc.cancel_run(run_id)
+        snapshot = self.mcp_svc.get_run(run_id) or {}
+        return web.json_response({
+            "run_id": run_id,
+            "cancelling": cancelling,
+            "status": snapshot.get("status", "UNKNOWN"),
+        })
+
     async def status(self, request):
         """Live status of an in-flight or recently-finished run.
 
@@ -476,6 +514,9 @@ class McpAPI:
                             run_data.tags.get("process_result_summary")
                             or run_data.tags.get("process_result", "")
                         ),
+                        # Both a user stop and the boot sweep land on KILLED;
+                        # only the tags say which, and they read differently.
+                        "stop_reason": _stop_reason(run_data.tags),
                     }
                     all_runs.append(run_record)
 
@@ -516,6 +557,7 @@ class McpAPI:
             response = {
                 "run_id": run_id,
                 "status": run.info.status,
+                "stop_reason": _stop_reason(run.data.tags),
                 "start_time": run.info.start_time,
                 "end_time": run.info.end_time,
                 "run_name": run.data.tags.get("mlflow.runName", "Unnamed Run"),

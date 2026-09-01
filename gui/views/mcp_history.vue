@@ -59,7 +59,7 @@
                   <td @click="viewRunDetail(run.run_id)">{{ formatDate(run.start_time) }}</td>
                   <td @click="viewRunDetail(run.run_id)">
                     <span class="tag" :class="getStatusClass(run.status)">
-                      {{ run.status }}
+                      {{ statusLabel(run) }}
                     </span>
                   </td>
                   <td @click="viewRunDetail(run.run_id)">
@@ -109,7 +109,7 @@
                 <div class="column is-half">
                   <p><strong>Status:</strong>
                     <span class="tag" :class="getStatusClass(runDetail.status)">
-                      {{ runDetail.status }}
+                      {{ statusLabel(runDetail) }}
                     </span>
                   </p>
                 </div>
@@ -241,7 +241,7 @@ const filteredRuns = computed(() => {
     return (
       run.prompt?.toLowerCase().includes(query) ||
       run.run_id?.toLowerCase().includes(query) ||
-      run.status?.toLowerCase().includes(query) ||
+      statusLabel(run).toLowerCase().includes(query) ||
       run.stage?.toLowerCase().includes(query)
     )
   })
@@ -315,9 +315,10 @@ function formatDuration(run) {
   const { start_time: startTime, end_time: endTime, status } = run
   if (!startTime) return '-'
   if (!endTime) return 'Running...'
-  // A run reconciled at boot was terminated by the sweep, not by itself,
-  // so its end_time says when we noticed rather than when it stopped.
-  if (status?.toUpperCase() === 'KILLED') return '-'
+  // A run reconciled at boot was terminated by the sweep, not by itself, so
+  // its end_time says when we noticed rather than when it stopped. A run the
+  // user stopped ended when they said so, and its duration is real.
+  if (status?.toUpperCase() === 'KILLED' && run.stop_reason !== 'user') return '-'
 
   try {
     const duration = endTime - startTime
@@ -335,6 +336,14 @@ function formatDuration(run) {
   } catch {
     return '-'
   }
+}
+
+// MLflow has one terminal status for "did not finish on its own", so the tag
+// text is what separates a run the user stopped from one the boot sweep
+// closed out.
+function statusLabel(run) {
+  if (run?.stop_reason === 'user') return 'STOPPED'
+  return run?.status || ''
 }
 
 function getStatusClass(status) {

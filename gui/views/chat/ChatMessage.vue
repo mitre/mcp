@@ -30,6 +30,12 @@
         <p v-if="message.errorMessage" class="mt-1">{{ message.errorMessage }}</p>
       </div>
 
+      <!-- Assistant: cancelled before it produced a result -->
+      <div v-else-if="message.status === 'KILLED'" class="stopped-text">
+        <strong>Run stopped.</strong>
+        <p class="mt-1">{{ message.errorMessage || STOPPED_NOTE }}</p>
+      </div>
+
       <!-- Assistant: finished -->
       <div v-else class="assistant-body">
         <div
@@ -67,6 +73,11 @@ const props = defineProps({
   splitSentences: { type: Function, default: (t) => [String(t)] },
   isInjectedSentence: { type: Function, default: () => false },
 })
+
+// Fallback for a stopped bubble whose cache entry aged out before the page
+// read the reason.
+const STOPPED_NOTE =
+  'Anything already created in CALDERA remains. This cannot be rolled back.'
 
 const role = computed(() => props.message.role || 'assistant')
 const formattedResult = computed(() => formatProcessResult(props.message.finalResult || ''))
@@ -138,6 +149,13 @@ const formattedTime = computed(() => {
   color: #ffb3b3;
   background-color: rgba(255, 80, 80, 0.08);
   border-left: 3px solid #ff6464;
+  padding: 0.7rem 0.9rem;
+  border-radius: 4px;
+}
+.stopped-text {
+  color: #ffe0b8;
+  background-color: rgba(245, 158, 11, 0.08);
+  border-left: 3px solid #f59e0b;
   padding: 0.7rem 0.9rem;
   border-radius: 4px;
 }

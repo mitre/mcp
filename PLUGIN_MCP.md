@@ -327,6 +327,11 @@ What you must return:
 The orchestrator reads these into the in-memory run cache; the live
 `/plugin/mcp/status` endpoint surfaces them to the UI.
 
+The user can stop a run from the chat header, which cancels the asyncio task
+your `run()` is executing in. Catch `Exception`, never `BaseException`, and put
+subprocess and session teardown in `async with` blocks so a cancel unwinds
+cleanly. Swallowing `CancelledError` keeps the run alive with no way to stop it.
+
 ### 4.4 Reusing the framework's helpers
 
 Don't reinvent these. Import from the MCP plugin's namespace:
