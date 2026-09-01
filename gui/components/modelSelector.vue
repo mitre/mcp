@@ -53,9 +53,13 @@
 
       <div class="field">
         <label class="label">Max Tokens</label>
-        <input class="input" type="number" v-model.number="local.max_tokens" />
+        <input class="input" type="number" min="1" v-model.number="local.max_tokens" />
         <p class="help">Shared with <strong>Global Model Config</strong>.</p>
       </div>
+
+      <p v-if="validationError" class="help is-danger" role="alert">
+        {{ validationError }}
+      </p>
 
       <div class="field">
         <label class="checkbox">
@@ -131,11 +135,22 @@ const resolvedModel = computed(
 const resolvedApiBase = computed(
   () => props.backendConfig?.resolved_api_base || 'not set'
 )
-const isValid = computed(
-  () => local.temperature === null || local.temperature === undefined
-    ? true
-    : local.temperature >= 0 && local.temperature <= 1
-)
+// An emptied number input yields '', and '' >= 0 && '' <= 1 is true, so a
+// cleared box passed validation and saved a blank into the shared llm
+// profile, which has no empty-value guard of its own.
+const blank = v => v === '' || v === null || v === undefined
+
+const validationError = computed(() => {
+  const t = local.temperature
+  const m = local.max_tokens
+  if (blank(t)) return 'Temperature is required.'
+  if (!Number.isFinite(t) || t < 0 || t > 1) return 'Temperature must be between 0 and 1.'
+  if (blank(m)) return 'Max Tokens is required.'
+  if (!Number.isFinite(m) || m < 1) return 'Max Tokens must be 1 or more.'
+  return ''
+})
+
+const isValid = computed(() => !validationError.value)
 
 
 /* ============================================================
@@ -153,6 +168,14 @@ watch(
     seeded = true
   },
   { deep: true, immediate: true }
+)
+
+// The success message described the values as they were sent, so any edit
+// after it retires it rather than letting it vouch for unsaved changes.
+watch(
+  () => ({ ...local }),
+  () => { if (saveState.value?.tone === 'has-text-success') saveState.value = null },
+  { deep: true }
 )
 
 /* ============================================================

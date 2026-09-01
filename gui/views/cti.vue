@@ -81,7 +81,8 @@
             v-if="ctiStatus.text"
             class="notification mt-4"
             :class="`is-${ctiStatus.tone}`"
-            role="status"
+            :role="ctiStatus.tone === 'danger' ? 'alert' : 'status'"
+            :key="ctiStatus.tone"
           >
             <button
               class="delete"
@@ -188,7 +189,7 @@
       <div class="buttons">
         <button
           class="button is-primary is-small"
-          :disabled="!selectedRaw.size"
+          :disabled="!selectedRaw.size || pipelineRunning"
           @click="runPipelineForSelected"
         >
           Run Pipeline
@@ -353,6 +354,7 @@ const isDragging = ref(false)
 const dragDepth = ref(0)
 const ctiDropError = ref('')
 const ctiStatus = reactive({ text: '', tone: 'info' })
+const pipelineRunning = ref(false)
 const expandedDirs = ref({})
 const rawFiles = ref([])
 const selectedRaw = reactive(new Set())
@@ -432,7 +434,12 @@ function clearCtiStatus() {
  * indicator for the rest of the run.
  */
 function reportFailure(message, { background = false } = {}) {
-  if (background && ctiStatus.text && ctiStatus.tone !== 'success') return
+  if (background && ctiStatus.text && ctiStatus.tone !== 'success') {
+    // Kept out of the banner, not thrown away: without this a run whose
+    // refreshes all failed left nothing to diagnose from.
+    console.warn('[cti] suppressed background failure:', message)
+    return
+  }
   setCtiStatus(message, 'danger')
 }
 
@@ -491,7 +498,9 @@ async function loadBackendConfig() {
       '/plugin/mcp/get_config',
     )
   } catch (e) {
-    setCtiStatus(e.message, 'danger')
+    // Reaches here from mount and from the panel's saved event, so it can
+    // land mid-run; the panel reports its own save outcome either way.
+    reportFailure(e.message, { background: true })
     return
   }
 
@@ -692,8 +701,13 @@ async function downloadStix(files) {
       const a = document.createElement('a')
       a.href = url
       a.download = filename
+      // Attached before the click, and revoked a tick later: a detached
+      // anchor does not download in every browser, and revoking in the same
+      // turn can cancel a transfer that started asynchronously.
+      document.body.appendChild(a)
       a.click()
-      URL.revokeObjectURL(url)
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 0)
     } catch (e) {
       // A bundle deleted from disk answers 404, which says nothing about the
       // rest of the selection. Only an expired session fails all of them.
@@ -756,12 +770,30 @@ async function viewStix(filename) {
  * Pipeline Execution
  * ============================================================ */
 async function runPipelineForSelected() {
-  const count = selectedRaw.size
-  if (!count) {
+  if (pipelineRunning.value) return
+
+  const selected = Array.from(selectedRaw)
+  if (!selected.length) {
     setCtiStatus('Select a file first.', 'warning')
     return
   }
 
+  // cti_run takes bare filenames only, so a directory and a nested child are
+  // both unrunnable. Sending a directory used to extract nothing, move the
+  // reports out of uploads, and still report "Pipeline complete."
+  const isDir = n => rawFiles.value.some(f => f.name === n && f.type === 'dir')
+  const unrunnable = selected.filter(n => isDir(n) || n.includes('/'))
+  if (unrunnable.length) {
+    setCtiStatus(
+      `Cannot run ${unrunnable.join(', ')}: the pipeline takes single ` +
+      'uploaded reports, not folders or their contents. Deselect them and ' +
+      'try again.',
+      'warning',
+    )
+    return
+  }
+
+  const count = selected.length
   setCtiStatus('Starting pipeline…')
 
   // The handler rejects an empty or malformed file list with a 400, which
@@ -770,7 +802,7 @@ async function runPipelineForSelected() {
     await request('Pipeline did not start', '/plugin/mcp/cti/run', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ files: Array.from(selectedRaw), step: 'all' })
+      body: JSON.stringify({ files: selected, step: 'all' })
     })
   } catch (e) {
     setCtiStatus(e.message, 'danger')
@@ -780,9 +812,12 @@ async function runPipelineForSelected() {
   // Accepted, not finished. The run happens in a background executor, so the
   // outcome is polled rather than awaited; without this a failure only ever
   // reached the server log and the row sat on "pending" forever.
+  // Held until the poll settles, so a second click cannot start a run whose
+  // outcome the first poll would swallow: both read one server-wide status.
+  pipelineRunning.value = true
   setCtiStatus(`Pipeline running on ${count} file${count === 1 ? '' : 's'}…`)
   selectedRaw.clear()
-  pollCtiStatus()
+  pollCtiStatus(0, pollGeneration)
 }
 
 // Bounded so a wedged run stops the poll rather than hitting the endpoint
@@ -790,8 +825,16 @@ async function runPipelineForSelected() {
 const CTI_POLL_INTERVAL_MS = 2000
 const CTI_POLL_LIMIT = 150
 
-async function pollCtiStatus(attempt = 0) {
+// Bumped on unmount so an orphaned chain stops instead of polling for five
+// minutes and writing into a component that is gone.
+let pollGeneration = 0
+
+async function pollCtiStatus(attempt = 0, generation = pollGeneration) {
+  const stale = () => generation !== pollGeneration
+  const settle = () => { if (!stale()) pipelineRunning.value = false }
+
   if (attempt >= CTI_POLL_LIMIT) {
+    settle()
     setCtiStatus(
       'Still running after 5 minutes. Check the server log; the page will not ' +
       'update further.',
@@ -801,19 +844,26 @@ async function pollCtiStatus(attempt = 0) {
   }
 
   await new Promise(r => setTimeout(r, CTI_POLL_INTERVAL_MS))
+  if (stale()) return
 
   let data
   try {
     data = await requestJson('Lost contact with the server', '/plugin/mcp/cti/status')
   } catch (e) {
+    if (stale()) return
+    settle()
     setCtiStatus(e.message, 'danger')
     return
   }
 
+  if (stale()) return
+
   if (data.state === 'running') {
     loadRawFiles({ background: true })
-    return pollCtiStatus(attempt + 1)
+    return pollCtiStatus(attempt + 1, generation)
   }
+
+  settle()
 
   if (data.state === 'failed') {
     setCtiStatus(`Pipeline failed: ${data.error || 'no detail reported'}`, 'danger')
@@ -838,6 +888,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   clearTimeout(ctiStatusTimer)
+  pollGeneration += 1
 })
 </script>
 

@@ -61,7 +61,9 @@ def _sweep_test_uploads():
         d = DATA_DIR / sub
         if not d.is_dir():
             continue
-        for f in d.iterdir():
+        # rglob, not iterdir: stage 2 writes its per-report debug copies to
+        # outputs_stix/debug/, which a top-level sweep left behind.
+        for f in d.rglob("*"):
             if f.is_file() and f.name.startswith(_TEST_UPLOAD_PREFIXES):
                 f.unlink(missing_ok=True)
 
