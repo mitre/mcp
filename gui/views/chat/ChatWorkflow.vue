@@ -346,9 +346,14 @@ function handleSubmit() {
 // Back mid-POST would otherwise store a live run with runId null, and the
 // next mount would call it failed.
 function _recordRunHandle(assistantId, resp) {
-  if (resp.session_id && !sessionId.value) sessionId.value = resp.session_id
   const msg = messages.value.find(m => m.id === assistantId)
-  if (msg) msg.runId = resp.run_id || null
+  // Gone means "New chat" wiped the transcript while the POST was out.
+  // The run itself carries on with its id and poller, so the badge can
+  // still stop it; what must not happen is the abandoned run's session_id
+  // being adopted into the chat that replaced it.
+  if (!msg) return
+  if (resp.session_id && !sessionId.value) sessionId.value = resp.session_id
+  msg.runId = resp.run_id || null
   session.persist()
 }
 

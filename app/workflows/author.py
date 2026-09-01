@@ -6,10 +6,13 @@ import json
 import sys
 import mlflow
 import traceback
+import logging
 from contextlib import AsyncExitStack
 
 from plugins.mcp.app.config import caldera_connection, llm_defaults, mlflow_settings
 from plugins.mcp.app.mlflow_run import RunTracker, summarize_exception
+
+log = logging.getLogger("plugins.mcp")
 from plugins.mcp.app.dspy_env import (
     ENV_API_BASE,
     ENV_API_KEY,
@@ -332,14 +335,21 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
 
     except Exception as e:
         tb = traceback.format_exc()
+        # A run the orchestrator handed us is the orchestrator's to classify.
+        # A cancel landing during MCP session teardown arrives here as an
+        # anyio group carrying BrokenResourceError and no CancelledError
+        # leaf, so the type proves nothing; writing failure state would
+        # stamp an immutable error param on a run the user simply stopped.
+        if not created_local_run:
+            log.debug(f"[MCP] Raising to the orchestrator:\n{tb}")
+            raise
         print("[MCP] Exception occurred:")
         print(tb)
         tracker.set_tag("status", "failed")
         tracker.set_tag("stage", "error")
         tracker.log_param("error", summarize_exception(e))
         tracker.log_param("traceback", tb)
-        if created_local_run:
-            tracker.terminate("FAILED")
+        tracker.terminate("FAILED")
         raise
 
 

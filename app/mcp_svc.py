@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import tempfile
+import traceback
 from pathlib import Path
 from app.utility.base_service import BaseService
 import asyncio
@@ -694,6 +695,12 @@ class MCPService(BaseService):
             tracker.set_tag("stage", "error")
             tracker.set_tag("status", "error")
             tracker.log_param("error", error_summary)
+            # Written here rather than in the workflow: params are immutable,
+            # and this is the only layer that knows a cancel from a crash.
+            tracker.log_param(
+                "traceback",
+                "".join(traceback.format_exception(type(e), e, e.__traceback__)),
+            )
             self._record_run(run_id, {
                 "status": "FAILED",
                 "stage": "error",

@@ -87,6 +87,63 @@ def test_cancel_leaves_the_run_killed_not_failed(svc):
     assert run.data.tags["mcp.cancelled"] == "user"
 
 
+def test_a_stopped_run_is_not_left_carrying_an_error_param(svc):
+    """The service must not route a cancel through its failure branch.
+
+    Covers the service half only; the workflow half of this bug lives in
+    tests/test_workflow_failure_ownership.py. The exception here is the
+    shape anyio really produced when Stop tore down the MCP stdio
+    transport: an ExceptionGroup wrapping BrokenResourceError with no
+    CancelledError leaf, so the type alone cannot identify the cancel.
+    """
+    async def transport_torn_down(prompt, lm_obj, run_id=None, **kwargs):
+        try:
+            await asyncio.sleep(3600)
+        except asyncio.CancelledError:
+            # No CancelledError leaf: exactly what anyio hands back.
+            raise ExceptionGroup(
+                "unhandled errors in a TaskGroup", [RuntimeError("BrokenResourceError")]
+            )
+
+    svc.workflow_registry = {"torn": _workflow("torn", transport_torn_down)}
+
+    async def start_then_stop():
+        handle = await svc.execute(workflow_id="torn", prompt="p")
+        await asyncio.sleep(0)
+        svc.cancel_run(handle["run_id"])
+        await _settle()
+        return handle
+
+    handle = asyncio.run(start_then_stop())
+    run = MlflowClient().get_run(handle["run_id"])
+
+    assert run.info.status == "KILLED"
+    assert run.data.tags["mcp.cancelled"] == "user"
+    # The whole point: History must not show this as an error.
+    assert "error" not in run.data.params
+    assert "traceback" not in run.data.params
+
+
+def test_a_genuine_failure_still_records_its_traceback(svc):
+    """Moving the param must not cost real failures their diagnosis."""
+    async def boom(prompt, lm_obj, run_id=None, **kwargs):
+        raise RuntimeError("workflow exploded")
+
+    svc.workflow_registry = {"boom": _workflow("boom", boom)}
+
+    async def once():
+        handle = await svc.execute(workflow_id="boom", prompt="p")
+        await _settle()
+        return handle
+
+    handle = asyncio.run(once())
+    run = MlflowClient().get_run(handle["run_id"])
+
+    assert run.info.status == "FAILED"
+    assert run.data.params["error"] == "workflow exploded"
+    assert "RuntimeError: workflow exploded" in run.data.params["traceback"]
+
+
 def test_cancel_wrapped_in_an_exception_group_is_still_a_stop(svc):
     """anyio hands an early cancel back as an ExceptionGroup, an Exception."""
     async def anyio_shaped(prompt, lm_obj, run_id=None, **kwargs):
