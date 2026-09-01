@@ -679,13 +679,21 @@ async function downloadStix(files) {
   const failed = []
 
   for (const filename of files) {
-    let res
+    // The body is read inside the try: a connection dropped mid-transfer
+    // rejects here, not at request(), and outside it that reached no one.
     try {
-      res = await request(`Could not download ${filename}`, '/plugin/mcp/stix/download', {
+      const res = await request(`Could not download ${filename}`, '/plugin/mcp/stix/download', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filename })
       })
+
+      const url = URL.createObjectURL(await res.blob())
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
     } catch (e) {
       // A bundle deleted from disk answers 404, which says nothing about the
       // rest of the selection. Only an expired session fails all of them.
@@ -694,18 +702,7 @@ async function downloadStix(files) {
         return
       }
       failed.push(filename)
-      continue
     }
-
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
-
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.click()
-
-    URL.revokeObjectURL(url)
   }
 
   if (failed.length) {
