@@ -17,6 +17,8 @@
       :message="msg"
       :split-sentences="splitSentences"
       :is-injected-sentence="isInjectedSentence"
+      :stopping="stopping"
+      @stop="$emit('stop')"
     />
   </div>
 </template>
@@ -31,7 +33,11 @@ const props = defineProps({
   workflowDescription: { type: String, default: '' },
   splitSentences: { type: Function, required: true },
   isInjectedSentence: { type: Function, required: true },
+  // Run state lives in the parent; the transcript only relays it to the
+  // bubble that owns the in-flight run.
+  stopping: { type: Boolean, default: false },
 })
+defineEmits(['stop'])
 
 const scroller = ref(null)
 
