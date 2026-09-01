@@ -12,7 +12,9 @@ from plugins.mcp.app.config import resolve_llm_config
 from plugins.mcp.app.mlflow_run import (
     RunTracker,
     reconcile_orphaned_runs as _reconcile_orphaned_runs,
+    register_stage_observer,
     summarize_exception,
+    unregister_stage_observer,
 )
 
 
@@ -137,6 +139,18 @@ class MCPService(BaseService):
         self._runs.move_to_end(run_id)
         while len(self._runs) > _RUN_CACHE_LIMIT:
             self._runs.popitem(last=False)
+
+    def _update_stage(self, run_id: str, stage: str) -> None:
+        """Mirror a workflow's stage tag into the polled snapshot.
+
+        Workflows report progress with tracker.set_tag("stage", ...), which
+        reaches MLflow only. /status serves this cache, so without the
+        mirror the chat UI shows "initializing" for the whole run. Guarded
+        on RUNNING so a late tag cannot overwrite a terminal stage.
+        """
+        snapshot = self._runs.get(run_id)
+        if snapshot is not None and snapshot.get("status") == "RUNNING":
+            snapshot["stage"] = stage
 
     def cancel_run(self, run_id: str) -> bool:
         """Ask the task owning ``run_id`` to stop.
@@ -551,6 +565,10 @@ class MCPService(BaseService):
         tracker = RunTracker(run_id)
         terminal_status = "FAILED"
         try:
+            # Every tracker bound to this run mirrors its stage tags into
+            # the snapshot /status serves, including the one the workflow
+            # binds. Inside the try so the finally always releases it.
+            register_stage_observer(run_id, lambda v: self._update_stage(run_id, v))
             tracker.set_tag("stage", "initializing")
             tracker.set_tag("workflow_id", workflow.id)
             tracker.set_tag("mcp.session_id", effective_session_id)
@@ -689,4 +707,5 @@ class MCPService(BaseService):
             })
 
         finally:
+            unregister_stage_observer(run_id)
             tracker.terminate(terminal_status)

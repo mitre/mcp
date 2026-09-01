@@ -35,6 +35,33 @@ def _leaf_exceptions(exc: BaseException) -> list[BaseException]:
     return [exc]
 
 
+# Stage observers by run id. A workflow binds its own RunTracker to the run
+# the service started, so the mirror has to follow the run rather than a
+# tracker instance -- otherwise every stage a workflow reports is invisible
+# to /status. Keyed by run id, so concurrent runs never collide.
+_stage_observers = {}
+
+
+def register_stage_observer(run_id: str, fn) -> None:
+    """Call ``fn(stage)`` whenever a stage tag is written for ``run_id``."""
+    _stage_observers[run_id] = fn
+
+
+def unregister_stage_observer(run_id: str) -> None:
+    _stage_observers.pop(run_id, None)
+
+
+def _notify_stage(run_id: str, value: str) -> None:
+    fn = _stage_observers.get(run_id)
+    if fn is None:
+        return
+    # Progress reporting never fails the run it describes.
+    try:
+        fn(value)
+    except Exception as e:
+        log.debug(f"[MCP] Stage mirror failed for run {run_id}: {e}")
+
+
 def summarize_exception(exc: BaseException) -> str:
     """The innermost cause, scrubbed, rather than the group that wraps it.
 
@@ -141,6 +168,10 @@ class RunTracker:
         return self._terminated
 
     def set_tag(self, key: str, value) -> None:
+        # Mirror first: a tracking server that is down must not cost the
+        # chat UI its progress display.
+        if key == "stage":
+            _notify_stage(self.run_id, str(value))
         self._write(self._client.set_tag, key, value, _MAX_TAG_CHARS)
 
     def log_param(self, key: str, value) -> None:
