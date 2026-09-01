@@ -3,8 +3,6 @@
   - role="user": right-aligned bubble showing the prompt the user submitted.
   - role="assistant": left-aligned panel showing either a loading state, the
     rendered process_result, or an error, plus a collapsible thoughts panel.
-    While it is RUNNING the bubble also carries the Stop control: the run
-    belongs to this message, so the button that ends it does too.
 -->
 <template>
   <div class="chat-message" :class="`role-${role}`">
@@ -12,17 +10,6 @@
       <div class="message-meta">
         <span class="role-tag">{{ role === 'user' ? 'You' : 'CALDERA Copilot' }}</span>
         <span v-if="message.timestamp" class="timestamp">{{ formattedTime }}</span>
-        <button
-          v-if="isStoppable"
-          class="stop-button"
-          :disabled="stopping"
-          @click="$emit('stop')"
-          type="button"
-          :title="stopTitle"
-        >
-          <font-awesome-icon :icon="stopIcon" />
-          <span>{{ stopping ? 'Stopping…' : 'Stop' }}</span>
-        </button>
       </div>
 
       <!-- User prompt -->
@@ -75,8 +62,6 @@
 
 <script setup>
 import { computed } from 'vue'
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { faStop } from '@fortawesome/free-solid-svg-icons'
 import { formatProcessResult } from '../format_result.js'
 import ChatLoadingState from './ChatLoadingState.vue'
 import ChatThoughts from './ChatThoughts.vue'
@@ -87,29 +72,13 @@ const props = defineProps({
   // exactly one place.
   splitSentences: { type: Function, default: (t) => [String(t)] },
   isInjectedSentence: { type: Function, default: () => false },
-  // True from the moment Stop is pressed until the run reaches a terminal
-  // status; the parent owns the run, so it owns this flag.
-  stopping: { type: Boolean, default: false },
 })
-defineEmits(['stop'])
-
-const stopIcon = faStop
 
 // Fallback for a stopped bubble whose cache entry aged out before the page
 // read the reason.
 const STOPPED_NOTE = 'Anything already created in CALDERA stays.'
 
 const role = computed(() => props.message.role || 'assistant')
-// Only the live run is RUNNING here: hydrate() fails every older bubble it
-// cannot re-attach, so no stale message can offer a Stop that does nothing.
-const isStoppable = computed(
-  () => role.value === 'assistant' && props.message.status === 'RUNNING'
-)
-const stopTitle = computed(() =>
-  props.stopping
-    ? 'Stopping. The agent loop takes a few seconds to unwind.'
-    : 'Stop this run. Anything already created in CALDERA stays.'
-)
 const formattedResult = computed(() => formatProcessResult(props.message.finalResult || ''))
 
 const formattedTime = computed(() => {
@@ -165,33 +134,6 @@ const formattedTime = computed(() => {
   font-weight: 600;
 }
 .timestamp { color: #888888; }
-.stop-button {
-  /* Pushed to the far edge of the meta row so it never crowds the role tag
-     and the bubble does not reflow when the label grows to "Stopping...". */
-  margin-left: auto;
-  align-self: center;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.2rem 0.55rem;
-  border-radius: 5px;
-  font-size: 0.72rem;
-  line-height: 1;
-  cursor: pointer;
-  color: #ffd7c2;
-  background-color: rgba(239, 108, 68, 0.14);
-  border: 1px solid rgba(239, 108, 68, 0.5);
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
-}
-.stop-button:hover:not(:disabled) {
-  color: #ffffff;
-  background-color: rgba(239, 108, 68, 0.28);
-  border-color: #ef6c44;
-}
-.stop-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 
 .message-text {
   white-space: pre-wrap;
