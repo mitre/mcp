@@ -1,21 +1,16 @@
 // One MCP run: POST /plugin/mcp/execute, then poll /plugin/mcp/status until
 // FINISHED or FAILED. Returns reactive state plus start() and attach().
 //
-// Each run is independent. start() resets all state and begins fresh; the
-// caller decides how to surface results (e.g. push into a chat transcript).
-//
-// The run itself belongs to the server: /execute hands back a run_id right
-// away and the workflow keeps going no matter what the browser does. attach()
-// is the counterpart to start() for a run that is already in flight, which is
-// how a remounted view picks its run back up after the user navigated away.
+// The run belongs to the server, so it outlives the browser. attach() is the
+// counterpart to start() for one already in flight, which is how a remounted
+// view picks its run back up.
 
 import { ref, computed } from 'vue'
+import { SESSION_EXPIRED } from '../../../composables/request.js'
 
 const POLL_INTERVAL_MS = 1000
 
-// One failed status GET is usually a blip (CALDERA busy on the event loop it
-// serves every plugin from), not a dead run. Only give up after this many in
-// a row so a hiccup does not report a healthy run as FAILED.
+// A single failed status GET is usually a blip, not a dead run.
 const MAX_CONSECUTIVE_POLL_ERRORS = 3
 
 export function useMcpRun($api) {
@@ -34,9 +29,12 @@ export function useMcpRun($api) {
 
   let pollTimer = null
   let consecutivePollErrors = 0
-  // Set by stop() so a status GET that is already in flight cannot start a
-  // fresh interval after the caller has walked away (unmount).
+  // Set by stop() so a request already in flight cannot start a fresh
+  // interval after the caller unmounted.
   let detached = false
+  // Bumped by reset(). runId cannot mark supersession on its own: it is null
+  // for the whole /execute POST, which is the window "New chat" opens.
+  let generation = 0
 
   function _clearTimer() {
     if (pollTimer) {
@@ -56,23 +54,30 @@ export function useMcpRun($api) {
     errorMessage.value = ''
     consecutivePollErrors = 0
     detached = false
+    generation += 1
     _clearTimer()
   }
 
-  /** Submit a new run and begin polling it; resolves with the /execute body. */
+  /**
+   * Submit a run; resolves with the /execute body, or null if "New chat"
+   * superseded it mid-POST. An unmounted caller still gets the body so the
+   * run_id can be persisted; only the polling is skipped.
+   */
   async function start(payload) {
     reset()
+    const gen = generation
     status.value = 'RUNNING'
     prompt.value = payload.text || ''
 
     try {
       const response = await $api.post('/plugin/mcp/execute', payload)
+      if (gen !== generation) return null
       runId.value = response.data.run_id
-      _beginPolling(runId.value)
-      // Hand the parsed response back so the caller can grab fields like
-      // session_id that live above the per-run scope.
+      if (!detached) _beginPolling(runId.value)
+      // The caller needs fields above the per-run scope, like session_id.
       return response.data
     } catch (err) {
+      if (gen !== generation) return null
       status.value = 'FAILED'
       errorMessage.value = err?.response?.data?.error || 'Submission failed.'
       throw err
@@ -84,10 +89,16 @@ export function useMcpRun($api) {
     reset()
     status.value = 'RUNNING'
     runId.value = id
-    // Read the run once up front so a remounted view paints its real state
-    // straight away instead of sitting on stale content for a whole interval.
+    // Read once up front so a remounted view paints real state immediately
+    // instead of holding stale content for a whole interval.
     const stillLive = await _pollOnce(id)
     if (stillLive && !detached) _beginPolling(id)
+  }
+
+  // An expired session lands here as a 200 carrying the login page, not a
+  // snapshot (see gui/composables/request.js). Never persist that as a status.
+  function _isSnapshot(data) {
+    return !!data && typeof data === 'object' && typeof data.status === 'string'
   }
 
   function _applySnapshot(data) {
@@ -97,35 +108,34 @@ export function useMcpRun($api) {
     reasoning.value = data.reasoning || ''
     finalResult.value = data.process_result || ''
     trajectory.value = data.trajectory || {}
-    // The backend writes a per-run `error` field into the run cache when
-    // the workflow raises (see mcp_svc._run_execution's except branch).
-    // Surface it so ChatMessage can render the actual cause under the
-    // "Run failed." headline instead of leaving it blank.
+    // The run cache carries the workflow's own exception text; without this
+    // ChatMessage renders "Run failed." with no cause.
     if (data.error) errorMessage.value = data.error
   }
 
-  // True once this composable has moved on from `id`, which reset() signals by
-  // clearing runId. "New chat" resets mid-run, so a GET issued for the run the
-  // user just walked away from can still be in flight; letting it land would
-  // strand the view on a RUNNING status nothing polls any more.
+  // reset() signals "moved on" by clearing runId, so a GET issued for the
+  // abandoned run must not land on the state that replaced it.
   function _superseded(id) {
     return runId.value !== id
   }
 
-  // Pull one status snapshot into the reactive state. Returns false once
-  // polling should stop, either because the run reached a terminal state or
-  // because the endpoint will not answer for this run again.
+  // Returns false once polling should stop: terminal state, or superseded.
   async function _pollOnce(id) {
     try {
       const res = await $api.get('/plugin/mcp/status', { params: { run_id: id } })
       if (_superseded(id)) return false
+      if (!_isSnapshot(res.data)) {
+        status.value = 'FAILED'
+        errorMessage.value = SESSION_EXPIRED
+        return false
+      }
       consecutivePollErrors = 0
       _applySnapshot(res.data)
       return status.value !== 'FINISHED' && status.value !== 'FAILED'
     } catch (err) {
       if (_superseded(id)) return false
-      // 404 means the run left the live cache: the server restarted, or the
-      // run aged out of the LRU bound. Neither resolves by asking again.
+      // 404 means the run left the live cache: server restart, or LRU
+      // eviction. Neither resolves by asking again.
       if (err?.response?.status === 404) {
         status.value = 'FAILED'
         errorMessage.value =
@@ -135,27 +145,33 @@ export function useMcpRun($api) {
       }
       consecutivePollErrors += 1
       if (consecutivePollErrors < MAX_CONSECUTIVE_POLL_ERRORS) return true
+      // Losing the poll says nothing about the run, which is still going.
       status.value = 'FAILED'
-      errorMessage.value = 'Polling failed.'
+      errorMessage.value =
+        'Lost contact with the server while this run was in progress. '
+        + 'Check the History tab for its result.'
       return false
     }
   }
 
   function _beginPolling(id) {
     _clearTimer()
-    // Scoped per polling session so a slow status GET cannot stack up behind
-    // itself when the server takes longer than one interval to answer.
+    // Per polling session, so a slow GET cannot stack up behind itself.
     let inFlight = false
-    pollTimer = setInterval(async () => {
+    const timer = setInterval(async () => {
       if (inFlight) return
       inFlight = true
       try {
         const stillLive = await _pollOnce(id)
-        if (!stillLive) _clearTimer()
+        // Only ever clear our own timer: clearInterval cannot cancel a
+        // callback already suspended, so a superseded run can land here
+        // after a newer one installed its poller.
+        if (!stillLive && pollTimer === timer) _clearTimer()
       } finally {
         inFlight = false
       }
     }, POLL_INTERVAL_MS)
+    pollTimer = timer
   }
 
   /** Stop polling without touching run state; the server run keeps going. */

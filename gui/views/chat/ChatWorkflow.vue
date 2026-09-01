@@ -4,11 +4,9 @@
   /plugin/mcp/execute call and appends the resulting assistant message to
   the transcript.
 
-  A run belongs to the server, not to this component: leaving the page only
-  stops the poller. The run_id rides along on its assistant message, so a
-  remount re-attaches to a run that is still going. Navigation is never
-  blocked; only the composer is gated while a run is in flight, because the
-  view polls one run at a time.
+  A run belongs to the server, so leaving the page only stops the poller. The
+  run_id rides on its assistant message, and a remount re-attaches. Only the
+  composer is gated during a run, because this view polls one at a time.
 
   This component intentionally does not maintain a server-side session: the
   backend is still single-shot. The chat UI gives users a familiar Claude.ai
@@ -190,8 +188,7 @@ onMounted(() => {
   // before the first render pass. Has to happen before the height sync so
   // the transcript scroll position settles correctly on a hydrated view.
   session.hydrate()
-  // A run that was in flight at the last unmount is still going server side,
-  // and hydrate() leaves its bubble RUNNING, so give it a fresh poller.
+  // hydrate() leaves a still-running bubble RUNNING; give it a fresh poller.
   _resumeRunInFlight()
 
   prevBodyOverflow = document.body.style.overflow
@@ -217,11 +214,8 @@ const { thoughts, adversary, abilityNames, splitSentences, isInjectedSentence } 
 
 // Sync the in-flight run into its assistant message as state changes. The
 // assistant message is created at submit time with a known id; we update
-// that message in place rather than re-pushing.
-//
-// runId is watched alongside the run state so the id reaches the persisted
-// transcript as soon as /execute answers. Waiting for the first poll would
-// leave a one-second window where clicking Back loses the handle on the run.
+// that message in place rather than re-pushing. runId is watched too so the
+// handle reaches the transcript without waiting for the first poll.
 let pendingAssistantId = null
 watch(
   () => ({
@@ -253,9 +247,8 @@ watch(
   { deep: true }
 )
 
-// Re-attach to a run that outlived the last unmount. Only the newest
-// assistant bubble can still own one: hydrate() has already failed every
-// older RUNNING message, and the composer admits one run at a time.
+// Only the newest bubble can still own a run: hydrate() has already failed
+// every older RUNNING message.
 function _resumeRunInFlight() {
   const pending = [...messages.value]
     .reverse()
@@ -265,16 +258,13 @@ function _resumeRunInFlight() {
   run.attach(pending.runId)
 }
 
-// Drop the poller on the way out. The run keeps going on the server and its
-// bubble stays RUNNING in localStorage, which is what _resumeRunInFlight
-// picks up on the next mount. Without this the 1s interval outlives the view.
+// Without this the 1s interval outlives the view. The run itself keeps going.
 onBeforeUnmount(run.stop)
 
 // --- Workflow-derived UI bits ----------------------------------------------
 const examplePrompts = computed(() => props.workflow?.example_prompts || [])
 const composerPlaceholder = computed(() => {
-  // Says why the box is closed, and that closing it is not a page lock: the
-  // view polls one run at a time, but the run does not need the page open.
+  // The box is closed, but the page is not: say so.
   if (run.isRunning.value)
     return 'Working on the previous request. You can leave this page, it keeps running…'
   if (messages.value.length) {
@@ -305,8 +295,7 @@ function handleSubmit() {
   messages.value.push({
     id: assistantId,
     role: 'assistant',
-    // Filled in by the run watcher once /execute answers. It is the handle
-    // a later mount uses to re-attach, so it is part of the stored message.
+    // Set by _recordRunHandle; the handle a later mount re-attaches with.
     runId: null,
     status: 'RUNNING',
     stage: '',
@@ -319,10 +308,20 @@ function handleSubmit() {
   })
 
   composerText.value = ''
-  _startRun(text)
+  _startRun(text, assistantId)
 }
 
-async function _startRun(text) {
+// Written imperatively because Vue stops the watchers on unmount: clicking
+// Back mid-POST would otherwise store a live run with runId null, and the
+// next mount would call it failed.
+function _recordRunHandle(assistantId, resp) {
+  if (resp.session_id && !sessionId.value) sessionId.value = resp.session_id
+  const msg = messages.value.find(m => m.id === assistantId)
+  if (msg) msg.runId = resp.run_id || null
+  session.persist()
+}
+
+async function _startRun(text, assistantId) {
   const context = workflowContext.value || {}
   const selectedCtiFiles = Array.isArray(context.selected_stix_files)
     ? context.selected_stix_files
@@ -406,18 +405,17 @@ async function _startRun(text) {
 
   try {
     const resp = await run.start(payload)
-    if (resp?.session_id && !sessionId.value) {
-      sessionId.value = resp.session_id
-    }
+    // null means "New chat" wiped this transcript mid-POST; adopting the ids
+    // would thread the fresh chat onto the run the user walked away from.
+    if (resp) _recordRunHandle(assistantId, resp)
   } catch {
     // run.errorMessage is already populated by useMcpRun.
   }
 }
 
 function clearTranscript() {
-  // Allowed mid-run: run.reset() drops the poller, and the run itself carries
-  // on server side and stays reachable in the History tab. What it loses is
-  // this view's link to it, which is the point of starting a new chat.
+  // Allowed mid-run: only this view's link to the run is lost, which is the
+  // point. The run carries on and stays reachable in the History tab.
   //
   // "New chat" is the only path that wipes durable session state. The
   // composable resets messages, sessionId, historyEnabled, and

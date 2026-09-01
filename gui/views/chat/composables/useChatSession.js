@@ -37,12 +37,10 @@
 //   The schema version lets future changes drop incompatible blobs
 //   without confusing rehydration.
 //
-// Assistant messages carry the run_id of the run that produced them, so
-// a bubble left mid-run survives a remount: the server keeps working and
-// ChatWorkflow re-attaches a poller to the newest RUNNING message. Older
-// RUNNING messages, and any that never captured a run_id, are marked
-// FAILED on hydrate with a pointer to the History tab, since nothing is
-// going to move them again.
+// Assistant messages carry their run_id, so a bubble left mid-run survives
+// a remount and ChatWorkflow re-attaches a poller to it. Older RUNNING
+// messages, and any with no run_id, are failed on hydrate: nothing is going
+// to move them again.
 //
 // Limits:
 //   Per-workflow caps at MAX_MESSAGES messages and MAX_BYTES total
@@ -104,11 +102,8 @@ function _trimMessages(messages) {
 }
 
 function _markUnresumableRunning(messages) {
-  // The server keeps running after this view unmounts, so the newest
-  // RUNNING message can be re-attached by its runId. Anything older lost
-  // its poller for good (the view polls one run at a time), as did any
-  // message that never captured a runId, and a bubble left frozen on
-  // "Thinking" would lie to the user. Point those at the History tab.
+  // Only the newest RUNNING message can be re-attached; the view polls one
+  // run at a time. A bubble left frozen on "Thinking" would lie to the user.
   const resumableIndex = messages.reduce(
     (last, m, i) => (m.status === 'RUNNING' && m.runId ? i : last),
     -1
@@ -177,6 +172,9 @@ export function useChatSession(workflowId) {
     historyEnabled,
     selectedRag,
     hydrate,
+    // For the one write that cannot wait for the watcher: a run_id arriving
+    // after unmount, once the scope holding that watcher is stopped.
+    persist,
     reset,
   }
 }
