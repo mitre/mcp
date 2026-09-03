@@ -637,9 +637,10 @@ function saveConfig(config) {
 //   capabilitiesByWorkflow { <workflow_id>: [capability_id, ...] }
 //   capabilitySettings   { <capability_id>: { ...settings... } }
 //
-// RAG-specific fields (topk, embed_model) live under capabilitySettings.rag,
-// not in the global LM config, since they belong to the RAG capability and
-// are settable per workflow run.
+// A capability's own settings live under capabilitySettings[<id>], not in the
+// global LM config, since they belong to the capability rather than the
+// provider. The cti capability has none: attaching intel is its whole
+// configuration.
 const savedConfig = loadConfig()
 const globalConfig = reactive({
   // The connection comes from the server on mount. Seeding it from
@@ -744,11 +745,6 @@ function applyServerDefaults(d) {
   globalConfig.temperature  = d.temperature
   globalConfig.maxToolCalls = d.max_tool_calls
   globalConfig.maxTokens    = d.max_tokens
-  // Seed RAG capability defaults from the backend the first time around.
-  if (!globalConfig.capabilitySettings.rag) globalConfig.capabilitySettings.rag = {}
-  const rag = globalConfig.capabilitySettings.rag
-  if (!rag.embed_model) rag.embed_model = d.rag_embed_model || ''
-  if (rag.topk == null) rag.topk = d.rag_topk
 }
 
 // Resolve which Vue component renders a given workflow's session page.

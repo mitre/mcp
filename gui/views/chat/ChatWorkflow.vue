@@ -108,7 +108,6 @@
       :available-servers="availableServers"
       :global-config="globalConfig"
       v-model:attachedIntel="attachedIntel"
-      v-model:workflowContext="workflowContext"
       :collapsed="sidebarCollapsed"
       @toggle="sidebarCollapsed = !sidebarCollapsed"
     />
@@ -157,7 +156,6 @@ const attachedIntel = session.attachedIntel
 // --- UI state ---------------------------------------------------------------
 const sidebarCollapsed = ref(false)
 const composerText = ref('')
-const workflowContext = ref({})
 
 // True when the workflow has opted in to per-session chat history. Drives
 // composer copy and the meaning of the "New chat" button. Defaults to false
@@ -363,7 +361,7 @@ async function _startRun(text, assistantId) {
   // separate checkbox to keep in sync. The tool server stays operator
   // controlled, since reading intel and calling CTI tools are separate calls.
   const attached = [...(attachedIntel.value || [])]
-  const context = { ...(workflowContext.value || {}), attached_intel: attached }
+  const context = { attached_intel: attached }
   const baseCaps = new Set(globalConfig.capabilitiesByWorkflow?.[props.workflow.id] || [])
   if (attached.length) baseCaps.add('cti')
   const baseServers = new Set(globalConfig.serversByWorkflow?.[props.workflow.id] || [])

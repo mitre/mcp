@@ -192,8 +192,7 @@ LLM_PROFILES = frozenset({"llm", "cti"})
 LLM_OVERRIDABLE = frozenset({
     "provider", "model", "api_base", "api_base_env", "api_key_env",
     "ssl_verify", "offline", "temperature", "top_p", "max_tokens",
-    "max_tool_calls", "timeout", "stream", "embed_model",
-    "rag_topk", "rag_embed_model",
+    "max_tool_calls", "timeout", "stream",
 })
 
 WORKLOAD_OVERRIDABLE = frozenset({
@@ -203,9 +202,10 @@ WORKLOAD_OVERRIDABLE = frozenset({
     "stream",
     # Per-workload run mode: extraction can go offline without silencing chat.
     "offline",
-    # A different embedding model is a separate axis from the chat endpoint,
-    # so it cannot be confused with one.
-    "embed_model",
+    # How much attached intel the cti capability may put in a prompt. A
+    # deployment on a short-window model has to be able to lower it, and
+    # set_config is the only writer, so it has to be listed here.
+    "context_budget_tokens",
 })
 
 
@@ -271,8 +271,6 @@ def get_llm_provenance(profile: str = "llm", *, runtime: bool = False) -> dict:
         "max_tokens": llm.get("max_tokens"),
         "timeout": llm.get("timeout", 60),
         "ssl_verify": llm.get("ssl_verify", True),
-        # Optional: allow config to specify embedding model explicitly
-        "embed_model": llm.get("embed_model") or llm.get("model"),
     }
 
     if not runtime:

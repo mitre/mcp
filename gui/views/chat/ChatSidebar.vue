@@ -262,10 +262,9 @@ const props = defineProps({
   availableServers: { type: Array, default: () => [] },
   globalConfig: { type: Object, required: true },
   attachedIntel: { type: Array, default: () => [] },
-  workflowContext: { type: Object, default: () => ({}) },
   collapsed: { type: Boolean, default: false },
 })
-const emit = defineEmits(['toggle', 'update:attachedIntel', 'update:workflowContext'])
+const emit = defineEmits(['toggle', 'update:attachedIntel'])
 const $api = inject('$api', null)
 
 // Tiny inline section component to avoid yet another file for a label+slot.
@@ -457,6 +456,11 @@ async function loadIntelFiles() {
         provider: f.provider,
         objects: f.objects,
       }))
+    const available = new Set(stixFiles.value.map(f => f.name))
+    const stillThere = attachedIntel.value.filter(name => available.has(name))
+    if (stillThere.length !== attachedIntel.value.length) {
+      attachedIntel.value = stillThere
+    }
   } catch (e) {
     stixFiles.value = []
   }
@@ -469,18 +473,9 @@ async function loadIntelFiles() {
 async function loadIntel() {
   if (!workflowAcceptsCti.value) return
   await loadIntelFiles()
-  emitIntelContext()
-}
-
-// The planner is told which bundles are attached so it can cite a source and
-// pass a filename to a CTI tool. The techniques themselves arrive separately,
-// as cti_context from the capability.
-function emitIntelContext() {
-  emit('update:workflowContext', { attached_intel: attachedIntel.value })
 }
 
 onMounted(loadIntel)
-watch(attachedIntel, emitIntelContext, { deep: true })
 </script>
 
 <style scoped>
