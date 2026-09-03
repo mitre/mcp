@@ -150,7 +150,7 @@
         </label>
       </Section>
 
-      <Section title="Intel" v-if="workflowAcceptsCti">
+      <Section title="CTI" v-if="workflowAcceptsCti">
         <button class="picker-toggle" type="button" @click="openStixModal">
           <font-awesome-icon :icon="folderOpenIcon" />
           <span>Attach intel</span>
@@ -187,7 +187,7 @@
       <div class="stix-modal" role="dialog" aria-modal="true" aria-labelledby="stix-modal-title">
         <header class="modal-header">
           <div>
-            <h3 id="stix-modal-title">Available intel</h3>
+            <h3 id="stix-modal-title">Available CTI</h3>
             <p>{{ attachedIntel.length }} attached to this session</p>
           </div>
           <button class="modal-close" type="button" @click="closeStixModal" title="Close">
