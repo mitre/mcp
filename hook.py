@@ -1,10 +1,16 @@
 import atexit
+import json
 import os
 import subprocess
 import socket
+import sys
 import time
 import traceback
 import logging
+import urllib.error
+import urllib.request
+
+import psutil
 from dotenv import load_dotenv
 
 from app.utility.base_world import BaseWorld
@@ -53,6 +59,11 @@ _MLFLOW_PORT = _mlflow['port']
 _MLFLOW_URI = _mlflow['tracking_uri']
 os.environ.setdefault('MLFLOW_TRACKING_URI', _MLFLOW_URI)
 
+# This tree's tracking store. The artifact root doubles as the fingerprint
+# that tells our own server apart from another tree's on the same port.
+_MLFLOW_BACKEND_URI = f"sqlite:///{os.path.join(_PLUGIN_DIR, 'mlruns.db')}"
+_MLFLOW_ARTIFACT_ROOT = os.path.join(_PLUGIN_DIR, 'mlruns')
+
 # Only set when this process started MLflow, so shutdown never kills a server
 # the operator is running themselves.
 _mlflow_proc = None
@@ -69,19 +80,101 @@ def _stop_mlflow_server():
         _mlflow_proc.kill()
 
 
-# Started from enable(), not at import: this spawns a process and blocks for
-# up to 10s, and importing the module should do neither.
-def _ensure_mlflow_server():
-    global _mlflow_proc
-    if is_port_open(_MLFLOW_PORT, _MLFLOW_HOST):
-        log.info(f"[MCP] MLflow already running on {_MLFLOW_HOST}:{_MLFLOW_PORT}")
-        return
+def _probe_listener(timeout=2):
+    """The artifact root of the server on our port, or None if not MLflow.
+
+    A TCP connect only proves something answers. Adopting a listener that
+    is not MLflow -- macOS binds :5000 to AirPlay Receiver -- makes every
+    create_run fail with a 403 the operator only sees as a dead run.
+    Returns "" when it answers the tracking API but names no root.
+    """
+    url = f"{_MLFLOW_URI}/api/2.0/mlflow/experiments/get?experiment_id=0"
     try:
-        plugin_dir = os.path.dirname(os.path.abspath(__file__))
+        with urllib.request.urlopen(url, timeout=timeout) as response:
+            body = response.read()
+    except urllib.error.HTTPError as e:
+        # A deleted default experiment still answers with an MLflow error body.
+        body = e.read()
+    except Exception:
+        return None
+    try:
+        payload = json.loads(body.decode())
+    except Exception:
+        return None
+    if "experiment" not in payload and "error_code" not in payload:
+        return None
+    return str((payload.get("experiment") or {}).get("artifact_location") or "")
+
+
+def _serves_our_store(artifact_root):
+    """Whether that artifact root is this tree's, so the server is ours."""
+    if not artifact_root:
+        return False
+    path = artifact_root.split("://", 1)[-1]
+    try:
+        root = os.path.realpath(_MLFLOW_ARTIFACT_ROOT)
+        return os.path.realpath(path).startswith(root + os.sep)
+    except Exception:
+        return False
+
+
+def _mlflow_server_port(cmdline):
+    """The port an ``mlflow server``/``mlflow ui`` argv serves, else None."""
+    if not any("mlflow" in part for part in cmdline):
+        return None
+    if "server" not in cmdline and "ui" not in cmdline:
+        return None
+    if "--port" in cmdline:
+        try:
+            return int(cmdline[cmdline.index("--port") + 1])
+        except (IndexError, ValueError):
+            return None
+    return 5000  # mlflow's own default when the flag is absent
+
+
+def _reclaim_port():
+    """Stop the foreign MLflow on our port, returning whether it freed.
+
+    Only an mlflow server bound to our port is a candidate. macOS denies
+    a port-to-pid lookup without root, so the owner is found by cmdline.
+    """
+    victims = []
+    for proc in psutil.process_iter(["cmdline"]):
+        try:
+            if _mlflow_server_port(proc.info.get("cmdline") or []) == _MLFLOW_PORT:
+                victims.append(proc)
+        except psutil.Error:
+            continue
+    for proc in victims:
+        # The CLI parent forks uvicorn workers that hold the socket, so
+        # terminating it alone leaves the port bound.
+        try:
+            targets = proc.children(recursive=True) + [proc]
+            for target in targets:
+                target.terminate()
+            _, alive = psutil.wait_procs(targets, timeout=5)
+            for target in alive:
+                target.kill()
+        except psutil.Error as e:
+            log.warning(f"[MCP] Could not stop MLflow pid {proc.pid}: {e}")
+
+    for _ in range(10):
+        if not is_port_open(_MLFLOW_PORT, _MLFLOW_HOST):
+            return True
+        time.sleep(0.5)
+    return False
+
+
+def _start_mlflow_server():
+    global _mlflow_proc
+    try:
+        # The interpreter running caldera, not a bare "mlflow": restarting a
+        # reclaimed server is now a normal path, and PATH may not carry the
+        # venv that holds the mlflow client this process imports.
         _mlflow_proc = subprocess.Popen([
-            "mlflow", "server",
-            "--backend-store-uri", f"sqlite:///{os.path.join(plugin_dir, 'mlruns.db')}",
-            "--default-artifact-root", os.path.join(plugin_dir, 'mlruns'),
+            sys.executable, "-m", "mlflow", "server",
+            "--backend-store-uri", _MLFLOW_BACKEND_URI,
+            "--default-artifact-root", _MLFLOW_ARTIFACT_ROOT,
             "--host", _MLFLOW_HOST,
             "--port", str(_MLFLOW_PORT),
         ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -100,6 +193,38 @@ def _ensure_mlflow_server():
             return
         time.sleep(1)
     log.error(f"[MCP] MLflow did not start within 10s on {_MLFLOW_HOST}:{_MLFLOW_PORT}.")
+
+
+# Started from enable(), not at import: this spawns a process and blocks for
+# up to 10s, and importing the module should do neither.
+def _ensure_mlflow_server():
+    if is_port_open(_MLFLOW_PORT, _MLFLOW_HOST):
+        artifact_root = _probe_listener()
+        if artifact_root is None:
+            log.error(
+                f"[MCP] {_MLFLOW_HOST}:{_MLFLOW_PORT} is held by something that is "
+                f"not MLflow, so every run will fail to start. Free the port, or "
+                f"set mlflow.port in plugins/mcp/conf/default.yml."
+            )
+            return
+        if _serves_our_store(artifact_root):
+            log.info(f"[MCP] MLflow already running on {_MLFLOW_HOST}:{_MLFLOW_PORT}")
+            return
+        # Sharing another tree's store crosses both trees' history, and the
+        # boot reconcile then marks that tree's live runs KILLED.
+        log.warning(
+            f"[MCP] The MLflow server on {_MLFLOW_HOST}:{_MLFLOW_PORT} tracks "
+            f"{artifact_root or 'an unknown store'}, not {_MLFLOW_ARTIFACT_ROOT}. "
+            f"Restarting it against this tree's store."
+        )
+        if not _reclaim_port():
+            log.error(
+                f"[MCP] Could not free {_MLFLOW_HOST}:{_MLFLOW_PORT}. Runs would land "
+                f"in another tree's store, so that server is left alone and runs will "
+                f"fail. Stop it, or set mlflow.port in plugins/mcp/conf/default.yml."
+            )
+            return
+    _start_mlflow_server()
 
 
 # ✅ Now import modules that depend on MLflow
