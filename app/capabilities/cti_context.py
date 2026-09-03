@@ -1,0 +1,206 @@
+"""CTI grounding: hand the agent the intel the operator attached.
+
+A bundle from this pipeline is small. One report yields tens of
+attack-patterns, not thousands, so the whole of it fits inside a modern
+context window several times over. Embedding it to retrieve a handful of
+chunks discarded the rest for no gain, and the query it retrieved against was
+the operator's raw prompt, which rarely contains technique language, so the
+selection was close to arbitrary. Published long-context evaluations put the
+point where retrieval starts to pay at the reader's effective context window,
+far above a single report.
+
+The default is therefore everything, in document order. A selection that
+outgrows the deployment's budget is trimmed rather than sampled, and the
+prompt says what was left out so the agent can call a CTI tool for the rest.
+The budget lives on the `cti` profile in conf/default.yml; nothing here
+decides how much a deployment can afford.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+from dataclasses import dataclass
+from pathlib import Path
+
+from plugins.mcp.app.capabilities.base import Capability
+from plugins.mcp.app.config import profile_defaults
+from plugins.mcp.app.utilities.paths import get_mcp_data_dir
+
+log = logging.getLogger("plugins.mcp")
+
+# The two object types a bundle carries that say something about adversary
+# behaviour. Everything else in STIX 2.1 describes the previous victim's
+# estate, which is not ours to act on.
+_INTEL_TYPES = {"attack-pattern": "technique", "threat-actor": "actor"}
+
+
+@dataclass(frozen=True)
+class IntelObject:
+    """One grounded fact from a bundle, ready to render into a prompt."""
+
+    kind: str
+    attack_id: str
+    name: str
+    description: str
+    evidence: str
+
+    def render(self) -> str:
+        heading = " ".join(part for part in (self.attack_id, self.name) if part)
+        lines = [f"### {heading or self.kind}"]
+        # The report's own words first: they are what distinguishes this report
+        # from every other one citing the same technique.
+        if self.evidence:
+            lines.append(f"Observed in report: {self.evidence}")
+        if self.description:
+            lines.append(self.description)
+        return "\n".join(lines)
+
+
+def _attack_id(obj: dict) -> str:
+    for ref in obj.get("external_references") or []:
+        if ref.get("source_name") == "mitre-attack" and ref.get("external_id"):
+            return str(ref["external_id"]).strip()
+    return ""
+
+
+def read_intel(bundle: dict) -> list[IntelObject]:
+    """Every behavioural object in a bundle, in the order the bundle lists them."""
+    intel: list[IntelObject] = []
+    for obj in bundle.get("objects") or []:
+        kind = _INTEL_TYPES.get(obj.get("type"))
+        if kind is None:
+            continue
+        name = (obj.get("name") or "").strip()
+        description = (obj.get("description") or "").strip()
+        if not name and not description:
+            continue
+        intel.append(
+            IntelObject(
+                kind=kind,
+                attack_id=_attack_id(obj),
+                name=name,
+                description=description,
+                evidence=(obj.get("x_cti_evidence") or "").strip(),
+            )
+        )
+    return intel
+
+
+def estimate_tokens(text: str) -> int:
+    """Character-based proxy. The budget only needs to be right to the nearest
+    object, and this avoids a tokeniser that would have to match whichever
+    model the deployment points at."""
+    return len(text) // 4
+
+
+def render(intel: list[IntelObject], *, budget_tokens: int) -> str:
+    """Render as much intel as the budget allows, in document order.
+
+    Objects are kept whole: half a technique reads like a complete one and
+    would ground the agent in a truncated sentence.
+
+    Trimming takes from the end, so with several bundles attached the last one
+    loses most. That is fine for the single-report case this is built for; if
+    operators start attaching many at once, spread the budget across bundles
+    instead.
+    """
+    if not intel:
+        return ""
+
+    kept: list[str] = []
+    used = 0
+    for obj in intel:
+        block = obj.render()
+        cost = estimate_tokens(block)
+        if kept and used + cost > budget_tokens:
+            break
+        kept.append(block)
+        used += cost
+
+    body = "\n\n".join(kept)
+    omitted = len(intel) - len(kept)
+    if omitted:
+        # An agent that knows its intel is partial can call a CTI tool for the
+        # rest. One that does not will reason from a silent gap.
+        body += (
+            f"\n\n[{omitted} further object(s) omitted to stay within the "
+            f"context budget. Use the CTI tools to read the full bundle.]"
+        )
+    return body
+
+
+def _resolve_bundle(name: str) -> Path:
+    """Resolve an attached filename to a bundle on disk.
+
+    Pipeline output is searched first, so a bundle regenerated by a later run
+    wins over an older copy of the same name uploaded by hand.
+    """
+    raw = Path(str(name))
+    if raw.is_absolute():
+        return raw
+
+    data_dir = get_mcp_data_dir()
+    candidates = [data_dir / "outputs_stix" / raw] if len(raw.parts) == 1 else []
+    candidates.append(data_dir / raw)
+    for path in candidates:
+        if path.exists():
+            return path
+    return candidates[0]
+
+
+def _context_budget() -> int:
+    return int(profile_defaults("cti")["context_budget_tokens"])
+
+
+async def _enrich(prompt: str, settings: dict) -> dict:
+    """Read the attached bundles and return them as one cti_context string.
+
+    Returns {} when nothing is attached, so the workflow falls through to its
+    ungrounded signature rather than being handed an empty string that reads
+    like intelligence.
+
+    Raises when a bundle cannot be read or carries no behavioural objects. The
+    operator attached it deliberately; a run that silently proceeds without it
+    looks identical to one that worked.
+    """
+    attached = settings.get("cti_files") or []
+    if not attached:
+        return {}
+
+    intel: list[IntelObject] = []
+    for name in attached:
+        path = _resolve_bundle(name)
+        if not path.exists():
+            raise FileNotFoundError(f"attached CTI bundle not found: {path}")
+        with open(path, "r", encoding="utf-8") as handle:
+            bundle = json.load(handle)
+        found = read_intel(bundle)
+        if not found:
+            raise ValueError(
+                f"{path.name} carries no attack-pattern or threat-actor "
+                f"objects, so there is nothing to ground on"
+            )
+        intel.extend(found)
+
+    context = render(intel, budget_tokens=_context_budget())
+    log.info(
+        "[cti] grounding on %d object(s) from %d bundle(s), ~%d tokens",
+        len(intel), len(attached), estimate_tokens(context),
+    )
+    return {"cti_context": context}
+
+
+CAPABILITIES = [
+    Capability(
+        id="cti",
+        display_name="CTI grounding",
+        description=(
+            "Put the attached intel in front of the agent: every technique and "
+            "actor the bundle carries, with the report's own wording where the "
+            "pipeline captured it."
+        ),
+        enrich=_enrich,
+        contributes_fields=["cti_context"],
+    ),
+]

@@ -16,8 +16,9 @@ CHAT_HISTORY_DESC = (
 
 
 CTI_CONTEXT_DESC = (
-    "ATT&CK technique descriptions retrieved from the selected STIX "
-    "bundles, and the named threat actor when the report identifies one. "
+    "The ATT&CK techniques carried by the attached intel, with the report's "
+    "own wording where the pipeline captured it, and the named threat actor "
+    "when the report identifies one. "
     "Technique-level only: it never contains hosts, accounts, domains, "
     "software or infrastructure. Use this as grounding, not as permission "
     "to invent missing facts."
@@ -37,21 +38,3 @@ PLAN_EXECUTE_OUTPUT_DESC = (
 )
 
 
-def format_rag_context(rag_context: dict[str, Any] | None) -> str:
-    """Format RAG capability output for workflow signatures."""
-    if not rag_context:
-        return "No CTI context available."
-
-    formatted_parts: list[str] = []
-    if "search_results" in rag_context:
-        formatted_parts.append("Relevant CTI findings:")
-        for i, result in enumerate(rag_context["search_results"][:3], 1):
-            formatted_parts.append(f"{i}. {result}")
-
-    if "detailed_context" in rag_context:
-        formatted_parts.append("\nDetailed CTI Information:")
-        for ctx in rag_context["detailed_context"]:
-            formatted_parts.append(f"\n{ctx['name']}:")
-            formatted_parts.append(f"{ctx['description']}")
-
-    return "\n".join(formatted_parts)

@@ -150,33 +150,10 @@ class DSPyCalderaFactoryClientWithRAG(dspy.Signature):
     )
 
 
-def format_rag_context(rag_context):
-    """Format RAG context into a string for the DSPy signature."""
-    if not rag_context:
-        return "No CTI context available."
-    
-    formatted_parts = []
-    
-    # Add search results summary
-    if "search_results" in rag_context:
-        formatted_parts.append("Relevant CTI findings:")
-        for i, result in enumerate(rag_context["search_results"][:3], 1):
-            formatted_parts.append(f"{i}. {result}")
-    
-    # Add detailed context
-    if "detailed_context" in rag_context:
-        formatted_parts.append("\nDetailed CTI Information:")
-        for ctx in rag_context["detailed_context"]:
-            formatted_parts.append(f"\n{ctx['name']}:")
-            formatted_parts.append(f"{ctx['description']}")
-    
-    return "\n".join(formatted_parts)
-
-async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_id=None, enabled_servers=None, server_registry=None, cti_context: str = "", **_extra_capability_context):
-    # cti_context (formatted string) is the new orchestrator's path. rag_context
-    # (raw dict) is the legacy mcp_svc shim. Either may be supplied; cti_context
-    # wins. **_extra_capability_context absorbs unknown kwargs from future
-    # capabilities so adding one doesn't break this signature.
+async def run(adversary_emulation_task: str, lm_obj=None, run_id=None, enabled_servers=None, server_registry=None, cti_context: str = "", workflow_context: dict | None = None, **_extra_capability_context):
+    # cti_context is the attached intel, already rendered by the cti
+    # capability. **_extra_capability_context absorbs unknown kwargs from
+    # future capabilities so adding one doesn't break this signature.
     #
     # lm_obj is the dict mcp_svc produces from resolve_llm_config (yaml + .env
     # + UI overrides, with fields_locked enforced). Workflows trust it; they
@@ -275,18 +252,12 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None, run_
                 tracker.set_tag("stage", "creating DSPy ReAct instance")
 
                 # Resolve CTI context: prefer the orchestrator-supplied string,
-                # fall back to formatting the legacy structured dict.
                 resolved_cti = cti_context
-                if not resolved_cti and rag_context:
-                    resolved_cti = format_rag_context(rag_context)
 
                 if resolved_cti:
                     signature = DSPyCalderaFactoryClientWithRAG
                     tracker.log_param("cti_context_preview", resolved_cti[:1000])
                     tracker.set_tag("cti_context_length", len(resolved_cti))
-                    if rag_context:
-                        tracker.set_tag("cti_search_results_count", len(rag_context.get("search_results", [])))
-                        tracker.set_tag("cti_detailed_context_count", len(rag_context.get("detailed_context", [])))
                     print(f"[MCP] Passing CTI context to LLM ({len(resolved_cti)} chars)")
 
                     react = dspy.ReAct(signature, tools=dspy_tools, max_iters=max_tool_calls)
@@ -368,8 +339,8 @@ WORKFLOWS = [
         ),
         signature=DSPyCalderaFactoryClient,
         required_servers=["caldera_core"],
-        optional_servers=[],
-        accepted_capabilities=["rag"],
+        optional_servers=["cti_pipeline"],
+        accepted_capabilities=["cti"],
         mlflow_experiment=_MLFLOW_EXPERIMENT,
         ui_component="author.vue",
         example_prompts=[

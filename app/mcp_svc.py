@@ -21,8 +21,8 @@ from plugins.mcp.app.mlflow_run import (
 )
 
 
-# Where chat session history lives on disk. Co-located with RAG uploads
-# under plugins/mcp/data/. Single JSON file rather than one-per-session
+# Where chat session history lives on disk, under plugins/mcp/data/.
+# Single JSON file rather than one-per-session
 # because the load is once at boot and the writes happen at the end of
 # successful runs, where one extra ~tens-of-KB write is invisible against
 # the LLM round-trip we just finished.
@@ -56,8 +56,8 @@ def _scrub_secrets(text: str) -> str:
 _LEGACY_TYPE_MAP = {
     "factory":     ("author",        []),
     "planner":     ("plan_execute",  []),
-    "rag_factory": ("author",        ["rag"]),
-    "rag_planner": ("plan_execute",  ["rag"]),
+    "rag_factory": ("author",        ["cti"]),
+    "rag_planner": ("plan_execute",  ["cti"]),
 }
 
 # Bound on the in-memory live-run cache. Older snapshots fall off LRU-style
@@ -91,7 +91,6 @@ class MCPService(BaseService):
         self.auth_svc = services.get("auth_svc")
         self.log = logging.getLogger("plugins.mcp")
 
-        self.rag_service = None
         self.server_registry = server_registry or {}
         self.workflow_registry = workflow_registry or {}
         self.capability_registry = capability_registry or {}
@@ -409,7 +408,7 @@ class MCPService(BaseService):
         _LEGACY_TYPE_MAP and can be removed once the UI ships exclusively
         on the new shape.
         """
-        legacy_rag_settings = None
+        legacy_cti_settings = None
         if workflow_id is None and focus is not None:
             mapped = _LEGACY_TYPE_MAP.get(focus)
             if mapped is None:
@@ -420,14 +419,10 @@ class MCPService(BaseService):
                 if c not in enabled_capabilities:
                     enabled_capabilities.append(c)
             mc = model_config or {}
-            if mc.get("rag_files") and "rag" not in enabled_capabilities:
-                enabled_capabilities.append("rag")
-            if "rag" in enabled_capabilities:
-                legacy_rag_settings = {
-                    "rag_files": mc.get("rag_files") or [],
-                    "topk": mc.get("rag_topk"),
-                    "embed_model": mc.get("rag_embed_model"),
-                }
+            if mc.get("cti_files") and "cti" not in enabled_capabilities:
+                enabled_capabilities.append("cti")
+            if "cti" in enabled_capabilities:
+                legacy_cti_settings = {"cti_files": mc.get("cti_files") or []}
             if lm_config is None:
                 lm_config = mc
 
@@ -456,25 +451,8 @@ class MCPService(BaseService):
         lm_obj = self._create_dspy_client(resolved_lm)
 
         cap_settings = dict(capability_settings or {})
-        if legacy_rag_settings is not None and "rag" not in cap_settings:
-            cap_settings["rag"] = legacy_rag_settings
-        if "rag" in scoped_capabilities:
-            rag_cfg = dict(cap_settings.get("rag") or {})
-            if not rag_cfg.get("api_key"):
-                rag_cfg["api_key"] = resolved_lm.get("api_key", "")
-            if not rag_cfg.get("api_base"):
-                rag_cfg["api_base"] = resolved_lm.get("api_base", "")
-            if not rag_cfg.get("embed_model"):
-                # Last rung is the chat model: one endpoint, one model, unless
-                # a deployment explicitly names a separate embedding model.
-                rag_cfg["embed_model"] = (
-                    resolved_lm.get("embed_model")
-                    or resolved_lm.get("rag_embed_model")
-                    or resolved_lm.get("model")
-                )
-            if rag_cfg.get("ssl_verify") is None:
-                rag_cfg["ssl_verify"] = resolved_lm.get("ssl_verify")
-            cap_settings["rag"] = rag_cfg
+        if legacy_cti_settings is not None and "cti" not in cap_settings:
+            cap_settings["cti"] = legacy_cti_settings
 
         # Mint the run record without activating it. Every write against it
         # goes through a RunTracker bound to this id, so concurrent requests
@@ -621,8 +599,14 @@ class MCPService(BaseService):
                         ",".join(sorted(contrib.keys())),
                     )
                 except Exception as e:
+                    # The operator enabled this capability deliberately. A run
+                    # that continues without it finishes green and is
+                    # indistinguishable from a grounded one, so it has to stop.
                     tracker.set_tag(f"capability_{cap_id}_stage", "error")
-                    self.log.warning(f"[MCP] Capability '{cap_id}' enrich failed: {e}")
+                    self.log.error(f"[MCP] Capability '{cap_id}' enrich failed: {e}")
+                    raise RuntimeError(
+                        f"{cap_id} was enabled for this run but failed: {e}"
+                    ) from e
 
             if workflow.run is None:
                 raise RuntimeError(f"Workflow {workflow.id} has no run() function")

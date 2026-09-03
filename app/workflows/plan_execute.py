@@ -31,7 +31,6 @@ from plugins.mcp.app.workflows.prompts.common import (
     CHAT_HISTORY_DESC,
     CTI_CONTEXT_DESC,
     PLAN_EXECUTE_OUTPUT_DESC,
-    format_rag_context,
 )
 from plugins.mcp.app.workflows.prompts.plan_execute import (
     PLAN_EXECUTE_AGENT_DOC,
@@ -156,7 +155,7 @@ DSPyCalderaPlannerClient.__doc__ = PLAN_EXECUTE_AGENT_DOC
 DSPyCalderaPlannerClientWithRAG.__doc__ = PLAN_EXECUTE_AGENT_WITH_CTI_DOC
 
 
-async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None,
+async def run(adversary_emulation_task: str, lm_obj=None,
               run_id=None, enabled_servers=None, server_registry=None,
               cti_context: str = "", chat_history: str = "",
               workflow_context: dict | None = None,
@@ -281,8 +280,6 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None,
                 # Resolve CTI context: prefer the orchestrator-supplied string,
                 # fall back to formatting the legacy structured dict.
                 resolved_cti = cti_context
-                if not resolved_cti and rag_context:
-                    resolved_cti = format_rag_context(rag_context)
                 operation_context = format_plan_execute_context(workflow_context)
                 if operation_context:
                     tracker.log_param("operation_context_preview", operation_context[:1000])
@@ -292,9 +289,6 @@ async def run(adversary_emulation_task: str, lm_obj=None, rag_context=None,
                     signature = DSPyCalderaPlannerClientWithRAG
                     tracker.log_param("cti_context_preview", resolved_cti[:1000])
                     tracker.set_tag("cti_context_length", len(resolved_cti))
-                    if rag_context:
-                        tracker.set_tag("cti_search_results_count", len(rag_context.get("search_results", [])))
-                        tracker.set_tag("cti_detailed_context_count", len(rag_context.get("detailed_context", [])))
                     print(f"[MCP] Passing CTI context to LLM ({len(resolved_cti)} chars)")
 
                     react = dspy.ReAct(signature, tools=dspy_tools, max_iters=max_tool_calls)
@@ -396,7 +390,7 @@ WORKFLOWS = [
         signature=DSPyCalderaPlannerClient,
         required_servers=["caldera_core"],
         optional_servers=["cti_pipeline"],
-        accepted_capabilities=["rag"],
+        accepted_capabilities=["cti"],
         mlflow_experiment=_MLFLOW_EXPERIMENT,
         ui_component="plan_execute.vue",
         example_prompts=PLAN_EXECUTE_EXAMPLES,

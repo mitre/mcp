@@ -41,6 +41,15 @@ cti:
   top_p: 1.0
   timeout: 120
   offline: true
+  # Ceiling on the intel handed to a workflow as cti_context. A one-report
+  # bundle is a few thousand tokens and a large one around 13k, so this holds
+  # roughly two without trimming.
+  #
+  # It is a ceiling, not a target. Answer quality against context length is an
+  # inverted U and published long-context evaluations put the turn well above
+  # this figure, so raise it if operators routinely attach several bundles and
+  # lower it for a model with a short usable window.
+  context_budget_tokens: 24000
 
 # Caldera's REST API, used by the caldera_core subprocess. Both values
 # auto-resolve from caldera's own config, so a stock deployment needs no setup;
