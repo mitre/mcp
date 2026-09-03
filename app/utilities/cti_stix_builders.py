@@ -133,7 +133,7 @@ def make_attack_pattern(ttp_text, taxonomy: dict):
         - "Exfiltration Over Alternative Protocol (T1048)"
         - "T1070.004"
         - plain English name
-        - dict from IR with keys: id, name, confidence, evidence
+        - dict from IR with keys: id, name, x_cti_confidence, x_cti_evidence
     """
 
     confidence = None
@@ -143,8 +143,10 @@ def make_attack_pattern(ttp_text, taxonomy: dict):
     # Normalize IR dict → string (WITHOUT losing metadata)
     # ----------------------------
     if isinstance(ttp_text, dict):
-        confidence = ttp_text.get("confidence")
-        evidence = ttp_text.get("evidence")
+        # cti_technique_grounding writes the x_cti_ prefix. The bare names are
+        # still accepted so a hand-written IR keeps its provenance.
+        confidence = ttp_text.get("x_cti_confidence", ttp_text.get("confidence"))
+        evidence = ttp_text.get("x_cti_evidence", ttp_text.get("evidence"))
 
         if "id" in ttp_text:
             t = ttp_text["id"].strip()
