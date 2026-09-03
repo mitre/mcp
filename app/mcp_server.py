@@ -439,10 +439,11 @@ def create_windows_ability(
     """
     ability_id = str(uuid.uuid4())
     created_command = create_command(command_description, "windows")
-    # Create the executor object with default values for optional fields
+    # Caldera keys an executor as (name, platform): name is the runner, platform
+    # is the OS. Transposed, no agent ever matches and the ability cannot run.
     executor = {
-        "name": "windows",
-        "platform": "psh",
+        "name": "psh",
+        "platform": "windows",
         "command": created_command,
         "code": None,
         "language": None,
@@ -506,10 +507,11 @@ def create_linux_ability(
     ability_id = str(uuid.uuid4())
     created_command = create_command(command_description, "linux")
 
-    # Create the executor object with default values for optional fields
+    # Caldera keys an executor as (name, platform): name is the runner, platform
+    # is the OS. Transposed, no agent ever matches and the ability cannot run.
     executor = {
-        "name": "linux",
-        "platform": "sh",
+        "name": "sh",
+        "platform": "linux",
         "command": created_command,
         "code": None,
         "language": None,
