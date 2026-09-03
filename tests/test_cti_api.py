@@ -62,7 +62,6 @@ class TestSetupRoutes:
         expected_routes = [
             "/plugin/mcp/execute",
             "/plugin/mcp/status",
-            "/plugin/mcp/rag/upload",
             "/plugin/mcp/cti/upload",
             "/plugin/mcp/cti/raw",
             "/plugin/mcp/cti/raw/delete",
@@ -85,7 +84,7 @@ class TestSetupRoutes:
         """Every registered route should have a handler method."""
         from plugins.mcp.app.mcp_api import McpAPI
         expected_handlers = [
-            "execute", "status", "upload_rag",
+            "execute", "status",
             "upload_cti_raw", "list_cti_raw", "delete_cti_raw", "cti_run",
             "list_stix_cti", "upload_stix_cti", "get_stix_cti",
             "download_stix_cti", "delete_stix_cti",

@@ -150,7 +150,8 @@ class DSPyCalderaFactoryClientWithRAG(dspy.Signature):
     )
 
 
-async def run(adversary_emulation_task: str, lm_obj=None, run_id=None, enabled_servers=None, server_registry=None, cti_context: str = "", workflow_context: dict | None = None, **_extra_capability_context):
+async def run(adversary_emulation_task: str, lm_obj=None, run_id=None, enabled_servers=None, server_registry=None, cti_context: str = "", workflow_context: dict | None = None, denied_tools=None,
+              **_extra_capability_context):
     # cti_context is the attached intel, already rendered by the cti
     # capability. **_extra_capability_context absorbs unknown kwargs from
     # future capabilities so adding one doesn't break this signature.
@@ -159,6 +160,7 @@ async def run(adversary_emulation_task: str, lm_obj=None, run_id=None, enabled_s
     # + UI overrides, with fields_locked enforced). Workflows trust it; they
     # do not re-merge yaml here. Tests that call run() directly without
     # lm_obj fall back to the same yaml-resolved defaults.
+    denied = set(denied_tools or ())
     _ensure_mlflow()
     lm_settings = dict(lm_obj) if lm_obj else llm_defaults()
     max_tool_calls = lm_settings.get("max_tool_calls") or 5
@@ -236,6 +238,8 @@ async def run(adversary_emulation_task: str, lm_obj=None, run_id=None, enabled_s
             for server_name, session in zip(enabled_servers, sessions):
                 tool_list = (await session.list_tools()).tools
                 for tool in tool_list:
+                    if tool.name in denied:
+                        continue
                     if tool.name in seen:
                         raise ValueError(
                             f"Tool name collision: '{tool.name}' defined by both "
@@ -341,6 +345,16 @@ WORKFLOWS = [
         required_servers=["caldera_core"],
         optional_servers=["cti_pipeline"],
         accepted_capabilities=["cti"],
+        # The signature tells the model not to run operations. caldera_core is
+        # required and cti_pipeline is now offered, and between them they
+        # expose all three of these, so without the scope that instruction is
+        # the only thing standing between an authoring run and a live
+        # operation. Authoring an adversary stays allowed; running one does not.
+        denied_tools=[
+            "core_create_operation",
+            "core_add_link_to_operation",
+            "cti_pipeline_run_operation",
+        ],
         mlflow_experiment=_MLFLOW_EXPERIMENT,
         ui_component="author.vue",
         example_prompts=[

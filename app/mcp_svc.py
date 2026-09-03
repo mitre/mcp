@@ -623,6 +623,11 @@ class MCPService(BaseService):
                 run_kwargs["chat_history"] = chat_history
             if isinstance(workflow_context, dict) and workflow_context:
                 run_kwargs["workflow_context"] = workflow_context
+            # getattr, not attribute access: a workflow contributed by another
+            # plugin may predate this field, and so do the test fakes.
+            denied_tools = getattr(workflow, "denied_tools", None)
+            if denied_tools:
+                run_kwargs["denied_tools"] = list(denied_tools)
             result = await workflow.run(
                 prompt,
                 lm_obj,

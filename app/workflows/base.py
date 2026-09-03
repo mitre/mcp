@@ -51,6 +51,13 @@ class Workflow:
     # capability's enrich() when its id appears here AND the user enabled it.
     accepted_capabilities: list[str] = field(default_factory=list)
 
+    # Tool names this workflow must never be given, even when the server that
+    # exposes them is enabled. Server scoping is all-or-nothing, so a workflow
+    # that needs most of a server but must not reach two of its tools has no
+    # other way to say so. The agent cannot call a tool that is absent from
+    # its list, which is the boundary a persona docstring can only request.
+    denied_tools: list[str] = field(default_factory=list)
+
     # MLflow experiment this workflow's runs belong to. mcp_svc mints the run
     # here, and the boot-time orphan sweep only reconciles runs in the
     # experiments the registered workflows declare.

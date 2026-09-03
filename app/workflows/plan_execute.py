@@ -158,7 +158,7 @@ DSPyCalderaPlannerClientWithRAG.__doc__ = PLAN_EXECUTE_AGENT_WITH_CTI_DOC
 async def run(adversary_emulation_task: str, lm_obj=None,
               run_id=None, enabled_servers=None, server_registry=None,
               cti_context: str = "", chat_history: str = "",
-              workflow_context: dict | None = None,
+              workflow_context: dict | None = None, denied_tools=None,
               **_extra_capability_context):
     """
     lm_obj can be:
@@ -169,6 +169,7 @@ async def run(adversary_emulation_task: str, lm_obj=None,
       - None, to fall back to llm_defaults() from the shared config module
         (used by tests / direct invocation)
     """
+    denied = set(denied_tools or ())
     _ensure_mlflow()
     if isinstance(lm_obj, dspy.LM):
         lm_instance = lm_obj
@@ -264,6 +265,8 @@ async def run(adversary_emulation_task: str, lm_obj=None,
             for server_name, session in zip(enabled_servers, sessions):
                 tool_list = (await session.list_tools()).tools
                 for tool in tool_list:
+                    if tool.name in denied:
+                        continue
                     if tool.name in seen:
                         raise ValueError(
                             f"Tool name collision: '{tool.name}' defined by both "
