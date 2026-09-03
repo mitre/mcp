@@ -25,6 +25,7 @@ from plugins.mcp.app.dspy_env import (
     dspy_lm_kwargs_from_settings,
 )
 from plugins.mcp.app.dspy_runner import safe_react_acall
+from plugins.mcp.app.workflows.prompts.common import CTI_CONTEXT_DESC
 
 
 def get_env(lm_settings=None):
@@ -120,7 +121,7 @@ class DSPyCalderaFactoryClient(dspy.Signature):
     adversary_emulation_task: str = dspy.InputField()
     process_result: str = dspy.OutputField(desc=_AUTHOR_OUTPUT_DESC)
 
-class DSPyCalderaFactoryClientWithRAG(dspy.Signature):
+class DSPyCalderaFactoryClientWithCTI(dspy.Signature):
     """You are an ability factory for the Caldera adversary emulation platform,
     enhanced with Cyber Threat Intelligence (CTI) data. You have access to MCP
     tool servers that wrap Caldera's core API and any installed plugins. Your
@@ -137,9 +138,7 @@ class DSPyCalderaFactoryClientWithRAG(dspy.Signature):
     """
 
     adversary_emulation_task: str = dspy.InputField()
-    cti_context: str = dspy.InputField(
-        desc="Relevant CTI (Cyber Threat Intelligence) information including attack patterns, techniques, and threat actor behaviors"
-    )
+    cti_context: str = dspy.InputField(desc=CTI_CONTEXT_DESC)
     process_result: str = dspy.OutputField(
         desc=(
             _AUTHOR_OUTPUT_DESC
@@ -259,13 +258,13 @@ async def run(adversary_emulation_task: str, lm_obj=None, run_id=None, enabled_s
                 resolved_cti = cti_context
 
                 if resolved_cti:
-                    signature = DSPyCalderaFactoryClientWithRAG
+                    signature = DSPyCalderaFactoryClientWithCTI
                     tracker.log_param("cti_context_preview", resolved_cti[:1000])
                     tracker.set_tag("cti_context_length", len(resolved_cti))
                     print(f"[MCP] Passing CTI context to LLM ({len(resolved_cti)} chars)")
 
                     react = dspy.ReAct(signature, tools=dspy_tools, max_iters=max_tool_calls)
-                    tracker.set_tag("stage", "executing DSPy ReAct with RAG")
+                    tracker.set_tag("stage", "executing DSPy ReAct with CTI")
                     result = await safe_react_acall(
                         react,
                         adversary_emulation_task=adversary_emulation_task,
