@@ -320,6 +320,27 @@ const modelConfigOpen = ref(false)
 const showStixModal = ref(false)
 const stixFiles = ref([])
 
+const endpointProfileDraftName = ref(props.globalConfig.selectedEndpointProfile || '')
+const endpointProfiles = computed(() => {
+  if (!Array.isArray(props.globalConfig.endpointProfiles)) props.globalConfig.endpointProfiles = []
+  return props.globalConfig.endpointProfiles
+})
+const selectedEndpointProfileName = computed({
+  get: () => props.globalConfig.selectedEndpointProfile || '',
+  set: (value) => {
+    props.globalConfig.selectedEndpointProfile = value || ''
+    if (value) endpointProfileDraftName.value = value
+  },
+})
+const modelConfigSummary = computed(() =>
+  props.globalConfig?.modelName || 'server default'
+)
+
+const collapseIcon = computed(() => props.collapsed ? faAngleLeft : faAngleRight)
+const modelToggleIcon = computed(() => modelConfigOpen.value ? faAngleDown : faAngleRight)
+const folderOpenIcon = faFolderOpen
+const timesIcon = faTimes
+
 const attachedIntelFiles = computed(() =>
   attachedIntel.value.map(name =>
     stixFiles.value.find(file => file.name === name) || { name }
