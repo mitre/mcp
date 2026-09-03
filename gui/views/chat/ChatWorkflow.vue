@@ -107,7 +107,7 @@
       :capabilities="capabilities"
       :available-servers="availableServers"
       :global-config="globalConfig"
-      v-model:selectedRag="selectedRag"
+      v-model:attachedIntel="attachedIntel"
       v-model:workflowContext="workflowContext"
       :collapsed="sidebarCollapsed"
       @toggle="sidebarCollapsed = !sidebarCollapsed"
@@ -141,7 +141,7 @@ const plusIcon = faPlus
 const stopIcon = faStop
 
 // --- Persistent per-workflow chat state -------------------------------------
-// useChatSession owns messages / sessionId / historyEnabled / selectedRag
+// useChatSession owns messages / sessionId / historyEnabled / attachedIntel
 // and persists them to localStorage keyed by workflow.id. Hydrates once on
 // mount so leaving the view and coming back re-renders the same transcript;
 // reset() is the only path that wipes them (called by clearTranscript).
@@ -152,7 +152,7 @@ const session = useChatSession(props.workflow.id || '__default__')
 const messages = session.messages
 const sessionId = session.sessionId
 const historyEnabled = session.historyEnabled
-const selectedRag = session.selectedRag
+const attachedIntel = session.attachedIntel
 
 // --- UI state ---------------------------------------------------------------
 const sidebarCollapsed = ref(false)
@@ -196,7 +196,7 @@ function syncHeight() {
 }
 
 onMounted(() => {
-  // Bring saved transcript / sessionId / historyEnabled / selectedRag back
+  // Bring saved transcript / sessionId / historyEnabled / attachedIntel back
   // before the first render pass. Has to happen before the height sync so
   // the transcript scroll position settles correctly on a hydrated view.
   session.hydrate()
@@ -358,65 +358,25 @@ function _recordRunHandle(assistantId, resp) {
 }
 
 async function _startRun(text, assistantId) {
-  const context = workflowContext.value || {}
-  const selectedCtiFiles = Array.isArray(context.selected_stix_files)
-    ? context.selected_stix_files
-    : []
-  const ragFiles = [...new Set([...(selectedRag.value || []), ...selectedCtiFiles])]
-  const filesAttached = ragFiles.length > 0
+  // One source of truth for what is attached: the session-persisted
+  // selection. Attaching is what enables the capability, so there is no
+  // separate checkbox to keep in sync. The tool server stays operator
+  // controlled, since reading intel and calling CTI tools are separate calls.
+  const attached = [...(attachedIntel.value || [])]
+  const context = { ...(workflowContext.value || {}), attached_intel: attached }
   const baseCaps = new Set(globalConfig.capabilitiesByWorkflow?.[props.workflow.id] || [])
-  if (filesAttached) baseCaps.add('rag')
+  if (attached.length) baseCaps.add('cti')
   const baseServers = new Set(globalConfig.serversByWorkflow?.[props.workflow.id] || [])
-  if (props.workflow?.id === 'plan_execute' && selectedCtiFiles.length) {
-    baseServers.add('cti_pipeline')
-  }
-
-  const ragSettings = (globalConfig.capabilitySettings && globalConfig.capabilitySettings.rag) || {}
-  const inferredCtiRag = props.workflow?.id === 'plan_execute' && selectedCtiFiles.length > 0
-  const ctiRagModel = typeof context.cti_rag_model === 'string'
-    ? context.cti_rag_model.trim()
-    : ''
-  const ctiRagApiBase = typeof context.cti_rag_api_base === 'string'
-    ? context.cti_rag_api_base.trim()
-    : ''
-  const ctiRagApiKey = typeof context.cti_rag_api_key === 'string'
-    ? context.cti_rag_api_key
-    : ''
-  const ragModel = inferredCtiRag
-    ? (ctiRagModel || ragSettings.embed_model || globalConfig.modelName || '')
-    : (ragSettings.embed_model || '')
-  const ragApiBase = inferredCtiRag
-    ? (ctiRagApiBase || globalConfig.apiBase || '')
-    : (ragSettings.embed_api_base || ragSettings.api_base || globalConfig.apiBase || '')
-  const ragApiKey = inferredCtiRag
-    ? (ctiRagApiKey || globalConfig.apiKey || '')
-    : (ragSettings.embed_api_key || ragSettings.api_key || globalConfig.apiKey || '')
-  const ragTopk = inferredCtiRag
-    ? (context.cti_rag_topk || ragSettings.topk)
-    : ragSettings.topk
-  const ragSslVerify = inferredCtiRag
-    ? (context.cti_rag_ssl_verify ?? globalConfig.sslVerify)
-    : (ragSettings.ssl_verify ?? globalConfig.sslVerify)
 
   const payload = {
     text,
     workflow_id: props.workflow.id,
     enabled_servers: [...baseServers],
     enabled_capabilities: [...baseCaps],
+    // Attaching is the whole configuration: no embedding model, endpoint or
+    // retrieval depth, because the agent reads the bundles whole.
     capability_settings: {
-      rag: {
-        rag_files: ragFiles,
-        embed_model: ragModel,
-        embed_api_base: ragApiBase,
-        embed_api_key: ragApiKey,
-        api_base: ragApiBase,
-        api_key: ragApiKey,
-        ssl_verify: ragSslVerify,
-        temperature: inferredCtiRag ? context.cti_rag_temperature : ragSettings.temperature,
-        max_tool_calls: inferredCtiRag ? context.cti_rag_max_tool_calls : ragSettings.max_tool_calls,
-        max_tokens: inferredCtiRag ? context.cti_rag_max_tokens : ragSettings.max_tokens,
-        topk: ragTopk,
-      },
+      cti: { cti_files: attached },
     },
     lm_config: {
       model: globalConfig.modelName,
@@ -455,7 +415,7 @@ function clearTranscript() {
   //
   // "New chat" is the only path that wipes durable session state. The
   // composable resets messages, sessionId, historyEnabled, and
-  // selectedRag in memory AND removes this workflow's slice from
+  // attachedIntel in memory AND removes this workflow's slice from
   // localStorage so a future remount starts genuinely fresh. For
   // opt-in workflows this also tells the server to forget the prior
   // session_id (it's the keying field the backend uses to look up

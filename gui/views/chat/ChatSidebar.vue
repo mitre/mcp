@@ -1,11 +1,10 @@
 <!--
   Collapsible left rail with workflow-scoped configuration: enabled MCP
-  servers, capabilities, and (when this workflow accepts the rag
-  capability) the RAG file picker. RAG concerns are owned by
-  ChatRagPanel; this file is purely the server/capability checklists
-  plus chrome.
+  servers, and the intel picker for workflows that accept the cti
+  capability. Attaching intel is the whole of that configuration, so there
+  is no separate settings panel.
 
-  All state is read/written through globalConfig keyed by workflow.id —
+  All state is read/written through globalConfig keyed by workflow.id,
   the same contract the legacy view used.
 -->
 <template>
@@ -151,38 +150,15 @@
         </label>
       </Section>
 
-      <Section title="Capabilities" v-if="!isPlanExecute && capabilityChoices.length">
-        <label
-          v-for="cap in capabilityChoices"
-          :key="cap.id"
-          class="check-row"
-          :title="cap.description"
-        >
-          <input
-            type="checkbox"
-            :checked="enabledCapabilities.includes(cap.id)"
-            @change="toggleCapability(cap.id, $event.target.checked)"
-          />
-          <span class="check-name">{{ cap.display_name }}</span>
-          <span class="check-meta">{{ cap.id }}</span>
-        </label>
-      </Section>
-
-      <ChatRagPanel
-        v-if="workflowAcceptsRag && !isPlanExecute"
-        :global-config="globalConfig"
-        v-model:selectedRag="selectedRagLocal"
-      />
-
-      <Section title="CTI" v-if="isPlanExecute">
+      <Section title="Intel" v-if="workflowAcceptsCti">
         <button class="picker-toggle" type="button" @click="openStixModal">
           <font-awesome-icon :icon="folderOpenIcon" />
-          <span>STIX</span>
-          <span class="check-meta">{{ selectedPlanStix.length }} selected</span>
+          <span>Attach intel</span>
+          <span class="check-meta">{{ attachedIntel.length }} attached</span>
         </button>
 
-        <div v-if="selectedStixFiles.length" class="selected-list">
-          <div v-for="file in selectedStixFiles" :key="file.name" class="selected-row">
+        <div v-if="attachedIntelFiles.length" class="selected-list">
+          <div v-for="file in attachedIntelFiles" :key="file.name" class="selected-row">
             <span class="selected-copy">
               <span class="check-name truncate">{{ file.name }}</span>
               <span class="check-meta">{{ stixMeta(file) }}</span>
@@ -190,131 +166,17 @@
             <button
               class="remove-chip"
               type="button"
-              @click="togglePlanStix(file.name, false)"
-              :title="`Remove ${file.name}`"
+              @click="toggleIntel(file.name, false)"
+              :title="`Detach ${file.name}`"
             >
               <font-awesome-icon :icon="timesIcon" />
             </button>
           </div>
+          <p v-if="attachedObjectCount" class="check-meta">In context: {{ attachedObjectCount }}</p>
         </div>
-        <div v-else class="empty-row">No STIX selected. Selecting STIX automatically enables CTI RAG.</div>
-
-        <div v-if="selectedPlanStix.length" class="cti-rag-panel">
-          <div class="field-stack tight">
-            <label class="field-label" for="plan-cti-rag-profile">CTI RAG profile</label>
-            <select
-              id="plan-cti-rag-profile"
-              class="compact-select"
-              v-model="ctiRagProfile"
-              @change="applyCtiRagProfile"
-            >
-              <option value="">Manual / chat fallback</option>
-              <option
-                v-for="profile in endpointProfiles"
-                :key="profile.name"
-                :value="profile.name"
-              >
-                {{ profile.name }}
-              </option>
-            </select>
-
-            <label class="field-label" for="plan-cti-rag-model">CTI RAG model</label>
-            <input
-              id="plan-cti-rag-model"
-              class="compact-input"
-              type="text"
-              v-model="ctiRagModel"
-              placeholder="Blank = configured RAG default"
-            />
-            <div class="helper-row">
-              Blank model uses the RAG default. Blank endpoint and key use the chat endpoint.
-            </div>
-
-            <label class="field-label" for="plan-cti-rag-api-base">CTI RAG API base</label>
-            <input
-              id="plan-cti-rag-api-base"
-              class="compact-input"
-              type="text"
-              v-model="ctiRagApiBase"
-              placeholder="Blank = chat endpoint"
-            />
-
-            <label class="field-label" for="plan-cti-rag-api-key">CTI RAG API key</label>
-            <input
-              id="plan-cti-rag-api-key"
-              class="compact-input"
-              type="password"
-              v-model="ctiRagApiKey"
-              placeholder="Use chat key"
-            />
-
-            <label class="check-row tls-check">
-              <input type="checkbox" v-model="ctiRagSslVerify" />
-              <span class="check-name">Verify CTI RAG TLS certificates</span>
-            </label>
-
-            <div class="model-grid">
-              <label>
-                <span class="field-label">TopK</span>
-                <input
-                  class="compact-input"
-                  type="number"
-                  v-model.number="ctiRagTopk"
-                  min="1"
-                  max="30"
-                  step="1"
-                />
-              </label>
-              <label>
-                <span class="field-label">Temperature</span>
-                <input
-                  class="compact-input"
-                  type="number"
-                  v-model.number="ctiRagTemperature"
-                  step="0.1"
-                  min="0"
-                  max="2"
-                  :placeholder="String(globalConfig.temperature ?? '')"
-                />
-              </label>
-              <label>
-                <span class="field-label">Tool calls</span>
-                <input
-                  class="compact-input"
-                  type="number"
-                  v-model.number="ctiRagMaxToolCalls"
-                  min="1"
-                  step="1"
-                  :placeholder="String(globalConfig.maxToolCalls ?? '')"
-                />
-              </label>
-              <label>
-                <span class="field-label">Max tokens</span>
-                <input
-                  class="compact-input"
-                  type="number"
-                  v-model.number="ctiRagMaxTokens"
-                  min="1000"
-                  step="1000"
-                  :placeholder="String(globalConfig.maxTokens ?? '')"
-                />
-              </label>
-            </div>
-
-            <div class="profile-actions">
-              <input
-                class="compact-input"
-                type="text"
-                v-model="ctiRagProfileDraftName"
-                placeholder="Profile name"
-              />
-              <button class="mini-button primary" type="button" @click="saveCtiRagProfile">
-                Save
-              </button>
-            </div>
-          </div>
+        <div v-else class="empty-row">
+          No intel attached. Attached intel grounds every prompt in this session.
         </div>
-
       </Section>
 
     </div>
@@ -325,8 +187,8 @@
       <div class="stix-modal" role="dialog" aria-modal="true" aria-labelledby="stix-modal-title">
         <header class="modal-header">
           <div>
-            <h3 id="stix-modal-title">Generated STIX Objects</h3>
-            <p>{{ selectedPlanStix.length }} selected for Plan and Execute</p>
+            <h3 id="stix-modal-title">Available intel</h3>
+            <p>{{ attachedIntel.length }} attached to this session</p>
           </div>
           <button class="modal-close" type="button" @click="closeStixModal" title="Close">
             <font-awesome-icon :icon="timesIcon" />
@@ -334,10 +196,10 @@
         </header>
 
         <div class="modal-toolbar">
-          <span>{{ stixFiles.length }} files</span>
+          <span>{{ stixFiles.length }} bundles</span>
           <div class="toolbar-actions">
-            <button type="button" @click="selectAllStix">All</button>
-            <button type="button" @click="clearPlanStix">Clear</button>
+            <button type="button" @click="attachAllIntel">All</button>
+            <button type="button" @click="detachAllIntel">None</button>
           </div>
         </div>
 
@@ -345,8 +207,8 @@
           <table class="stix-table">
             <thead>
               <tr>
-                <th class="select-col">Select</th>
-                <th>File</th>
+                <th class="select-col">Attach</th>
+                <th>Intel</th>
                 <th>Model</th>
                 <th>Provider</th>
                 <th class="right">Size</th>
@@ -356,15 +218,15 @@
               <tr
                 v-for="file in stixFiles"
                 :key="file.name"
-                :class="{ selected: selectedPlanStix.includes(file.name) }"
-                @click="togglePlanStix(file.name, !selectedPlanStix.includes(file.name))"
+                :class="{ selected: attachedIntel.includes(file.name) }"
+                @click="toggleIntel(file.name, !attachedIntel.includes(file.name))"
               >
                 <td class="select-col">
                   <input
                     type="checkbox"
-                    :checked="selectedPlanStix.includes(file.name)"
+                    :checked="attachedIntel.includes(file.name)"
                     @click.stop
-                    @change="togglePlanStix(file.name, $event.target.checked)"
+                    @change="toggleIntel(file.name, $event.target.checked)"
                   />
                 </td>
                 <td class="file-cell">{{ file.name }}</td>
@@ -373,7 +235,7 @@
                 <td class="right">{{ formatKb(file.size) || '-' }}</td>
               </tr>
               <tr v-if="!stixFiles.length">
-                <td colspan="5" class="empty-cell">No STIX generated yet</td>
+                <td colspan="5" class="empty-cell">No intel yet. Ingest a report on the CTI page.</td>
               </tr>
             </tbody>
           </table>
@@ -393,18 +255,17 @@ import {
   faFolderOpen,
   faTimes,
 } from '@fortawesome/free-solid-svg-icons'
-import ChatRagPanel from './ChatRagPanel.vue'
 
 const props = defineProps({
   workflow: { type: Object, required: true },
   capabilities: { type: Array, default: () => [] },
   availableServers: { type: Array, default: () => [] },
   globalConfig: { type: Object, required: true },
-  selectedRag: { type: Array, default: () => [] },
+  attachedIntel: { type: Array, default: () => [] },
   workflowContext: { type: Object, default: () => ({}) },
   collapsed: { type: Boolean, default: false },
 })
-const emit = defineEmits(['toggle', 'update:selectedRag', 'update:workflowContext'])
+const emit = defineEmits(['toggle', 'update:attachedIntel', 'update:workflowContext'])
 const $api = inject('$api', null)
 
 // Tiny inline section component to avoid yet another file for a label+slot.
@@ -429,14 +290,6 @@ const enabledServers = computed({
     props.globalConfig.serversByWorkflow[props.workflow.id] = v
   },
 })
-const enabledCapabilities = computed({
-  get: () => props.globalConfig.capabilitiesByWorkflow?.[props.workflow.id] || [],
-  set: (v) => {
-    if (!props.globalConfig.capabilitiesByWorkflow) props.globalConfig.capabilitiesByWorkflow = {}
-    props.globalConfig.capabilitiesByWorkflow[props.workflow.id] = v
-  },
-})
-
 const serverChoices = computed(() => {
   const wf = props.workflow || {}
   const required = new Set(wf.required_servers || [])
@@ -446,133 +299,42 @@ const serverChoices = computed(() => {
     .map(s => ({ ...s, required: required.has(s.name) }))
 })
 
-const capabilityChoices = computed(() => {
-  const accepted = new Set(props.workflow?.accepted_capabilities || [])
-  return (props.capabilities || []).filter(c => accepted.has(c.id))
-})
-
 function toggleServer(name, checked) {
   const cur = new Set(enabledServers.value)
   if (checked) cur.add(name); else cur.delete(name)
   enabledServers.value = [...cur]
 }
-function toggleCapability(id, checked) {
-  const cur = new Set(enabledCapabilities.value)
-  if (checked) cur.add(id); else cur.delete(id)
-  enabledCapabilities.value = [...cur]
-}
-
-// --- RAG plumbing -----------------------------------------------------------
-// We don't own RAG state; ChatRagPanel does. We just gate-mount it on the
-// workflow's capability list and forward the selectedRag v-model.
-const workflowAcceptsRag = computed(() =>
-  (props.workflow?.accepted_capabilities || []).includes('rag')
+// --- Attached intel ---------------------------------------------------------
+// Both workflows declare the cti capability, so both get the picker. Attaching
+// is the only control: it is what enables the capability for the run.
+const workflowAcceptsCti = computed(() =>
+  (props.workflow?.accepted_capabilities || []).includes('cti')
 )
 
-const selectedRagLocal = ref([...props.selectedRag])
-watch(selectedRagLocal, (v) => emit('update:selectedRag', v))
-watch(() => props.selectedRag, (v) => {
-  if (JSON.stringify(v) !== JSON.stringify(selectedRagLocal.value)) {
-    selectedRagLocal.value = [...v]
-  }
+const attachedIntel = computed({
+  get: () => props.attachedIntel || [],
+  set: (v) => emit('update:attachedIntel', v),
 })
 
-// --- Plan and Execute CTI context ------------------------------------------
 const isPlanExecute = computed(() => props.workflow?.id === 'plan_execute')
 const modelConfigOpen = ref(false)
 const showStixModal = ref(false)
 const stixFiles = ref([])
-const selectedPlanStix = ref([])
 
-function ensureRagSettings() {
-  if (!props.globalConfig.capabilitySettings) props.globalConfig.capabilitySettings = {}
-  if (!props.globalConfig.capabilitySettings.rag) props.globalConfig.capabilitySettings.rag = {}
-  return props.globalConfig.capabilitySettings.rag
-}
-
-const planRagSettings = computed(() => ensureRagSettings())
-const endpointProfileDraftName = ref(props.globalConfig.selectedEndpointProfile || '')
-const ctiRagProfileDraftName = ref('')
-const endpointProfiles = computed(() => {
-  if (!Array.isArray(props.globalConfig.endpointProfiles)) props.globalConfig.endpointProfiles = []
-  return props.globalConfig.endpointProfiles
-})
-const selectedEndpointProfileName = computed({
-  get: () => props.globalConfig.selectedEndpointProfile || '',
-  set: (value) => {
-    props.globalConfig.selectedEndpointProfile = value || ''
-    if (value) endpointProfileDraftName.value = value
-  },
-})
-const ctiRagProfile = computed({
-  get: () => planRagSettings.value.plan_profile || '',
-  set: (value) => {
-    planRagSettings.value.plan_profile = value || ''
-    if (value) ctiRagProfileDraftName.value = value
-  },
-})
-const ctiRagModel = computed({
-  get: () => planRagSettings.value.plan_embed_model || '',
-  set: (value) => {
-    planRagSettings.value.plan_embed_model = value
-  },
-})
-const ctiRagApiBase = computed({
-  get: () => planRagSettings.value.plan_api_base || '',
-  set: (value) => {
-    planRagSettings.value.plan_api_base = value
-  },
-})
-const ctiRagApiKey = computed({
-  get: () => planRagSettings.value.plan_api_key || '',
-  set: (value) => {
-    planRagSettings.value.plan_api_key = value
-  },
-})
-const ctiRagSslVerify = computed({
-  get: () => planRagSettings.value.plan_ssl_verify ?? props.globalConfig.sslVerify ?? true,
-  set: (value) => {
-    planRagSettings.value.plan_ssl_verify = value
-  },
-})
-const ctiRagTopk = computed({
-  get: () => planRagSettings.value.plan_topk ?? planRagSettings.value.topk ?? 5,
-  set: (value) => {
-    planRagSettings.value.plan_topk = value
-  },
-})
-const ctiRagTemperature = computed({
-  get: () => planRagSettings.value.plan_temperature ?? '',
-  set: (value) => {
-    planRagSettings.value.plan_temperature = value
-  },
-})
-const ctiRagMaxToolCalls = computed({
-  get: () => planRagSettings.value.plan_max_tool_calls ?? '',
-  set: (value) => {
-    planRagSettings.value.plan_max_tool_calls = value
-  },
-})
-const ctiRagMaxTokens = computed({
-  get: () => planRagSettings.value.plan_max_tokens ?? '',
-  set: (value) => {
-    planRagSettings.value.plan_max_tokens = value
-  },
-})
-const modelConfigSummary = computed(() =>
-  props.globalConfig?.modelName || 'server default'
-)
-const collapseIcon = computed(() => props.collapsed ? faAngleLeft : faAngleRight)
-const modelToggleIcon = computed(() => modelConfigOpen.value ? faAngleDown : faAngleRight)
-const folderOpenIcon = faFolderOpen
-const timesIcon = faTimes
-
-
-const selectedStixFiles = computed(() =>
-  selectedPlanStix.value.map(name =>
+const attachedIntelFiles = computed(() =>
+  attachedIntel.value.map(name =>
     stixFiles.value.find(file => file.name === name) || { name }
   )
 )
+
+// What the agent will actually read this turn. Null while the listing has not
+// loaded, so the readout stays silent rather than claiming zero.
+const attachedObjectCount = computed(() => {
+  const counts = attachedIntelFiles.value.map(f => f.objects)
+  if (!counts.length || counts.some(n => typeof n !== 'number')) return null
+  const total = counts.reduce((a, b) => a + b, 0)
+  return `${total} object${total === 1 ? '' : 's'}`
+})
 
 
 
@@ -627,26 +389,6 @@ function currentGlobalEndpointProfile(name) {
   }
 }
 
-function currentCtiRagProfile(name) {
-  return {
-    name,
-    modelName: ctiRagModel.value || props.globalConfig.modelName || '',
-    temperature: ctiRagTemperature.value !== ''
-      ? ctiRagTemperature.value
-      : props.globalConfig.temperature,
-    apiBase: ctiRagApiBase.value || props.globalConfig.apiBase || '',
-    apiKey: ctiRagApiKey.value || props.globalConfig.apiKey || '',
-    sslVerify: ctiRagSslVerify.value,
-    maxToolCalls: ctiRagMaxToolCalls.value !== ''
-      ? ctiRagMaxToolCalls.value
-      : props.globalConfig.maxToolCalls,
-    maxTokens: ctiRagMaxTokens.value !== ''
-      ? ctiRagMaxTokens.value
-      : props.globalConfig.maxTokens,
-    topk: ctiRagTopk.value,
-  }
-}
-
 function applyProfileToGlobal(profile) {
   if (!profile) return
   props.globalConfig.modelName = profile.modelName || profile.model || ''
@@ -659,27 +401,9 @@ function applyProfileToGlobal(profile) {
   endpointProfileDraftName.value = profile.name || ''
 }
 
-function applyProfileToCtiRag(profile) {
-  if (!profile) return
-  ctiRagModel.value = profile.modelName || profile.model || ''
-  ctiRagApiBase.value = profile.apiBase || profile.api_base || ''
-  ctiRagApiKey.value = profile.apiKey || profile.api_key || ''
-  ctiRagSslVerify.value = profile.sslVerify ?? profile.ssl_verify ?? props.globalConfig.sslVerify ?? true
-  ctiRagTemperature.value = profile.temperature ?? ''
-  ctiRagMaxToolCalls.value = profile.maxToolCalls ?? profile.max_tool_calls ?? ''
-  ctiRagMaxTokens.value = profile.maxTokens ?? profile.max_tokens ?? ''
-  if (profile.topk != null) ctiRagTopk.value = Number(profile.topk)
-  ctiRagProfileDraftName.value = profile.name || ''
-}
-
 function applySelectedEndpointProfile() {
   const profile = endpointProfiles.value.find(p => p.name === selectedEndpointProfileName.value)
   if (profile) applyProfileToGlobal(profile)
-}
-
-function applyCtiRagProfile() {
-  const profile = endpointProfiles.value.find(p => p.name === ctiRagProfile.value)
-  if (profile) applyProfileToCtiRag(profile)
 }
 
 function saveGlobalEndpointProfile() {
@@ -689,47 +413,39 @@ function saveGlobalEndpointProfile() {
   selectedEndpointProfileName.value = name
 }
 
-function saveCtiRagProfile() {
-  const name = trimmedProfileName(ctiRagProfileDraftName.value || ctiRagProfile.value)
-  if (!name) return
-  upsertEndpointProfile(currentCtiRagProfile(name))
-  ctiRagProfile.value = name
-}
-
 function deleteSelectedEndpointProfile() {
   const name = selectedEndpointProfileName.value
   if (!name) return
   props.globalConfig.endpointProfiles = endpointProfiles.value.filter(p => p.name !== name)
   selectedEndpointProfileName.value = ''
   endpointProfileDraftName.value = ''
-  if (ctiRagProfile.value === name) ctiRagProfile.value = ''
 }
 
 function openStixModal() {
   showStixModal.value = true
-  loadPlanStixFiles()
+  loadIntelFiles()
 }
 
 function closeStixModal() {
   showStixModal.value = false
 }
 
-function selectAllStix() {
-  selectedPlanStix.value = stixFiles.value.map(file => file.name)
+function attachAllIntel() {
+  attachedIntel.value = stixFiles.value.map(file => file.name)
 }
 
-function clearPlanStix() {
-  selectedPlanStix.value = []
+function detachAllIntel() {
+  attachedIntel.value = []
 }
 
-function togglePlanStix(name, checked) {
-  const cur = new Set(selectedPlanStix.value)
+function toggleIntel(name, checked) {
+  const cur = new Set(attachedIntel.value)
   if (checked) cur.add(name); else cur.delete(name)
-  selectedPlanStix.value = [...cur]
+  attachedIntel.value = [...cur]
 }
 
 
-async function loadPlanStixFiles() {
+async function loadIntelFiles() {
   try {
     const data = await apiGet('/plugin/mcp/stix/list')
     stixFiles.value = (data.files || [])
@@ -739,6 +455,7 @@ async function loadPlanStixFiles() {
         size: f.size,
         model: f.model,
         provider: f.provider,
+        objects: f.objects,
       }))
   } catch (e) {
     stixFiles.value = []
@@ -749,40 +466,21 @@ async function loadPlanStixFiles() {
 
 
 
-async function loadPlanExecuteContextSources() {
-  if (!isPlanExecute.value) return
-  await loadPlanStixFiles()
-  emitPlanContext()
+async function loadIntel() {
+  if (!workflowAcceptsCti.value) return
+  await loadIntelFiles()
+  emitIntelContext()
 }
 
-function emitPlanContext() {
-  if (!isPlanExecute.value) {
-    emit('update:workflowContext', {})
-    return
-  }
-  emit('update:workflowContext', {
-    selected_stix_files: selectedPlanStix.value,
-    cti_uses_rag: selectedPlanStix.value.length > 0,
-    cti_rag_model: selectedPlanStix.value.length ? ctiRagModel.value.trim() : '',
-    cti_rag_api_base: selectedPlanStix.value.length ? ctiRagApiBase.value.trim() : '',
-    cti_rag_api_key: selectedPlanStix.value.length ? ctiRagApiKey.value : '',
-    cti_rag_ssl_verify: selectedPlanStix.value.length ? ctiRagSslVerify.value : null,
-    cti_rag_topk: selectedPlanStix.value.length ? ctiRagTopk.value : null,
-    cti_rag_temperature: selectedPlanStix.value.length ? ctiRagTemperature.value : null,
-    cti_rag_max_tool_calls: selectedPlanStix.value.length ? ctiRagMaxToolCalls.value : null,
-    cti_rag_max_tokens: selectedPlanStix.value.length ? ctiRagMaxTokens.value : null,
-  })
+// The planner is told which bundles are attached so it can cite a source and
+// pass a filename to a CTI tool. The techniques themselves arrive separately,
+// as cti_context from the capability.
+function emitIntelContext() {
+  emit('update:workflowContext', { attached_intel: attachedIntel.value })
 }
 
-onMounted(loadPlanExecuteContextSources)
-watch(isPlanExecute, loadPlanExecuteContextSources)
-watch(
-  [
-    selectedPlanStix, ctiRagModel,
-  ],
-  emitPlanContext,
-  { deep: true },
-)
+onMounted(loadIntel)
+watch(attachedIntel, emitIntelContext, { deep: true })
 </script>
 
 <style scoped>

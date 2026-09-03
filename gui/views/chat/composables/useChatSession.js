@@ -3,7 +3,7 @@
 // Why this exists:
 //   ChatWorkflow.vue mounts and unmounts whenever the user clicks Back
 //   to the landing page and then re-enters a workflow card. All in-
-//   component refs (messages, sessionId, composer text, selectedRag,
+//   component refs (messages, sessionId, composer text, attachedIntel,
 //   historyEnabled) reset on each mount, so the user perceives a fresh
 //   session every time. The backend already keys chat history by a
 //   server-assigned session_id, so the only thing missing on the client
@@ -17,7 +17,7 @@
 //     - historyEnabled     whether the next turn passes prior history
 //                          to the LLM (only meaningful for opt-in
 //                          workflows)
-//     - selectedRag        which uploaded RAG files are attached to
+//     - attachedIntel      which CTI bundles are attached to
 //                          the next prompt
 //
 // What it does not own:
@@ -32,7 +32,7 @@
 //   localStorage key 'mcp_chat_sessions' holds:
 //     { schema: 1, workflows: { <workflow_id>: { messages, sessionId,
 //                                                historyEnabled,
-//                                                selectedRag,
+//                                                attachedIntel,
 //                                                updated_at } } }
 //   The schema version lets future changes drop incompatible blobs
 //   without confusing rehydration.
@@ -126,7 +126,7 @@ export function useChatSession(workflowId) {
   const messages = ref([])
   const sessionId = ref(null)
   const historyEnabled = ref(true)
-  const selectedRag = ref([])
+  const attachedIntel = ref([])
 
   function hydrate() {
     const slice = _readWorkflow(workflowId)
@@ -135,7 +135,7 @@ export function useChatSession(workflowId) {
     sessionId.value = slice.sessionId ?? null
     historyEnabled.value =
       typeof slice.historyEnabled === 'boolean' ? slice.historyEnabled : true
-    selectedRag.value = Array.isArray(slice.selectedRag) ? slice.selectedRag : []
+    attachedIntel.value = Array.isArray(slice.attachedIntel) ? slice.attachedIntel : []
   }
 
   function persist() {
@@ -143,14 +143,14 @@ export function useChatSession(workflowId) {
       messages: _trimMessages(messages.value),
       sessionId: sessionId.value,
       historyEnabled: historyEnabled.value,
-      selectedRag: selectedRag.value,
+      attachedIntel: attachedIntel.value,
     })
   }
 
   // Persist on any change. deep:true catches in-place message mutation
   // (status, finalResult, errorMessage updates from useMcpRun's watcher).
   watch(
-    [messages, sessionId, historyEnabled, selectedRag],
+    [messages, sessionId, historyEnabled, attachedIntel],
     persist,
     { deep: true }
   )
@@ -160,7 +160,7 @@ export function useChatSession(workflowId) {
     messages.value = []
     sessionId.value = null
     historyEnabled.value = true
-    selectedRag.value = []
+    attachedIntel.value = []
     const all = _readAll()
     delete all.workflows[workflowId]
     _writeAll(all)
@@ -170,7 +170,7 @@ export function useChatSession(workflowId) {
     messages,
     sessionId,
     historyEnabled,
-    selectedRag,
+    attachedIntel,
     hydrate,
     // For the one write that cannot wait for the watcher: a run_id arriving
     // after unmount, once the scope holding that watcher is stopped.

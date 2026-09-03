@@ -28,22 +28,10 @@ from plugins.mcp.app.utilities.cti_raw_cleaner import clean_stem
 from plugins.mcp.app.utilities.paths import get_mcp_data_dir, get_mcp_root
 from plugins.mcp.app.cti_ingest_svc import CTIIngestService
 
-# Fallbacks for UI fields the yaml doesn't model. The numeric LM tunables
-# come back from llm_defaults() which already applies its own fallbacks;
-# the RAG-specific defaults stay here because they belong to the capability
-# rather than the LLM provider.
-#
-# rag_embed_model has no literal default: an undeclared embedding model falls
-# back to the configured chat model, since a deployment pointing at its own
-# gateway has no reason to reach for an OpenAI model name it never chose.
-_RAG_DEFAULTS = {
-    "rag_topk": 5,
-}
-
 # conf/local.yml is plaintext on disk beside tracked config, so credentials
 # never go in it. They come from .env or the per-session UI.
 # Matched by name rather than listed: the UI keeps growing key fields
-# (embed_api_key, plan_api_key, cti_rag_api_key) and a list keeps missing them.
+# and a list keeps missing them.
 # api_key_env names a variable, not a value, so it is kept.
 # Widened past api_key: a gateway credential also arrives as an Authorization
 # or x-api-key header, and the llm section used to accept any key at all, so
@@ -197,14 +185,14 @@ class McpAPI:
               "workflow_id": "author" | "plan_execute" | ...,
               "lm_config": { model, api_key, api_base, temperature, max_tokens, max_tool_calls },
               "enabled_servers": ["caldera_core", ...],
-              "enabled_capabilities": ["rag", ...],
-              "capability_settings": { "rag": { "rag_files": [...], "topk": 5, "embed_model": "..." } },
+              "enabled_capabilities": ["cti", ...],
+              "capability_settings": { "cti": { "cti_files": [...] } },
               "workflow_context": { ...workflow-specific UI/runtime options... }
             }
 
         Legacy payload (still accepted, mapped by mcp_svc):
             { "text": "...", "type": "factory"|"planner"|"rag_factory"|"rag_planner",
-              "config": { ...lm + rag_files/rag_topk/rag_embed_model }, "enabled_servers": [...] }
+              "config": { ...lm + cti_files }, "enabled_servers": [...] }
         """
         self.log.info("[MCP] Executing request")
         try:
@@ -287,13 +275,6 @@ class McpAPI:
                 "ssl_verify": cfg.get("ssl_verify", True),
                 "fields_locked": cfg.get("fields_locked") or {},
             }
-            for key, fallback in _RAG_DEFAULTS.items():
-                payload[key] = cfg.get(key, fallback)
-            payload["rag_embed_model"] = (
-                cfg.get("rag_embed_model")
-                or cfg.get("embed_model")
-                or cfg.get("model")
-            )
             return web.json_response(payload)
         except Exception as e:
             self.log.error(f"[MCP] Error fetching defaults: {e}")
@@ -406,71 +387,6 @@ class McpAPI:
         # opt in via log level when troubleshooting.
         self.log.debug(f"[MCP] Status for run {run_id} served from cache")
         return web.json_response({"run_id": run_id, **snapshot})
-
-    async def upload_rag(self, request):
-        try:
-            reader = await request.multipart()
-            part = await reader.next()
-            if not part or part.name != "file":
-                return web.json_response({"error": 'Missing "file" field in form-data'}, status=400)
-
-            raw_filename = part.filename or "rag.json"
-            filename = os.path.basename(raw_filename)
-
-            if not filename.lower().endswith(".json"):
-                return web.json_response({"error": "Only .json files are allowed"}, status=400)
-
-            base_dir = (Path(__file__).resolve().parent.parent / "data")
-            base_dir.mkdir(parents=True, exist_ok=True)
-
-            target_path = base_dir / filename
-            if target_path.exists():
-                ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-                stem = Path(filename).stem
-                suffix = Path(filename).suffix
-                filename = f"{stem}_{ts}{suffix}"
-                target_path = base_dir / filename
-
-            file_bytes = await part.read()
-            try:
-                _ = json.loads(file_bytes.decode("utf-8"))
-            except Exception as e:
-                return web.json_response({"error": f"Invalid JSON: {e}"}, status=400)
-
-            with open(target_path, "wb") as f:
-                f.write(file_bytes)
-
-            stat = target_path.stat()
-            self.log.info(f"[MCP] Uploaded RAG file to {target_path} ({stat.st_size} bytes)")
-            return web.json_response({
-                "message": "RAG file uploaded",
-                "filename": filename,
-                "size": stat.st_size,
-                "path": str(target_path)
-            })
-        except Exception as e:
-            self.log.error(f"[MCP] Error uploading RAG file: {e}")
-            return web.json_response({"error": str(e)}, status=500)
-
-    async def list_rag(self, request):
-        try:
-            base_dir = (Path(__file__).resolve().parent.parent / "data")
-            files = []
-            if base_dir.exists():
-                for p in base_dir.glob("*.json"):
-                    try:
-                        stat = p.stat()
-                        files.append({
-                            "filename": p.name,
-                            "size": stat.st_size,
-                            "modified": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat().replace("+00:00", "Z")
-                        })
-                    except Exception:
-                        continue
-            return web.json_response({"files": sorted(files, key=lambda x: x["filename"].lower())})
-        except Exception as e:
-            self.log.error(f"[MCP] Error listing RAG files: {e}")
-            return web.json_response({"error": str(e)}, status=500)
 
     async def list_runs(self, request):
         """List all MLflow runs with basic information."""
@@ -750,6 +666,7 @@ class McpAPI:
                     model = None
                     provider = None
                     extractor = None
+                    objects = None
 
                     try:
                         with p.open("r", encoding="utf-8") as f:
@@ -757,6 +674,12 @@ class McpAPI:
                             model = bundle.get("x_cti_model")
                             provider = bundle.get("x_cti_provider")
                             extractor = (bundle.get("x_cti_config") or {}).get("extractor")
+                            # What the cti capability will actually put in the
+                            # prompt, so the picker can say so before a run.
+                            objects = sum(
+                                1 for o in (bundle.get("objects") or [])
+                                if o.get("type") in ("attack-pattern", "threat-actor")
+                            )
                     except Exception:
                         # Do NOT fail listing if one file is malformed
                         pass
@@ -769,6 +692,7 @@ class McpAPI:
                         "model": model,
                         "provider": provider,
                         "extractor": extractor,
+                        "objects": objects,
                     })
 
             self.log.info(f"[MCP] listing stix cti files: {files}")
