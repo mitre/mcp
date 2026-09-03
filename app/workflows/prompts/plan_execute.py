@@ -143,11 +143,11 @@ def format_plan_execute_context(context: dict[str, Any] | None) -> str:
         return ""
 
     parts: list[str] = []
-    selected = _as_text_list(context.get("selected_stix_files"))
-    if selected:
-        parts.append("Selected STIX bundles:\n" + "\n".join(f"- {x}" for x in selected))
-
-    if context.get("cti_uses_rag"):
-        parts.append("CTI selection mode: selected STIX bundles are also enabled as RAG context.")
+    # Names only. The techniques these bundles carry arrive separately as
+    # cti_context; this is so the agent can name its source and pass a real
+    # filename to a CTI tool instead of guessing one.
+    attached = _as_text_list(context.get("attached_intel"))
+    if attached:
+        parts.append("Attached CTI bundles:\n" + "\n".join(f"- {x}" for x in attached))
 
     return "\n\n".join(parts)
