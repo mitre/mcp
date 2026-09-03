@@ -133,7 +133,7 @@ class DSPyCalderaPlannerClient(dspy.Signature):
     chat_history: str = dspy.InputField(default="", desc=CHAT_HISTORY_DESC)
     process_result: str = dspy.OutputField(desc=PLAN_EXECUTE_OUTPUT_DESC)
 
-class DSPyCalderaPlannerClientWithRAG(dspy.Signature):
+class DSPyCalderaPlannerClientWithCTI(dspy.Signature):
     """Plan and execute a CTI-grounded CALDERA adversary-emulation request."""
     adversary_emulation_task: str = dspy.InputField()
     operation_context: str = dspy.InputField(
@@ -152,7 +152,7 @@ class DSPyCalderaPlannerClientWithRAG(dspy.Signature):
 
 
 DSPyCalderaPlannerClient.__doc__ = PLAN_EXECUTE_AGENT_DOC
-DSPyCalderaPlannerClientWithRAG.__doc__ = PLAN_EXECUTE_AGENT_WITH_CTI_DOC
+DSPyCalderaPlannerClientWithCTI.__doc__ = PLAN_EXECUTE_AGENT_WITH_CTI_DOC
 
 
 async def run(adversary_emulation_task: str, lm_obj=None,
@@ -289,13 +289,13 @@ async def run(adversary_emulation_task: str, lm_obj=None,
                     tracker.set_tag("operation_context_length", len(operation_context))
 
                 if resolved_cti:
-                    signature = DSPyCalderaPlannerClientWithRAG
+                    signature = DSPyCalderaPlannerClientWithCTI
                     tracker.log_param("cti_context_preview", resolved_cti[:1000])
                     tracker.set_tag("cti_context_length", len(resolved_cti))
                     print(f"[MCP] Passing CTI context to LLM ({len(resolved_cti)} chars)")
 
                     react = dspy.ReAct(signature, tools=dspy_tools, max_iters=max_tool_calls)
-                    tracker.set_tag("stage", "executing DSPy ReAct with RAG")
+                    tracker.set_tag("stage", "executing DSPy ReAct with CTI")
                     result = await safe_react_acall(
                         react,
                         adversary_emulation_task=adversary_emulation_task,

@@ -181,7 +181,7 @@ async def ingest_cti(file_path: str) -> dict:
 
     src = _resolve_pipeline_file(
         file_path,
-        data_subdirs=("raw/uploads", "raw", "inputs", "outputs_stix", "stix_cti"),
+        data_subdirs=("raw/uploads", "raw", "outputs_stix"),
     )
     if not src.is_file():
         return {"error": f"cti_source not found: {file_path}"}
@@ -262,7 +262,7 @@ async def fuse_cti_bundles(stix_paths: list[str]) -> dict:
     for raw in stix_paths:
         p = _resolve_pipeline_file(
             raw,
-            data_subdirs=("outputs_stix", "stix_cti", "raw/uploads"),
+            data_subdirs=("outputs_stix", "raw/uploads"),
         )
         if not p.is_file():
             return {"error": f"stix_path not found: {raw}"}
@@ -400,7 +400,7 @@ async def build_adversary(stix_path: str, platforms: Optional[list] = None,
     """
     if not stix_path:
         return {"error": "stix_path is required"}
-    p = _resolve_pipeline_file(stix_path, data_subdirs=("outputs_stix", "stix_cti"))
+    p = _resolve_pipeline_file(stix_path, data_subdirs=("outputs_stix",))
     if not p.is_file():
         return {"error": f"stix bundle not found: {stix_path}"}
 
