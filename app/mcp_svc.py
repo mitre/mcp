@@ -9,6 +9,8 @@ from pathlib import Path
 from app.utility.base_service import BaseService
 import asyncio
 
+from mlflow.tracking import get_tracking_uri
+
 from plugins.mcp.app.config import resolve_llm_config
 from plugins.mcp.app.mlflow_run import (
     RunTracker,
@@ -479,9 +481,19 @@ class MCPService(BaseService):
         # never share mlflow's thread-local active-run stack. Minting into
         # the workflow's own experiment also keeps History grouped the way
         # each workflow declares it.
-        run_id = RunTracker.start(
-            workflow.mlflow_experiment, f"MCP {workflow.display_name}"
-        ).run_id
+        try:
+            run_id = RunTracker.start(
+                workflow.mlflow_experiment, f"MCP {workflow.display_name}"
+            ).run_id
+        except Exception as e:
+            # Every other MLflow write is best-effort, so a tracking server
+            # that is down surfaces only here, as a raw provider exception
+            # that names neither MLflow nor the port it came from.
+            raise RuntimeError(
+                f"MLflow tracking is unavailable at {get_tracking_uri()}, so the "
+                f"run could not be started: {e}. Check the caldera log for an "
+                f"MLflow port conflict."
+            ) from e
 
         # Resolve the session this run belongs to. The first turn auto-starts
         # a session keyed by its own run_id; follow-up turns echo the same

@@ -136,3 +136,26 @@ def test_reconcile_spares_runs_the_live_cache_still_owns(svc):
 
     assert asyncio.run(svc.reconcile_orphaned_runs()) == []
     assert MlflowClient().get_run(in_flight).info.status == "RUNNING"
+
+
+def test_an_unreachable_tracking_server_names_mlflow(svc, monkeypatch):
+    """The defect: /execute 500'd with a bare provider exception.
+
+    A port adopted from a non-MLflow listener fails at create_run, and
+    that was the only MLflow write not wrapped, so the chat UI showed a
+    403 with nothing tying it to the tracking server.
+    """
+    async def never_runs(prompt, lm_obj, run_id=None, **kwargs):
+        pytest.fail("started a workflow with no run to track it")
+
+    svc.workflow_registry = {"slow": _workflow("slow", never_runs)}
+
+    def _refuse(*a, **k):
+        raise Exception(
+            "API request to endpoint /api/2.0/mlflow/experiments/get-by-name "
+            "failed with error code 403 != 200"
+        )
+    monkeypatch.setattr(RunTracker, "start", _refuse)
+
+    with pytest.raises(RuntimeError, match="MLflow tracking is unavailable"):
+        asyncio.run(svc.execute(workflow_id="slow", prompt="p"))
