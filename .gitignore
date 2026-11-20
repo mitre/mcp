@@ -1,6 +1,8 @@
 # Artifacts and Metadata
 **/__pycache__/
 mlruns/
+# MLflow's sqlite tracking store (hook.py backend-store-uri)
+**/mlruns.db
 
 # Environment
 .env

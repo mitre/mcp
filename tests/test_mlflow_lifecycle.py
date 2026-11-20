@@ -145,3 +145,68 @@ def test_our_artifact_root_is_ours(prefix):
 ])
 def test_only_an_mlflow_cli_on_our_port_is_a_reclaim_candidate(cmdline, port):
     assert hook._mlflow_server_port(cmdline) == port
+
+
+class _ReconcileRecorder:
+    def __init__(self):
+        self.calls = 0
+
+    async def reconcile_orphaned_runs(self):
+        self.calls += 1
+
+
+def _bring_up(monkeypatch, artifact_root, spawned=False):
+    import asyncio
+    monkeypatch.setattr(hook, "_ensure_mlflow_server", lambda: spawned)
+    monkeypatch.setattr(hook, "is_port_open", lambda *a, **k: True)
+    monkeypatch.setattr(hook, "_probe_listener", lambda *a, **k: artifact_root)
+    svc = _ReconcileRecorder()
+    asyncio.run(hook._bring_up_tracking(svc))
+    return svc.calls
+
+
+def test_boot_reconcile_runs_against_our_own_store(monkeypatch):
+    assert _bring_up(monkeypatch, os.path.join(hook._MLFLOW_ARTIFACT_ROOT, "0")) == 1
+
+
+def test_boot_reconcile_never_touches_a_foreign_store(monkeypatch):
+    # Reconciling another tree's server would mark its live runs KILLED.
+    assert _bring_up(monkeypatch, "/somewhere/else/mlruns/0") == 0
+    assert _bring_up(monkeypatch, None) == 0
+
+
+def test_a_failed_bring_up_is_logged_not_raised(monkeypatch, caplog):
+    import asyncio
+
+    def _boom():
+        raise OSError("no mlflow here")
+
+    monkeypatch.setattr(hook, "_ensure_mlflow_server", _boom)
+    svc = _ReconcileRecorder()
+    with caplog.at_level(logging.ERROR, logger=hook.log.name):
+        asyncio.run(hook._bring_up_tracking(svc))
+    assert "Failed to start MLflow server" in caplog.text
+    assert svc.calls == 0
+
+
+def test_a_spawn_does_not_block_and_ensure_reports_it(monkeypatch):
+    monkeypatch.setattr(hook, "is_port_open", lambda *a, **k: False)
+    started = []
+    monkeypatch.setattr(hook, "_start_mlflow_server", lambda: started.append(True))
+    assert hook._ensure_mlflow_server() is True
+    assert started
+
+
+def test_the_mlflow_http_client_is_bounded():
+    # Unbounded, MLflow retries a sick server for minutes on the event loop.
+    assert os.environ.get("MLFLOW_HTTP_REQUEST_TIMEOUT")
+    assert os.environ.get("MLFLOW_HTTP_REQUEST_MAX_RETRIES")
+
+
+def test_importing_the_hook_leaves_root_logging_alone():
+    # basicConfig at import took over the whole server's log handlers.
+    assert any(isinstance(h, logging.NullHandler)
+               for h in logging.getLogger("plugins.mcp").handlers)
+    with open(hook.__file__, encoding="utf-8") as fh:
+        source = fh.read()
+    assert "logging.basicConfig(" not in source

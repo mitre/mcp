@@ -180,7 +180,8 @@ def _dialable_host(host) -> str:
     A wildcard bind means "every interface" and is not routable.
     """
     host = str(host or '').strip()
-    if host in ('', '0.0.0.0', '*'):
+    # Maps a wildcard bind to loopback; nothing binds here (bandit B104 false positive).
+    if host in ('', '0.0.0.0', '*'):  # nosec B104
         return '127.0.0.1'
     if host in ('::', '[::]'):
         return '[::1]'

@@ -71,6 +71,15 @@
             <span class="toggle-dot"></span>
             <span>History {{ historyEnabled ? 'on' : 'off' }}</span>
           </button>
+          <ChatHistoryList
+            :list-conversations="session.listConversations"
+            :reopen-conversation="session.reopenConversation"
+            :delete-conversation="session.deleteConversation"
+            :clear-conversations="session.clearConversations"
+            :refresh-key="historyVersion"
+            :disabled="run.isRunning.value"
+            @reopened="handleReopened"
+          />
           <button
             v-if="messages.length"
             class="header-action"
@@ -121,6 +130,7 @@ import { faAngleLeft, faPlus, faStop } from '@fortawesome/free-solid-svg-icons'
 import ChatSidebar from './ChatSidebar.vue'
 import ChatTranscript from './ChatTranscript.vue'
 import ChatComposer from './ChatComposer.vue'
+import ChatHistoryList from './ChatHistoryList.vue'
 import { useMcpRun } from './composables/useMcpRun.js'
 import { useTrajectory } from './composables/useTrajectory.js'
 import { useChatSession } from './composables/useChatSession.js'
@@ -156,6 +166,9 @@ const attachedIntel = session.attachedIntel
 // --- UI state ---------------------------------------------------------------
 const sidebarCollapsed = ref(false)
 const composerText = ref('')
+// Bumped whenever the conversation archive changes (New chat, reopen) so the
+// "Past chats" list reloads its entries and count badge.
+const historyVersion = ref(0)
 
 // True when the workflow has opted in to per-session chat history. Drives
 // composer copy and the meaning of the "New chat" button. Defaults to false
@@ -419,12 +432,26 @@ function clearTranscript() {
   // session_id (it's the keying field the backend uses to look up
   // accumulated chat history); single-shot workflows reset the same
   // fields, they just have no semantic meaning for them.
-  session.reset()
+  // reset() archives the outgoing transcript into the encrypted "Past chats"
+  // store before wiping; its promise settles once the archive is written.
+  const archived = session.reset()
+  Promise.resolve(archived).then(() => { historyVersion.value++ })
   // Deliberately NOT reset while a run is live. reset() would clear the
   // Working badge, which is now the only Stop left once the bubble is gone,
   // and re-open the composer for a second run this view cannot poll.
   if (!run.isRunning.value) run.reset()
   pendingAssistantId = null
+}
+
+function handleReopened() {
+  // reopenConversation() already swapped the archived transcript into the
+  // session refs. Reopening is disabled while a run is live, so no poll is
+  // bound to the old transcript; re-attach to a run still in flight in the
+  // reopened one, exactly as a remount would.
+  run.reset()
+  pendingAssistantId = null
+  _resumeRunInFlight()
+  historyVersion.value++
 }
 </script>
 

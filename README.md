@@ -14,6 +14,8 @@ An AI-assisted operations workspace for CALDERA. Chat-driven workflows create ad
 
 Selecting STIX in Plan and Execute enables CTI retrieval for that run; with none selected the workflow runs without it. Every run keeps its transcript, tool calls and artifacts for review.
 
+**New chat** archives the current conversation instead of discarding it. **Past chats** lists the archived conversations of that workflow and reopens or deletes them; its **Clear all** deletes that workflow's archived chats only. Only the archive is encrypted at rest: it lives in the browser under a non-extractable AES-GCM key kept in IndexedDB, and where Web Crypto or IndexedDB is unavailable (a private window, an insecure context) nothing is archived rather than archived in plaintext. The open conversation, including one reopened from the archive, is kept in the browser's `localStorage` (`mcp_chat_sessions`) in plaintext, as before. The encryption protects the stored archive only: code running in the same origin can still use the key.
+
 ## What the pipeline produces
 
 A threat report tells you **what** to run. Your environment tells you **where**.
@@ -83,6 +85,8 @@ Add `--build` whenever Vue, CSS or other Magma-loaded UI assets changed, so Magm
 Open CALDERA, select **mcp** in the sidebar, then choose or create an endpoint profile in **Global Model Config** (the default model field is `openai/gpt-oss-120b`). From there, use **Upload CTI** to generate STIX, or **Plan and Execute** to select existing bundles and run.
 
 Tests run with `pytest tests` from the plugin directory.
+
+Two static gates are defined in `tox.ini`: `tools/check_hub_agnostic.py --strict` and `bandit`. The first is a tripwire for the common ways of spelling a coupling to another plugin, not a proof that this plugin is plugin-agnostic. It scans the `.py`, `.vue`, `.js`, `.mjs`, `.ts`, `.tsx` and `.html` files under `app/`, `gui/`, `templates/` and `static/` and the top-level `.py` files, skipping only `node_modules`, `dist`, `__pycache__` and `.git`. Python is parsed, so comments and docstrings are ignored. For any plugin name `<x>` other than `mcp`, in a standalone checkout as in a CALDERA tree, it fails on: `import plugins.<x>`, `from plugins.<x> import ...` and `from plugins import <x>`; a Python string containing `plugins.<x>` (as passed to `importlib.import_module`), `plugins/<x>` or `/plugin/<x>`; a join onto the plugins directory: `os.path.join(..., "plugins", "<x>")`, `Path("plugins") / "<x>"`, `root / "plugins" / "<x>"` or `PLUGINS_DIR / "<x>"` (any variable named like `plugins_dir` or `plugins_root`); and `plugins/<x>` or `/plugin/<x>` outside comments in the Vue, JavaScript, TypeScript and HTML files. It does not detect names built at run time (`'/plugin/' + name`, f-strings), relative-path imports or paths, or a join onto any other variable, such as `base_dir / "<x>"`. Inside a CALDERA tree that last form is still caught when `<x>` is a sibling plugin under `plugins/`. A file the gate cannot read or parse fails it. `bash tools/run-pr-gates.sh` runs both gates in a throwaway virtualenv when tox is not installed.
 
 ## Configuration
 

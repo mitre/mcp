@@ -1,3 +1,4 @@
+import asyncio
 import atexit
 import json
 import os
@@ -27,8 +28,13 @@ description = 'Attachment for Model Context Protocol'
 address = '/plugin/mcp/gui'
 access = BaseWorld.Access.APP
 
-# Set global logging level
-logging.basicConfig(level=logging.INFO)
+# No logging.basicConfig here. Under server.py it would do nothing, because
+# caldera configures the root logger before it loads plugins; imported any other
+# way (a test, a script) it would attach a handler to the ROOT logger and set the
+# level for everything else in that process. A NullHandler on the plugin's
+# top-level logger gives 'plugins.mcp.*' a parent without emitting anything; the
+# process that imports the plugin owns the handlers.
+logging.getLogger('plugins.mcp').addHandler(logging.NullHandler())
 log = logging.getLogger(__name__)
 
 
@@ -63,6 +69,16 @@ os.environ.setdefault('MLFLOW_TRACKING_URI', _MLFLOW_URI)
 # that tells our own server apart from another tree's on the same port.
 _MLFLOW_BACKEND_URI = f"sqlite:///{os.path.join(_PLUGIN_DIR, 'mlruns.db')}"
 _MLFLOW_ARTIFACT_ROOT = os.path.join(_PLUGIN_DIR, 'mlruns')
+
+# Bound MLflow's HTTP client so a slow or unhealthy tracking server holds up a
+# caller for seconds, not minutes. MLflow defaults to a 120s timeout and 7
+# retries with exponential backoff; against a server returning 503s that turns
+# one create_run/log call into a 60-120s block on the aiohttp event loop, which
+# freezes the whole Caldera server. With these values one synchronous call still
+# blocks for up to about 16-20s (two 8s attempts plus backoff). Tracking is
+# best-effort, so fail fast.
+os.environ.setdefault('MLFLOW_HTTP_REQUEST_TIMEOUT', '8')
+os.environ.setdefault('MLFLOW_HTTP_REQUEST_MAX_RETRIES', '1')
 
 # Only set when this process started MLflow, so shutdown never kills a server
 # the operator is running themselves.
@@ -166,38 +182,39 @@ def _reclaim_port():
 
 
 def _start_mlflow_server():
+    """Spawn this tree's MLflow server and arrange for it to stop at exit.
+
+    Only spawns; the readiness wait is _bring_up_tracking's, so it never
+    blocks the event loop.
+    """
     global _mlflow_proc
-    try:
-        # The interpreter running caldera, not a bare "mlflow": restarting a
-        # reclaimed server is now a normal path, and PATH may not carry the
-        # venv that holds the mlflow client this process imports.
-        _mlflow_proc = subprocess.Popen([
-            sys.executable, "-m", "mlflow", "server",
-            "--backend-store-uri", _MLFLOW_BACKEND_URI,
-            "--default-artifact-root", _MLFLOW_ARTIFACT_ROOT,
-            "--host", _MLFLOW_HOST,
-            "--port", str(_MLFLOW_PORT),
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        # Caldera has no plugin teardown hook, so without this the server is
-        # reparented to init and outlives every restart.
-        atexit.register(_stop_mlflow_server)
-        log.debug(f"[MCP] Starting MLflow server at {_MLFLOW_URI}")
-    except Exception as e:
-        log.error(f"[MCP] Failed to start MLflow server: {e}")
-        traceback.print_exc()
-        return
-
-    for _ in range(10):
-        if is_port_open(_MLFLOW_PORT, _MLFLOW_HOST):
-            log.debug("[MCP] MLflow is ready.")
-            return
-        time.sleep(1)
-    log.error(f"[MCP] MLflow did not start within 10s on {_MLFLOW_HOST}:{_MLFLOW_PORT}.")
+    # The interpreter running caldera, not a bare "mlflow": restarting a
+    # reclaimed server is now a normal path, and PATH may not carry the
+    # venv that holds the mlflow client this process imports.
+    _mlflow_proc = subprocess.Popen([
+        sys.executable, "-m", "mlflow", "server",
+        "--backend-store-uri", _MLFLOW_BACKEND_URI,
+        "--default-artifact-root", _MLFLOW_ARTIFACT_ROOT,
+        "--host", _MLFLOW_HOST,
+        "--port", str(_MLFLOW_PORT),
+    ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # Caldera has no plugin teardown hook, so without this the server is
+    # reparented to init and outlives every restart.
+    atexit.register(_stop_mlflow_server)
+    log.debug(f"[MCP] Starting MLflow server at {_MLFLOW_URI}")
 
 
-# Started from enable(), not at import: this spawns a process and blocks for
-# up to 10s, and importing the module should do neither.
+# Started from enable(), not at import, and off the event loop: this probes
+# the port, may scan processes and spawns a server, and importing the module
+# should do none of that.
 def _ensure_mlflow_server():
+    """Adopt, reclaim or spawn the tracking server. Blocking; run off the loop.
+
+    Returns True when a server was spawned and the caller should wait for
+    readiness, False when there is nothing to wait on (already serving our
+    store, or the port is held by a process that must be left alone, both
+    already logged).
+    """
     if is_port_open(_MLFLOW_PORT, _MLFLOW_HOST):
         artifact_root = _probe_listener()
         if artifact_root is None:
@@ -206,10 +223,10 @@ def _ensure_mlflow_server():
                 f"not MLflow, so every run will fail to start. Free the port, or "
                 f"set mlflow.port in plugins/mcp/conf/default.yml."
             )
-            return
+            return False
         if _serves_our_store(artifact_root):
             log.info(f"[MCP] MLflow already running on {_MLFLOW_HOST}:{_MLFLOW_PORT}")
-            return
+            return False
         # Sharing another tree's store crosses both trees' history, and the
         # boot reconcile then marks that tree's live runs KILLED.
         log.warning(
@@ -223,8 +240,50 @@ def _ensure_mlflow_server():
                 f"in another tree's store, so that server is left alone and runs will "
                 f"fail. Stop it, or set mlflow.port in plugins/mcp/conf/default.yml."
             )
-            return
+            return False
     _start_mlflow_server()
+    return True
+
+
+# The background bring-up task, referenced so it is not collected mid-run.
+_tracking_task = None
+
+
+async def _bring_up_tracking(mcp_svc):
+    """Bring up MLflow and reconcile orphaned runs without blocking startup.
+
+    A fire-and-forget task scheduled from enable(). The blocking parts (port
+    fingerprint, process scan, Popen) run in a worker thread and the
+    readiness wait uses asyncio.sleep, so the server keeps answering while
+    MLflow starts. MLflow only backs the History tab; the live-run cache
+    answers /status, so a slow or missing server degrades History only.
+    """
+    loop = asyncio.get_running_loop()
+    try:
+        spawned = await loop.run_in_executor(None, _ensure_mlflow_server)
+    except Exception as e:
+        log.error(f"[MCP] Failed to start MLflow server: {e}")
+        log.debug("[MCP] MLflow start traceback", exc_info=True)
+        return
+
+    if spawned:
+        for _ in range(10):
+            if is_port_open(_MLFLOW_PORT, _MLFLOW_HOST):
+                log.debug("[MCP] MLflow is ready.")
+                break
+            await asyncio.sleep(1)
+        else:
+            log.error(f"[MCP] MLflow did not start within 10s on {_MLFLOW_HOST}:{_MLFLOW_PORT}.")
+            return
+
+    # Runs a previous process stranded as RUNNING can only be closed out from
+    # outside the task that owned them. Only against a server confirmed to hold
+    # this tree's store: reconciling a foreign one would mark another tree's
+    # live runs KILLED.
+    if is_port_open(_MLFLOW_PORT, _MLFLOW_HOST) and _serves_our_store(
+        await loop.run_in_executor(None, _probe_listener)
+    ):
+        await mcp_svc.reconcile_orphaned_runs()
 
 
 # ✅ Now import modules that depend on MLflow
@@ -265,8 +324,6 @@ def report_caldera_connection():
 async def enable(services):
     app = services.get('app_svc').application
 
-    _ensure_mlflow_server()
-
     try:
         report_caldera_connection()
     except Exception as e:
@@ -291,9 +348,11 @@ async def enable(services):
     )
     services.get('data_svc').add_service('mcp_svc', mcp_svc)
 
-    # Runs stranded as RUNNING by a previous process can only be closed out
-    # from outside the task that owned them, so it happens here at boot.
-    await mcp_svc.reconcile_orphaned_runs()
+    # Bring up MLflow, then reconcile runs a previous process stranded, in the
+    # background: startup never waits on MLflow (see _bring_up_tracking).
+    # The loop holds tasks weakly, so keep a reference until it finishes.
+    global _tracking_task
+    _tracking_task = asyncio.create_task(_bring_up_tracking(mcp_svc))
     mcp_gui = McpGUI(services, name=name, description=description)
     app.router.add_static('/mcp', 'plugins/mcp/static/', append_version=True)
     # Server-rendered landing page. Reports plugin readiness (LLM key,

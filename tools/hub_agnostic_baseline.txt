@@ -1,0 +1,6 @@
+# hub_agnostic_baseline.txt — KNOWN hub->other-plugin couplings (GATING
+# categories only) accepted as debt to burn down. check_hub_agnostic.py
+# --strict fails on any GATING finding NOT listed here, so no NEW coupling
+# can land. Regenerate with: python tools/check_hub_agnostic.py --update-baseline
+# Each fix should SHRINK this file. One key per line: category|relpath|subtype|token
+

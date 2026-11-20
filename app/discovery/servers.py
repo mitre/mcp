@@ -1,8 +1,39 @@
+"""Discover MCP tool servers contributed by Caldera plugins and build the server registry."""
 import ast
 import logging
+import re
 from pathlib import Path
 
 log = logging.getLogger("plugins.mcp")
+
+
+# Directories under plugins/ are not all real plugins: operators park
+# snapshots, backups and editor copies next to the live plugin, and those often
+# still contain an mcp_server.py (a copy of the real one) that would otherwise
+# register as a phantom DUPLICATE server. They are skipped by well-known
+# backup/snapshot NAME markers only, never a hardcoded directory name, so new
+# backups are caught automatically and no plainly named plugin is affected.
+_BACKUP_DIR_MARKERS = (
+    "-backup", "backup-", "_backup", ".backup",
+    "-bak", ".bak",
+    "-old", ".old",
+    "-orig", ".orig",
+    "-copy", ".copy",
+    "-snapshot", "-snap",
+    "-disabled", ".disabled",
+)
+# A trailing date stamp (e.g. "foo-YYYY-MM-DD") is a strong manual-snapshot tell.
+_BACKUP_DATESTAMP_RE = re.compile(r"-\d{4}-\d{2}-\d{2}$")
+
+
+def _looks_like_backup_dir(name: str) -> bool:
+    """True when a plugins/ subdir name looks like a backup/snapshot, not a plugin."""
+    lowered = name.lower()
+    if lowered.endswith("~"):
+        return True
+    if any(marker in lowered for marker in _BACKUP_DIR_MARKERS):
+        return True
+    return bool(_BACKUP_DATESTAMP_RE.search(lowered))
 
 
 def _safe_load_metadata(server_path: Path):
@@ -74,6 +105,11 @@ def discover_mcp_servers(plugins_root: Path) -> dict:
 
     for plugin_dir in sorted(plugins_root.iterdir()):
         if not plugin_dir.is_dir() or plugin_dir.name == "mcp":
+            continue
+        if _looks_like_backup_dir(plugin_dir.name):
+            log.info(
+                f"[MCP] Skipping backup/non-plugin directory: {plugin_dir.name}"
+            )
             continue
         candidate = plugin_dir / "mcp_server.py"
         if not candidate.exists():
